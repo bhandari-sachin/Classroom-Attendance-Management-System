@@ -68,4 +68,7 @@ public class AttendanceSQL {
             }
         } catch (Exception e) {
             e.printStackTrace();
+        }
+        return attendanceList;
+    }
 }
