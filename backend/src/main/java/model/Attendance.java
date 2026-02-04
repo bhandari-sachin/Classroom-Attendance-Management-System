@@ -1,21 +1,23 @@
 package model;
 
 public class Attendance {
+    private Long attendanceId;
     private final Long studentId;
-    private final Long classId;
+    private final Long sessionId;
     private AttendanceStatus status;
+    private String remarks;
 
-    public Attendance(Long studentId, Long classId, AttendanceStatus status) {
+    public Attendance(Long studentId, Long sessionId, AttendanceStatus status) {
         this.studentId = studentId;
-        this.classId = classId;
+        this.sessionId = sessionId;
         this.status = status;
     }
 
     public Long getStudentId() {
         return studentId;
     }
-    public Long getClassId() {
-        return classId;
+    public Long getSessionId() {
+        return sessionId;
     }
     public AttendanceStatus getStatus() {
         return status;
