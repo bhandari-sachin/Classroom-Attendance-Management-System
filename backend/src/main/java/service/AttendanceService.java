@@ -3,7 +3,7 @@ package service;
 import model.Attendance;
 import model.AttendanceStatus;
 import config.AttendanceSQL;
-import model.AttendanceView;
+import dto.AttendanceView;
 
 import java.util.List;
 
@@ -20,6 +20,7 @@ public class AttendanceService {
                 sessionId,
                 AttendanceStatus.PRESENT
         );
+        attendanceSQL.save(attendance);
     }
 
     public void markAbsent(Long studentId, Long sessionId, String reason) {
@@ -28,6 +29,7 @@ public class AttendanceService {
                 sessionId,
                 AttendanceStatus.ABSENT
         );
+        attendanceSQL.save(attendance);
     }
 
     public void markExcused(Long studentId, Long sessionId, String reason) {
@@ -36,12 +38,14 @@ public class AttendanceService {
                 sessionId,
                 AttendanceStatus.EXCUSED
         );
+        attendanceSQL.save(attendance);
     }
 
     public boolean submitAttendanceCode(Long studentId, Long sessionId, String code) {
 
-        if (sessionId == null) {
-            return false; // invalid code
+        String correctCode = attendanceSQL.getSessionCode(sessionId);
+        if (!code.equals(correctCode)) {
+            return false;
         }
 
         Attendance attendance = new Attendance(
@@ -49,6 +53,7 @@ public class AttendanceService {
                 sessionId,
                 AttendanceStatus.PRESENT
         );
+        attendanceSQL.save(attendance);
         return true;
     }
 

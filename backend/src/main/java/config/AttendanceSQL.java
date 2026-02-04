@@ -2,7 +2,7 @@ package config;
 
 import model.Attendance;
 import model.AttendanceStatus;
-import model.AttendanceView;
+import dto.AttendanceView;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -131,5 +131,22 @@ public class AttendanceSQL {
         }
 
         return results;
+    }
+
+    public String getSessionCode(Long sessionId) {
+        String sql = "SELECT qr_code FROM session WHERE session_id = ?";
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setLong(1, sessionId);
+            ResultSet rs = stmt.executeQuery();
+
+            if (rs.next()) {
+                return rs.getString("qr_code");
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return null;
     }
 }

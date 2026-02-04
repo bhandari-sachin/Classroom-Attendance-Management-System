@@ -1,23 +1,26 @@
 package model;
 
 import java.time.LocalDate;
-import java.time.LocalTime;
 
 public class Session {
 
     private Long sessionId;
     private Long classId;
     private LocalDate date;
-    private LocalTime startTime;
-    private LocalTime endTime;
+    private String QRCode;
 
-    public Session(Long classId, LocalDate date) {
+    public Session(Long sessionId, Long classId, LocalDate date) {
+        this.sessionId = sessionId;
         this.classId = classId;
         this.date = date;
     }
 
     public Long getSessionId() {
         return sessionId;
+    }
+
+    public void setQRCode(String QRCode) {
+        this.QRCode = QRCode;
     }
 }
 
