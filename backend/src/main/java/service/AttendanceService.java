@@ -3,6 +3,7 @@ package service;
 import model.Attendance;
 import model.AttendanceStatus;
 import config.AttendanceSQL;
+import model.AttendanceView;
 
 import java.util.List;
 
@@ -50,6 +51,7 @@ public class AttendanceService {
         );
         return true;
     }
+
     public List<Attendance> getAttendanceForStudent(Long studentId) {
         return attendanceSQL.findByStudentId(studentId);
     }
@@ -57,4 +59,12 @@ public class AttendanceService {
     public List<Attendance> getAttendanceForClass(Long classId) {
         return attendanceSQL.findByClassId(classId);
     }
+
+    public List<AttendanceView> filterAttendance(
+            Long classId,
+            String searchTerm
+    ) {
+        return attendanceSQL.filterAttendanceByStudent(classId, searchTerm);
+    }
+
 }
