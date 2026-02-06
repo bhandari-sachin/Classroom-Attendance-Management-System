@@ -1,8 +1,8 @@
 package frontend;
 
+import javafx.animation.TranslateTransition;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
-import javafx.geometry.Side;
 import javafx.scene.Parent;
 import javafx.scene.control.*;
 import javafx.scene.input.MouseButton;
@@ -10,16 +10,25 @@ import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Circle;
 import javafx.scene.text.Font;
+import javafx.util.Duration;
 
 public class StudentMarkAttendancePage {
 
-    private ContextMenu hamburgerMenu;
+    // Side menu (drawer)
+    private VBox sideMenu;
+    private Pane overlay;
+    private boolean menuOpen = false;
+    private final double MENU_WIDTH = 240;
 
-    public Parent createView(Runnable onBackToDashboard) {
+    public Parent createView(
+            Runnable onBackToDashboard,
+            Runnable onOpenReports,
+            Runnable onOpenMarkAttendance // this page (can be no-op)
+    ) {
         BorderPane root = new BorderPane();
         root.getStyleClass().add("app");
 
-        // top bar
+        /* ================= TOP BAR ================= */
         HBox topBar = new HBox(12);
         topBar.getStyleClass().add("topbar");
         topBar.setAlignment(Pos.CENTER_LEFT);
@@ -28,31 +37,17 @@ public class StudentMarkAttendancePage {
 
         Label name = new Label("Name");
         name.getStyleClass().add("topbar-name");
-        // TODO: Replace with logged-in name
 
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
-        Label menu = new Label("≡");
-        menu.getStyleClass().add("icon-button");
+        Button menuBtn = new Button("≡");
+        menuBtn.getStyleClass().add("icon-button");
 
-        hamburgerMenu = buildHamburgerMenu(onBackToDashboard);
-
-        menu.setOnMouseClicked(e -> {
-            if (e.getButton() == MouseButton.PRIMARY) {
-                if (hamburgerMenu.isShowing()) hamburgerMenu.hide();
-                else hamburgerMenu.show(menu, Side.BOTTOM, 0, 6);
-            }
-        });
-
-        root.setOnMousePressed(e -> {
-            if (hamburgerMenu != null && hamburgerMenu.isShowing()) hamburgerMenu.hide();
-        });
-
-        topBar.getChildren().addAll(avatar, name, spacer, menu);
+        topBar.getChildren().addAll(avatar, name, spacer, menuBtn);
         root.setTop(topBar);
 
-        // content
+        /* ================= CONTENT ================= */
         VBox content = new VBox(14);
         content.getStyleClass().add("content");
         content.setPadding(new Insets(18));
@@ -75,7 +70,6 @@ public class StudentMarkAttendancePage {
         qrCard.setMinHeight(200);
         qrCard.setAlignment(Pos.CENTER);
 
-        // inner "camera" box
         StackPane cameraBox = new StackPane();
         cameraBox.getStyleClass().add("camera-box");
 
@@ -85,8 +79,6 @@ public class StudentMarkAttendancePage {
         cameraBox.getChildren().add(cameraIcon);
 
         qrCard.getChildren().add(cameraBox);
-
-        // TODO: Implement real QR scanning using webcam library (e.g., ZXing + webcam-capture)
 
         // manual entry
         VBox manualCard = new VBox(10);
@@ -119,7 +111,6 @@ public class StudentMarkAttendancePage {
 
         submit.setOnAction(e -> {
             String code = codeField.getText().trim();
-            // TODO: Validate input + send to backend
             System.out.println("Submitted code: " + code);
         });
 
@@ -131,7 +122,7 @@ public class StudentMarkAttendancePage {
                 submit
         );
 
-        // how it work
+        // how it works
         VBox howCard = new VBox(8);
         howCard.getStyleClass().add("how-card");
 
@@ -157,46 +148,117 @@ public class StudentMarkAttendancePage {
                 howCard
         );
 
-        return root;
+        // ---------------- Drawer wrapper ----------------
+        sideMenu = buildSideMenu(onBackToDashboard, onOpenMarkAttendance, onOpenReports);
+        overlay = buildOverlay();
+
+        StackPane stack = new StackPane(root, overlay, sideMenu);
+        StackPane.setAlignment(sideMenu, Pos.TOP_LEFT);
+
+        sideMenu.setTranslateX(-MENU_WIDTH);
+        overlay.setVisible(false);
+        overlay.setMouseTransparent(true);
+
+        menuBtn.setOnMouseClicked(e -> {
+            if (e.getButton() == MouseButton.PRIMARY) toggleMenu();
+        });
+
+        return stack;
     }
 
-    private ContextMenu buildHamburgerMenu(Runnable onBackToDashboard) {
-        MenuItem dashboard = new MenuItem("Dashboard", new Label("▦"));
-        dashboard.setOnAction(e -> {
-            hamburgerMenu.hide();
+    // ---------------- Side Menu ----------------
+
+    private VBox buildSideMenu(Runnable onBackToDashboard, Runnable onOpenMarkAttendance, Runnable onOpenReports) {
+        VBox menu = new VBox(10);
+        menu.setPrefWidth(MENU_WIDTH);
+        menu.setMinWidth(MENU_WIDTH);
+        menu.setMaxWidth(MENU_WIDTH);
+        menu.setPadding(new Insets(18));
+        menu.getStyleClass().add("side-menu");
+
+        Label header = new Label("Menu");
+        header.getStyleClass().add("side-menu-title");
+
+        Button dashboardBtn = sideMenuItem("▦", "Dashboard");
+        dashboardBtn.setOnAction(e -> {
+            closeMenu();
             onBackToDashboard.run();
         });
 
-        // Mark Attendance = this page -> do nothing
-        MenuItem markAttendance = new MenuItem("Mark Attendance", new Label("📖"));
-        markAttendance.setOnAction(e -> hamburgerMenu.hide());
-
-        // ✅ Reports = AttendancePage
-        MenuItem reports = new MenuItem("Reports", new Label("📋"));
-        reports.setOnAction(e -> {
-            hamburgerMenu.hide();
-            StudentAttendancePage page = new StudentAttendancePage();
-            Parent view = page.createView(onBackToDashboard);
-            hamburgerMenu.getOwnerNode().getScene().setRoot(view);
+        Button markBtn = sideMenuItem("📖", "Mark Attendance");
+        markBtn.setOnAction(e -> {
+            closeMenu();
+            if (onOpenMarkAttendance != null) onOpenMarkAttendance.run(); // already here can be no-op
         });
 
-        MenuItem signout = new MenuItem("Sign out", new Label("⎋"));
-        signout.setOnAction(e -> {
-            hamburgerMenu.hide();
+        Button reportsBtn = sideMenuItem("📋", "Reports");
+        reportsBtn.setOnAction(e -> {
+            closeMenu();
+            if (onOpenReports != null) onOpenReports.run();
+        });
+
+        Separator sep = new Separator();
+
+        Button signOutBtn = sideMenuItem("⎋", "Sign out");
+        signOutBtn.setOnAction(e -> {
+            closeMenu();
             System.out.println("TODO: Sign out");
         });
 
-        ContextMenu menu = new ContextMenu(
-                dashboard,
-                markAttendance,
-                reports,
-                new SeparatorMenuItem(),
-                signout
-        );
-
-        menu.getStyleClass().add("hamburger-menu");
+        menu.getChildren().addAll(header, dashboardBtn, markBtn, reportsBtn, sep, signOutBtn);
         return menu;
     }
 
+    private Button sideMenuItem(String icon, String text) {
+        Label ic = new Label(icon);
+        ic.getStyleClass().add("side-menu-icon");
 
+        Label t = new Label(text);
+        t.getStyleClass().add("side-menu-text");
+
+        HBox row = new HBox(10, ic, t);
+        row.setAlignment(Pos.CENTER_LEFT);
+
+        Button btn = new Button();
+        btn.setGraphic(row);
+        btn.setMaxWidth(Double.MAX_VALUE);
+        btn.getStyleClass().add("side-menu-btn");
+        return btn;
+    }
+
+    private Pane buildOverlay() {
+        Pane p = new Pane();
+        p.getStyleClass().add("drawer-overlay");
+        p.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE);
+        p.setOnMouseClicked(e -> closeMenu());
+        return p;
+    }
+
+    private void toggleMenu() {
+        if (menuOpen) closeMenu();
+        else openMenu();
+    }
+
+    private void openMenu() {
+        menuOpen = true;
+        overlay.setVisible(true);
+        overlay.setMouseTransparent(false);
+
+        TranslateTransition tt = new TranslateTransition(Duration.millis(220), sideMenu);
+        tt.setToX(0);
+        tt.play();
+    }
+
+    private void closeMenu() {
+        if (!menuOpen) return;
+        menuOpen = false;
+
+        TranslateTransition tt = new TranslateTransition(Duration.millis(220), sideMenu);
+        tt.setToX(-MENU_WIDTH);
+        tt.setOnFinished(e -> {
+            overlay.setVisible(false);
+            overlay.setMouseTransparent(true);
+        });
+        tt.play();
+    }
 }

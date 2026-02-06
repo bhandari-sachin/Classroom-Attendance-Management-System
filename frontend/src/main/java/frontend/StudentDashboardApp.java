@@ -1,9 +1,9 @@
 package frontend;
 
+import javafx.animation.TranslateTransition;
 import javafx.application.Application;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
-import javafx.geometry.Side;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
@@ -12,11 +12,14 @@ import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Circle;
 import javafx.stage.Stage;
+import javafx.util.Duration;
 
 public class StudentDashboardApp extends Application {
 
     private Scene scene;
     private Parent dashboardRoot;
+    private StackPane dashboardStack;
+
 
     // TODO: Replace with real user from login/backend (dummy data for now)
     private String studentName = "Name";
@@ -27,18 +30,18 @@ public class StudentDashboardApp extends Application {
     private int excusedCount = 0;
     private double attendanceRate = 0.0; // 0.0 -> 0%
 
-    // Menu
-    private ContextMenu hamburgerMenu;
+    // Side menu (drawer)
+    private VBox sideMenu;
+    private Pane overlay;
+    private boolean menuOpen = false;
+    private final double MENU_WIDTH = 240;
 
     @Override
     public void start(Stage stage) {
         BorderPane root = new BorderPane();
         root.getStyleClass().add("app");
 
-        // TODO: Add a shared navigation controller instead of storing roots manually (optional)
-        // TODO: Add a "Back" action in top bar when on Attendance page (optional)
-
-        // top bar
+        // ---- Top bar ----
         HBox topBar = new HBox(12);
         topBar.getStyleClass().add("topbar");
         topBar.setAlignment(Pos.CENTER_LEFT);
@@ -54,31 +57,10 @@ public class StudentDashboardApp extends Application {
         Button menuBtn = new Button("≡");
         menuBtn.getStyleClass().add("icon-button");
 
-        // menu
-        hamburgerMenu = buildHamburgerMenu();
-
-        // Show/hide on click
-        menuBtn.setOnMouseClicked(e -> {
-            if (e.getButton() == MouseButton.PRIMARY) {
-                if (hamburgerMenu.isShowing()) {
-                    hamburgerMenu.hide();
-                } else {
-                    hamburgerMenu.show(menuBtn, Side.BOTTOM, 0, 6);
-                }
-            }
-        });
-
-
-        root.setOnMousePressed(e -> {
-            if (hamburgerMenu != null && hamburgerMenu.isShowing()) {
-                hamburgerMenu.hide();
-            }
-        });
-
         topBar.getChildren().addAll(avatar, name, spacer, menuBtn);
         root.setTop(topBar);
 
-        // content
+        // ---- Content ----
         VBox content = new VBox(14);
         content.getStyleClass().add("content");
         content.setPadding(new Insets(18));
@@ -86,7 +68,6 @@ public class StudentDashboardApp extends Application {
 
         Label title = new Label("Welcome back, User!");
         title.getStyleClass().add("title");
-        // TODO: Replace "User" with actual first name when backend/auth is ready
 
         Label subtitle = new Label("Here’s your attendance overview for this month");
         subtitle.getStyleClass().add("subtitle");
@@ -94,10 +75,6 @@ public class StudentDashboardApp extends Application {
         Button markAttendance = attendanceCard();
         GridPane statsGrid = statsGrid();
 
-        // TODO: Replace empty card with real classes list (dummy data until backend)
-        // TODO: When user has classes, show a list of class cards instead of "No classes yet"
-
-        // classes header
         HBox classesHeader = new HBox(10);
         classesHeader.setAlignment(Pos.CENTER_LEFT);
 
@@ -109,8 +86,6 @@ public class StudentDashboardApp extends Application {
 
         Button viewAll = new Button("View All Attendance  →");
         viewAll.getStyleClass().add("link-button");
-
-        // View All -> Attendance page
         viewAll.setOnAction(e -> openAttendancePage());
 
         classesHeader.getChildren().addAll(classesTitle, classesSpacer, viewAll);
@@ -127,71 +102,166 @@ public class StudentDashboardApp extends Application {
                 classesCard
         );
 
-        // scene
+        // ---- Wrap root in a StackPane so we can overlay the drawer ----
         dashboardRoot = root;
 
-        scene = new Scene(root, 600, 650);
+        sideMenu = buildSideMenu();
+        overlay = buildOverlay();
+
+        dashboardStack = new StackPane(root, overlay, sideMenu);
+        StackPane.setAlignment(sideMenu, Pos.TOP_LEFT);
+
+// Start hidden (offscreen)
+        sideMenu.setTranslateX(-MENU_WIDTH);
+        overlay.setVisible(false);
+        overlay.setMouseTransparent(true);
+
+        menuBtn.setOnMouseClicked(e -> {
+            if (e.getButton() == MouseButton.PRIMARY) toggleMenu();
+        });
+
+// Scene
+        scene = new Scene(dashboardStack, 600, 650);
         scene.getStylesheets().add(getClass().getResource("/dashboard.css").toExternalForm());
 
         stage.setTitle("Student-Dashboard");
         stage.setScene(scene);
-
-        // TODO: Verify responsiveness: window resizing should not break layout
         stage.setMinWidth(420);
         stage.setMinHeight(600);
-
         stage.show();
     }
 
-    private ContextMenu buildHamburgerMenu() {
-        MenuItem dashboard = new MenuItem("Dashboard", new Label("▦"));
-        dashboard.setOnAction(e -> {
-            hamburgerMenu.hide();
+    // ---------------- Side Menu ----------------
+
+    private VBox buildSideMenu() {
+        VBox menu = new VBox(10);
+        menu.setPrefWidth(MENU_WIDTH);
+        menu.setMinWidth(MENU_WIDTH);
+        menu.setMaxWidth(MENU_WIDTH);
+        menu.setPadding(new Insets(18));
+        menu.getStyleClass().add("side-menu");
+
+        Label header = new Label("Menu");
+        header.getStyleClass().add("side-menu-title");
+
+        Button dashboardBtn = sideMenuItem("▦", "Dashboard");
+        dashboardBtn.setOnAction(e -> {
+            closeMenu();
             goBackToDashboard();
         });
 
-        MenuItem markAttendance = new MenuItem("Mark Attendance", new Label("📖"));
-        markAttendance.setOnAction(e -> {
-            hamburgerMenu.hide();
+        Button markBtn = sideMenuItem("📖", "Mark Attendance");
+        markBtn.setOnAction(e -> {
+            closeMenu();
             openMarkAttendancePage();
         });
 
-        MenuItem reports = new MenuItem("Reports", new Label("📋"));
-        reports.setOnAction(e -> {
-            hamburgerMenu.hide();
+        Button reportsBtn = sideMenuItem("📋", "Reports");
+        reportsBtn.setOnAction(e -> {
+            closeMenu();
             openAttendancePage();
         });
 
-        MenuItem signout = new MenuItem("Sign out", new Label("⎋"));
-        signout.setOnAction(e -> {
-            hamburgerMenu.hide();
+        Separator sep = new Separator();
+
+        Button signOutBtn = sideMenuItem("⎋", "Sign out");
+        signOutBtn.setOnAction(e -> {
+            closeMenu();
             System.out.println("TODO: Sign out");
         });
 
-        ContextMenu menu = new ContextMenu(
-                dashboard,
-                markAttendance,
-                reports,
-                new SeparatorMenuItem(),
-                signout
-        );
-
-        menu.getStyleClass().add("hamburger-menu");
+        menu.getChildren().addAll(header, dashboardBtn, markBtn, reportsBtn, sep, signOutBtn);
         return menu;
     }
 
+    private Button sideMenuItem(String icon, String text) {
+        Label ic = new Label(icon);
+        ic.getStyleClass().add("side-menu-icon");
+
+        Label t = new Label(text);
+        t.getStyleClass().add("side-menu-text");
+
+        HBox row = new HBox(10, ic, t);
+        row.setAlignment(Pos.CENTER_LEFT);
+
+        Button btn = new Button();
+        btn.setGraphic(row);
+        btn.setMaxWidth(Double.MAX_VALUE);
+        btn.getStyleClass().add("side-menu-btn");
+        return btn;
+    }
+
+    private Pane buildOverlay() {
+        Pane p = new Pane();
+        p.getStyleClass().add("drawer-overlay");
+        p.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE);
+
+        // Click outside closes
+        p.setOnMouseClicked(e -> closeMenu());
+        return p;
+    }
+
+    private void toggleMenu() {
+        if (menuOpen) closeMenu();
+        else openMenu();
+    }
+
+    private void openMenu() {
+        menuOpen = true;
+        overlay.setVisible(true);
+        overlay.setMouseTransparent(false);
+
+        TranslateTransition tt = new TranslateTransition(Duration.millis(220), sideMenu);
+        tt.setToX(0);
+        tt.play();
+    }
+
+    private void closeMenu() {
+        if (!menuOpen) return;
+        menuOpen = false;
+
+        TranslateTransition tt = new TranslateTransition(Duration.millis(220), sideMenu);
+        tt.setToX(-MENU_WIDTH);
+        tt.setOnFinished(e -> {
+            overlay.setVisible(false);
+            overlay.setMouseTransparent(true);
+        });
+        tt.play();
+    }
+
+    // ---------------- Navigation ----------------
 
     private void openAttendancePage() {
+        closeMenu();
         StudentAttendancePage page = new StudentAttendancePage();
-        Parent view = page.createView(this::goBackToDashboard);
+        Parent view = page.createView(
+                this::goBackToDashboard,
+                this::openMarkAttendancePage,
+                () -> {}
+        );
         scene.setRoot(view);
     }
 
 
     private void goBackToDashboard() {
-        if (hamburgerMenu != null) hamburgerMenu.hide();
-        scene.setRoot(dashboardRoot);
+        closeMenu();
+        scene.setRoot(dashboardStack);
     }
+
+
+    private void openMarkAttendancePage() {
+        closeMenu();
+        StudentMarkAttendancePage page = new StudentMarkAttendancePage();
+        Parent view = page.createView(
+                this::goBackToDashboard,
+                this::openAttendancePage,
+                () -> {}
+        );
+        scene.setRoot(view);
+    }
+
+
+    // UI blocks
 
     private Button attendanceCard() {
         Button btn = new Button();
@@ -203,7 +273,6 @@ public class StudentDashboardApp extends Application {
 
         Label icon = new Label("⌁");
         icon.getStyleClass().add("attendance-icon");
-        // TODO: Replace placeholder icon with QR / scan icon (unicode or png)
 
         VBox texts = new VBox(2);
         Label big = new Label("Mark Attendance");
@@ -223,16 +292,8 @@ public class StudentDashboardApp extends Application {
         box.getChildren().addAll(icon, texts, spacer, arrow);
         btn.setGraphic(box);
 
-        // TODO: Implement actual check-in logic (QR scan / code input) on Attendance page
         btn.setOnAction(e -> openMarkAttendancePage());
-
         return btn;
-    }
-    private void openMarkAttendancePage() {
-        if (hamburgerMenu != null) hamburgerMenu.hide();
-        StudentMarkAttendancePage page = new StudentMarkAttendancePage();
-        Parent view = page.createView(this::goBackToDashboard);
-        scene.setRoot(view);
     }
 
     private GridPane statsGrid() {
@@ -250,21 +311,17 @@ public class StudentDashboardApp extends Application {
 
         grid.getColumnConstraints().addAll(col1, col2);
 
-        // TODO: Replace dummy values with real computed values from backend/service layer
         grid.add(statCardWithBadge("Present", String.valueOf(presentCount), "This month", "#3BAA66", "✓"), 0, 0);
         grid.add(statCardWithBadge("Absent", String.valueOf(absentCount), "This month", "#E05A5A", "✕"), 1, 0);
         grid.add(statCardWithBadge("Excused", String.valueOf(excusedCount), "This month", "#E09A3B", "⏱"), 0, 1);
         grid.add(statCardWithBadge("Rate", (int) (attendanceRate * 100) + "%", "This month", "#5AA6E0", "%"), 1, 1);
 
-        // TODO: Verify responsiveness: on very small width, consider switching to 1-column layout (TilePane / FlowPane)
         return grid;
     }
 
     private VBox statCardWithBadge(String label, String value, String hint, String colorHex, String iconChar) {
         VBox card = new VBox(6);
         card.setPadding(new Insets(14));
-
-        // TODO: Move inline styles into dashboard.css (cleaner)
         card.setStyle(
                 "-fx-background-color: white;" +
                         "-fx-background-radius: 12;" +
@@ -284,8 +341,6 @@ public class StudentDashboardApp extends Application {
         StackPane badge = new StackPane();
         badge.setMinSize(28, 28);
         badge.setMaxSize(28, 28);
-
-        // TODO: Ensure icon badge colors match design system (use CSS variables/colors)
         badge.setStyle(
                 "-fx-background-color: " + colorHex + ";" +
                         "-fx-background-radius: 10;"
@@ -315,7 +370,6 @@ public class StudentDashboardApp extends Application {
 
         Label cal = new Label("📅");
         cal.getStyleClass().add("empty-icon");
-        // TODO: Replace emoji with consistent icon style (unicode or png)
 
         Label t = new Label("No classes yet");
         t.getStyleClass().add("empty-title");
@@ -323,12 +377,7 @@ public class StudentDashboardApp extends Application {
         Label s = new Label("You haven’t been enrolled in any classes yet.");
         s.getStyleClass().add("empty-subtitle");
 
-        // TODO: If backend returns classes, replace this empty state with a list of classes
         card.getChildren().addAll(cal, t, s);
         return card;
-    }
-
-    public static void main(String[] args) {
-        launch(args);
     }
 }

@@ -228,32 +228,40 @@
     -fx-padding: 18;
 }
 
-.hamburger-menu {
+.side-menu {
     -fx-background-color: white;
+    -fx-border-color: #ECEFF2;
+    -fx-border-width: 0 1 0 0;
+}
+
+.drawer-overlay {
+    -fx-background-color: rgba(0,0,0,0.25);
+}
+
+.side-menu-title {
+    -fx-font-size: 16px;
+    -fx-font-weight: 800;
+}
+
+.side-menu-btn {
+    -fx-background-color: transparent;
+    -fx-padding: 10 10 10 10;
+    -fx-alignment: center-left;
+    -fx-cursor: hand;
+}
+
+.side-menu-btn:hover {
+    -fx-background-color: #F3F4F6;
     -fx-background-radius: 10;
-    -fx-border-color: #E6E8EB;
-    -fx-border-radius: 10;
-    -fx-padding: 6;
 }
 
-.hamburger-menu .menu-item {
-    -fx-padding: 12 16 12 16;
-}
-
-.hamburger-menu .menu-item .label {
+.side-menu-icon {
     -fx-font-size: 14px;
-    -fx-font-weight: 600;
-    -fx-text-fill: #111827;
 }
 
-.hamburger-menu .menu-item:hover,
-.hamburger-menu .menu-item:focused {
-    -fx-background-color: #EEF2F7;
-}
-
-.hamburger-menu .menu-item:hover .label,
-.hamburger-menu .menu-item:focused .label {
-    -fx-text-fill: #111827;
+.side-menu-text {
+    -fx-font-size: 13px;
+    -fx-font-weight: 700;
 }
 
 .back-link {

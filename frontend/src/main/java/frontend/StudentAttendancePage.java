@@ -1,28 +1,37 @@
 package frontend;
 
+import javafx.animation.TranslateTransition;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
-import javafx.geometry.Side;
+import javafx.scene.Group;
 import javafx.scene.Parent;
-import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.input.MouseButton;
 import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
-import javafx.scene.shape.Circle;
+import javafx.scene.shape.*;
 import javafx.scene.text.Font;
+import javafx.util.Duration;
+import javafx.scene.Node;
+import javafx.scene.shape.Circle;
+import javafx.scene.paint.Paint;
+
 
 public class StudentAttendancePage {
 
-    private ContextMenu hamburgerMenu;
-    private Scene scene;
+    // Side menu (drawer)
+    private VBox sideMenu;
+    private Pane overlay;
+    private boolean menuOpen = false;
+    private final double MENU_WIDTH = 240;
 
-    public Parent createView(Runnable onBackToDashboard) {
+    public Parent createView(
+            Runnable onBackToDashboard,
+            Runnable onOpenMarkAttendance,
+            Runnable onOpenReports // this page (can be no-op)
+    ) {
         BorderPane root = new BorderPane();
         root.getStyleClass().add("app");
-
-        // Keep reference to Scene when attached
-        root.sceneProperty().addListener((obs, oldScene, newScene) -> this.scene = newScene);
 
         /* ================= TOP BAR ================= */
         HBox topBar = new HBox(12);
@@ -33,28 +42,14 @@ public class StudentAttendancePage {
 
         Label name = new Label("Name");
         name.getStyleClass().add("topbar-name");
-        // TODO: replace with logged-in user name
 
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
-        Label menu = new Label("≡");
-        menu.getStyleClass().add("icon-button");
+        Button menuBtn = new Button("≡");
+        menuBtn.getStyleClass().add("icon-button");
 
-        hamburgerMenu = buildHamburgerMenu(onBackToDashboard);
-
-        menu.setOnMouseClicked(e -> {
-            if (e.getButton() == MouseButton.PRIMARY) {
-                if (hamburgerMenu.isShowing()) hamburgerMenu.hide();
-                else hamburgerMenu.show(menu, Side.BOTTOM, 0, 6);
-            }
-        });
-
-        root.setOnMousePressed(e -> {
-            if (hamburgerMenu.isShowing()) hamburgerMenu.hide();
-        });
-
-        topBar.getChildren().addAll(avatar, name, spacer, menu);
+        topBar.getChildren().addAll(avatar, name, spacer, menuBtn);
         root.setTop(topBar);
 
         /* ================= CONTENT ================= */
@@ -86,7 +81,6 @@ public class StudentAttendancePage {
         timeFilter.setValue("This Month");
         timeFilter.getStyleClass().add("filter-combo");
 
-        // TODO: Add listeners to refresh stats & records
         filters.getChildren().addAll(filterIcon, classFilter, timeFilter);
 
         /* ================= STATS ================= */
@@ -105,10 +99,12 @@ public class StudentAttendancePage {
         stats.getColumnConstraints().addAll(c1, c2);
 
         VBox rateCard = rateCard("Attendance Rate", "0%");
-        VBox presentCard = smallStatCard("Present", "0", "#3BAA66", "✓");
-        VBox absentCard = smallStatCard("Absent", "0", "#E05A5A", "✕");
-        VBox excusedCard = smallStatCard("Excused", "0", "#E09A3B", "⏱");
-        VBox totalDaysCard = smallStatCard("Total Days", "0", "#BFC5CC", "📅");
+        VBox presentCard = smallStatCard("Present", "0", "#3BAA66", "check");
+        VBox absentCard  = smallStatCard("Absent",  "0", "#E05A5A", "x");
+        VBox excusedCard = smallStatCard("Excused", "0", "#E09A3B", "clock");
+        VBox totalDaysCard = smallStatCard("Total Days", "0", "#BFC5CC", "calendar");
+
+
 
         stats.add(rateCard, 0, 0);
         stats.add(presentCard, 1, 0);
@@ -135,7 +131,6 @@ public class StudentAttendancePage {
         Label recS = new Label("No attendance records for the selected filters");
         recS.getStyleClass().add("empty-subtitle");
 
-        // TODO: Replace with TableView when records exist
         recordsCard.getChildren().addAll(recIcon, recT, recS);
 
         content.getChildren().addAll(
@@ -148,47 +143,118 @@ public class StudentAttendancePage {
                 recordsCard
         );
 
-        return root;
+        // ---------------- Drawer wrapper ----------------
+        sideMenu = buildSideMenu(onBackToDashboard, onOpenMarkAttendance, onOpenReports);
+        overlay = buildOverlay();
+
+        StackPane stack = new StackPane(root, overlay, sideMenu);
+        StackPane.setAlignment(sideMenu, Pos.TOP_LEFT);
+
+        sideMenu.setTranslateX(-MENU_WIDTH);
+        overlay.setVisible(false);
+        overlay.setMouseTransparent(true);
+
+        menuBtn.setOnMouseClicked(e -> {
+            if (e.getButton() == MouseButton.PRIMARY) toggleMenu();
+        });
+
+        return stack;
     }
 
-    /* ================= HAMBURGER MENU ================= */
-    private ContextMenu buildHamburgerMenu(Runnable onBackToDashboard) {
+    // ---------------- Side Menu ----------------
 
-        MenuItem dashboard = new MenuItem("Dashboard", new Label("▦"));
-        dashboard.setOnAction(e -> {
-            hamburgerMenu.hide();
+    private VBox buildSideMenu(Runnable onBackToDashboard, Runnable onOpenMarkAttendance, Runnable onOpenReports) {
+        VBox menu = new VBox(10);
+        menu.setPrefWidth(MENU_WIDTH);
+        menu.setMinWidth(MENU_WIDTH);
+        menu.setMaxWidth(MENU_WIDTH);
+        menu.setPadding(new Insets(18));
+        menu.getStyleClass().add("side-menu");
+
+        Label header = new Label("Menu");
+        header.getStyleClass().add("side-menu-title");
+
+        Button dashboardBtn = sideMenuItem("▦", "Dashboard");
+        dashboardBtn.setOnAction(e -> {
+            closeMenu();
             onBackToDashboard.run();
         });
 
-        MenuItem markAttendance = new MenuItem("Mark Attendance", new Label("📖"));
-        markAttendance.setOnAction(e -> {
-            hamburgerMenu.hide();
-            StudentMarkAttendancePage page = new StudentMarkAttendancePage();
-            Parent view = page.createView(onBackToDashboard);
-            scene.setRoot(view);
+        Button markBtn = sideMenuItem("📖", "Mark Attendance");
+        markBtn.setOnAction(e -> {
+            closeMenu();
+            onOpenMarkAttendance.run();
         });
 
-        // Reports = THIS PAGE → do nothing
-        MenuItem reports = new MenuItem("Reports", new Label("📋"));
-        reports.setOnAction(e -> hamburgerMenu.hide());
+        Button reportsBtn = sideMenuItem("📋", "Reports");
+        reportsBtn.setOnAction(e -> {
+            closeMenu();
+            if (onOpenReports != null) onOpenReports.run(); // already here, can be no-op
+        });
 
-        MenuItem signout = new MenuItem("Sign out", new Label("⎋"));
-        signout.setOnAction(e -> {
-            hamburgerMenu.hide();
-            // TODO: clear session & navigate to login
+        Separator sep = new Separator();
+
+        Button signOutBtn = sideMenuItem("⎋", "Sign out");
+        signOutBtn.setOnAction(e -> {
+            closeMenu();
             System.out.println("TODO: Sign out");
         });
 
-        ContextMenu menu = new ContextMenu(
-                dashboard,
-                markAttendance,
-                reports,
-                new SeparatorMenuItem(),
-                signout
-        );
-
-        menu.getStyleClass().add("hamburger-menu");
+        menu.getChildren().addAll(header, dashboardBtn, markBtn, reportsBtn, sep, signOutBtn);
         return menu;
+    }
+
+    private Button sideMenuItem(String icon, String text) {
+        Label ic = new Label(icon);
+        ic.getStyleClass().add("side-menu-icon");
+
+        Label t = new Label(text);
+        t.getStyleClass().add("side-menu-text");
+
+        HBox row = new HBox(10, ic, t);
+        row.setAlignment(Pos.CENTER_LEFT);
+
+        Button btn = new Button();
+        btn.setGraphic(row);
+        btn.setMaxWidth(Double.MAX_VALUE);
+        btn.getStyleClass().add("side-menu-btn");
+        return btn;
+    }
+
+    private Pane buildOverlay() {
+        Pane p = new Pane();
+        p.getStyleClass().add("drawer-overlay");
+        p.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE);
+        p.setOnMouseClicked(e -> closeMenu());
+        return p;
+    }
+
+    private void toggleMenu() {
+        if (menuOpen) closeMenu();
+        else openMenu();
+    }
+
+    private void openMenu() {
+        menuOpen = true;
+        overlay.setVisible(true);
+        overlay.setMouseTransparent(false);
+
+        TranslateTransition tt = new TranslateTransition(Duration.millis(220), sideMenu);
+        tt.setToX(0);
+        tt.play();
+    }
+
+    private void closeMenu() {
+        if (!menuOpen) return;
+        menuOpen = false;
+
+        TranslateTransition tt = new TranslateTransition(Duration.millis(220), sideMenu);
+        tt.setToX(-MENU_WIDTH);
+        tt.setOnFinished(e -> {
+            overlay.setVisible(false);
+            overlay.setMouseTransparent(true);
+        });
+        tt.play();
     }
 
     /* ================= COMPONENTS ================= */
@@ -217,7 +283,7 @@ public class StudentAttendancePage {
         return card;
     }
 
-    private VBox smallStatCard(String label, String value, String colorHex, String iconChar) {
+    private VBox smallStatCard(String label, String value, String colorHex, String iconKey) {
         VBox card = new VBox(6);
         card.getStyleClass().add("mini-stat-card");
 
@@ -225,16 +291,25 @@ public class StudentAttendancePage {
         row1.setAlignment(Pos.CENTER_LEFT);
 
         StackPane badge = new StackPane();
-        badge.getStyleClass().add("mini-badge");
+        badge.setPrefSize(26, 26);
         badge.setMinSize(26, 26);
-        badge.setBackground(new Background(
-                new BackgroundFill(Color.web(colorHex), new CornerRadii(8), Insets.EMPTY)
-        ));
+        badge.setMaxSize(26, 26);
 
-        Label icon = new Label(iconChar);
-        icon.setFont(Font.font("Segoe UI Emoji", 13));
-        icon.getStyleClass().add("mini-badge-icon");
-        badge.getChildren().add(icon);
+        // ✅ INLINE style overrides any CSS rules
+        badge.setStyle(
+                "-fx-background-color: " + colorHex + ";" +
+                        "-fx-background-radius: 8;"
+        );
+
+        Node iconNode = makeBadgeIcon(iconKey);
+        badge.getChildren().add(iconNode);
+        badge.setBorder(new Border(new BorderStroke(
+                javafx.scene.paint.Color.BLUE,
+                BorderStrokeStyle.SOLID,
+                new CornerRadii(8),
+                new BorderWidths(1)
+        )));
+
 
         Label lbl = new Label(label);
         lbl.getStyleClass().add("mini-label");
@@ -250,4 +325,76 @@ public class StudentAttendancePage {
         card.getChildren().addAll(row1, row2);
         return card;
     }
+
+    private Node makeBadgeIcon(String key) {
+        // ✅ Use WHITE on colored badge; if still invisible, switch to BLACK
+        var stroke = javafx.scene.paint.Color.WHITE;
+
+        switch (key) {
+            case "check": {
+                Line l1 = new Line(6, 14, 11, 18);
+                Line l2 = new Line(11, 18, 20, 8);
+                l1.setStroke(stroke); l2.setStroke(stroke);
+                l1.setStrokeWidth(2.6); l2.setStrokeWidth(2.6);
+                l1.setStrokeLineCap(StrokeLineCap.ROUND);
+                l2.setStrokeLineCap(StrokeLineCap.ROUND);
+                return new Group(l1, l2);
+            }
+            case "x": {
+                Line a = new Line(7, 7, 19, 19);
+                Line b = new Line(19, 7, 7, 19);
+                a.setStroke(stroke); b.setStroke(stroke);
+                a.setStrokeWidth(2.6); b.setStrokeWidth(2.6);
+                a.setStrokeLineCap(StrokeLineCap.ROUND);
+                b.setStrokeLineCap(StrokeLineCap.ROUND);
+                return new Group(a, b);
+            }
+            case "clock": {
+                Circle c = new Circle(13, 13, 8);
+                c.setFill(javafx.scene.paint.Color.TRANSPARENT);
+                c.setStroke(stroke);
+                c.setStrokeWidth(2.2);
+
+                Line h = new Line(13, 13, 13, 9);
+                Line m = new Line(13, 13, 17, 13);
+                h.setStroke(stroke); m.setStroke(stroke);
+                h.setStrokeWidth(2.2); m.setStrokeWidth(2.2);
+                h.setStrokeLineCap(StrokeLineCap.ROUND);
+                m.setStrokeLineCap(StrokeLineCap.ROUND);
+
+                return new Group(c, h, m);
+            }
+            case "calendar": {
+                Rectangle body = new Rectangle(7, 8, 12, 12);
+                body.setFill(javafx.scene.paint.Color.TRANSPARENT);
+                body.setStroke(stroke);
+                body.setStrokeWidth(2.0);
+                body.setArcWidth(3);
+                body.setArcHeight(3);
+
+                Line top = new Line(7, 11, 19, 11);
+                top.setStroke(stroke);
+                top.setStrokeWidth(2.0);
+
+                Line ring1 = new Line(10, 6, 10, 9);
+                Line ring2 = new Line(16, 6, 16, 9);
+                ring1.setStroke(stroke); ring2.setStroke(stroke);
+                ring1.setStrokeWidth(2.0); ring2.setStrokeWidth(2.0);
+                ring1.setStrokeLineCap(StrokeLineCap.ROUND);
+                ring2.setStrokeLineCap(StrokeLineCap.ROUND);
+
+                return new Group(body, top, ring1, ring2);
+            }
+            default: {
+                Circle dot = new Circle(13, 13, 3);
+                dot.setFill(stroke);
+                return dot;
+            }
+        }
+
+
+}
+
+
+
 }
