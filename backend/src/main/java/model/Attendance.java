@@ -5,12 +5,14 @@ public class Attendance {
     private final Long studentId;
     private final Long sessionId;
     private AttendanceStatus status;
+    private MarkedBy markedBy;
     private String remarks;
 
-    public Attendance(Long studentId, Long sessionId, AttendanceStatus status) {
+    public Attendance(Long studentId, Long sessionId, AttendanceStatus status, MarkedBy markedBy) {
         this.studentId = studentId;
         this.sessionId = sessionId;
         this.status = status;
+        this.markedBy = markedBy;
     }
 
     public Long getStudentId() {
@@ -21,6 +23,9 @@ public class Attendance {
     }
     public AttendanceStatus getStatus() {
         return status;
+    }
+    public MarkedBy getMarkedBy() {
+        return markedBy;
     }
     public void setStatus(AttendanceStatus status) {
         this.status = status;

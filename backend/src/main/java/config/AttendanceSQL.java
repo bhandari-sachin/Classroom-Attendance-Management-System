@@ -54,7 +54,7 @@ public class AttendanceSQL {
     // Fetch attendance records for a class
     public List<Attendance> findByClassId(Long classId) {
         List<Attendance> attendanceList = new ArrayList<>();
-        String sql = "SELECT a.* FROM attendance a JOIN session s ON a.session_id = s.session_id WHERE s.class_id = ?";
+        String sql = "SELECT a.* FROM attendance a JOIN session s ON a.session_id = s.id WHERE s.class_id = ?";
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
 
@@ -84,23 +84,20 @@ public class AttendanceSQL {
         List<AttendanceView> results = new ArrayList<>();
 
         String sql = """
-        SELECT s.student_id,
-               u.first_name,
-               u.last_name,
-               se.date,
+        SELECT s.id,
+               s.name,
+               se.session_date,
                a.status
         FROM attendance a
-        JOIN session se ON a.session_id = se.session_id
-        JOIN student s ON a.student_id = s.student_id
-        JOIN user u ON s.user_id = u.user_id
+        JOIN session se ON a.session_id = se.id
+        JOIN student s ON a.student_id = s.id  
         WHERE se.class_id = ?
           AND (
-                CAST(s.student_id AS CHAR) LIKE ?
-             OR LOWER(u.first_name) LIKE ?
-             OR LOWER(u.last_name) LIKE ?
+                CAST(s.id AS CHAR) LIKE ?
+             OR LOWER(s.name) LIKE ?
              OR LOWER(CONCAT(u.first_name, ' ', u.last_name)) LIKE ?
           )
-        ORDER BY u.last_name, u.first_name, se.date
+        ORDER BY s.name, se.session_date
     """;
 
         try (Connection conn = DatabaseConnection.getConnection();
@@ -119,9 +116,8 @@ public class AttendanceSQL {
             while (rs.next()) {
                 results.add(new AttendanceView(
                         rs.getLong("student_id"),
-                        rs.getString("first_name"),
-                        rs.getString("last_name"),
-                        rs.getDate("date").toLocalDate(),
+                        rs.getString("name"),
+                        rs.getDate("session_date").toLocalDate(),
                         rs.getString("status")
                 ));
             }
@@ -134,7 +130,7 @@ public class AttendanceSQL {
     }
 
     public String getSessionCode(Long sessionId) {
-        String sql = "SELECT qr_code FROM session WHERE session_id = ?";
+        String sql = "SELECT qr_token FROM session WHERE id = ?";
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
 
@@ -142,7 +138,7 @@ public class AttendanceSQL {
             ResultSet rs = stmt.executeQuery();
 
             if (rs.next()) {
-                return rs.getString("qr_code");
+                return rs.getString("qr_token");
             }
         } catch (Exception e) {
             e.printStackTrace();

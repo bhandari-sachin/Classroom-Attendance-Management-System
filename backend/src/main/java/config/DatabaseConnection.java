@@ -7,7 +7,7 @@ import java.sql.SQLException;
 public class DatabaseConnection {
 
     private static final String URL =
-            null;
+            "jdbc:mysql://localhost:3306/classroom_attendance?useSSL=false&serverTimezone=UTC";
     private static final String USER = "db_user";
     private static final String PASSWORD = "db_password";
 

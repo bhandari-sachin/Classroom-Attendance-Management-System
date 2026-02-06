@@ -11,7 +11,7 @@ import java.util.List;
 public class SessionSQL {
 
     public Session findById(Long sessionId) {
-        String sql = "SELECT * FROM session WHERE session_id = ?";
+        String sql = "SELECT * FROM session WHERE id = ?";
 
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
@@ -21,11 +21,11 @@ public class SessionSQL {
 
             if (rs.next()) {
                 Session session = new Session(
-                        rs.getLong("session_id"),
+                        rs.getLong("id"),
                         rs.getLong("class_id"),
-                        rs.getDate("date").toLocalDate()
+                        rs.getDate("session_date").toLocalDate()
                 );
-                session.setQRCode(rs.getString("qr_code"));
+                session.setQRCode(rs.getString("qr_token"));
                 return session;
             }
         } catch (Exception e) {
@@ -38,7 +38,7 @@ public class SessionSQL {
         String sql = """
             SELECT * FROM session
             WHERE class_id = ?
-            ORDER BY date DESC
+            ORDER BY session_date DESC
         """;
 
         List<Session> sessions = new ArrayList<>();
@@ -51,9 +51,9 @@ public class SessionSQL {
 
             while (rs.next()) {
                 sessions.add(new Session(
-                        rs.getLong("session_id"),
+                        rs.getLong("id"),
                         rs.getLong("class_id"),
-                        rs.getDate("date").toLocalDate()
+                        rs.getDate("session_date").toLocalDate()
                 ));
             }
         } catch (Exception e) {
@@ -66,8 +66,8 @@ public class SessionSQL {
     public void updateQRCode(Long sessionId, String code) {
         String sql = """
             UPDATE session
-            SET qr_code = ?
-            WHERE session_id = ?
+            SET qr_token = ?
+            WHERE id = ?
         """;
 
         try (Connection conn = DatabaseConnection.getConnection();

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="DataSourcePerFileMappings">
+    <file url="file://$PROJECT_DIR$/backend/src/main/java/config/AttendanceSQL.java" value="728d0b11-f906-42ca-8392-97b887ccb0d4" />
+    <file url="file://$PROJECT_DIR$/backend/src/main/java/config/SessionSQL.java" value="728d0b11-f906-42ca-8392-97b887ccb0d4" />
+    <file url="file://$PROJECT_DIR$/backend/src/main/java/config/StudentSQL.java" value="728d0b11-f906-42ca-8392-97b887ccb0d4" />
+    <file url="file://$APPLICATION_CONFIG_DIR$/consoles/db/728d0b11-f906-42ca-8392-97b887ccb0d4/console.sql" value="728d0b11-f906-42ca-8392-97b887ccb0d4" />
+  </component>
+</project>

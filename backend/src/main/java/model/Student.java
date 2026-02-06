@@ -3,13 +3,13 @@ package model;
 public class Student {
 
     private Long studentId;
-    private String firstName;
-    private String lastName;
+    private String name;
+    private String email;
 
-    public Student(Long studentId, String firstName, String lastName) {
+    public Student(Long studentId, String name, String email) {
         this.studentId = studentId;
-        this.firstName = firstName;
-        this.lastName = lastName;
+        this.name = name;
+        this.email = email;
     }
 
     public Long getStudentId() {
@@ -17,11 +17,11 @@ public class Student {
     }
 
     public String getFirstName() {
-        return firstName;
+        return name;
     }
 
-    public String getLastName() {
-        return lastName;
+    public String getEmail() {
+        return email;
     }
 
 }

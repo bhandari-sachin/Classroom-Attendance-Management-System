@@ -1,7 +1,6 @@
 package service;
 
-import model.Attendance;
-import model.AttendanceStatus;
+import model.*;
 import config.AttendanceSQL;
 import dto.AttendanceView;
 
@@ -18,7 +17,8 @@ public class AttendanceService {
         Attendance attendance = new Attendance(
                 studentId,
                 sessionId,
-                AttendanceStatus.PRESENT
+                AttendanceStatus.PRESENT,
+                MarkedBy.TEACHER
         );
         attendanceSQL.save(attendance);
     }
@@ -27,7 +27,8 @@ public class AttendanceService {
         Attendance attendance = new Attendance(
                 studentId,
                 sessionId,
-                AttendanceStatus.ABSENT
+                AttendanceStatus.ABSENT,
+                MarkedBy.TEACHER
         );
         attendanceSQL.save(attendance);
     }
@@ -36,7 +37,8 @@ public class AttendanceService {
         Attendance attendance = new Attendance(
                 studentId,
                 sessionId,
-                AttendanceStatus.EXCUSED
+                AttendanceStatus.EXCUSED,
+                MarkedBy.TEACHER
         );
         attendanceSQL.save(attendance);
     }
@@ -51,7 +53,8 @@ public class AttendanceService {
         Attendance attendance = new Attendance(
                 studentId,
                 sessionId,
-                AttendanceStatus.PRESENT
+                AttendanceStatus.PRESENT,
+                MarkedBy.QR
         );
         attendanceSQL.save(attendance);
         return true;

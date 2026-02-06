@@ -12,7 +12,7 @@ import java.util.List;
 public class StudentSQL {
 
     public Student findById(Long studentId) {
-        String sql = "SELECT * FROM student WHERE student_id = ?";
+        String sql = "SELECT * FROM student WHERE id = ?";
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
 
@@ -22,8 +22,8 @@ public class StudentSQL {
             if (rs.next()) {
                 return new Student(
                         rs.getLong("student_id"),
-                        rs.getString("first_name"),
-                        rs.getString("last_name")
+                        rs.getString("name"),
+                        rs.getString("email")
                 );
             }
         } catch (Exception e) {
@@ -34,10 +34,10 @@ public class StudentSQL {
 
     public List<Student> findByClassId(Long classId) {
         String sql = """
-            SELECT DISTINCT s.student_id, s.user_id
+            SELECT DISTINCT s.id
             FROM student s
-            JOIN attendance a ON s.student_id = a.student_id
-            JOIN session se ON a.session_id = se.session_id
+            JOIN attendance a ON s.id = a.student_id
+            JOIN session se ON a.session_id = se.id
             WHERE se.class_id = ?
         """;
 
@@ -52,8 +52,8 @@ public class StudentSQL {
             while (rs.next()) {
                 students.add(new Student(
                         rs.getLong("student_id"),
-                        rs.getString("first_name"),
-                        rs.getString("last_name")
+                        rs.getString("name"),
+                        rs.getString("email")
                 ));
             }
         } catch (Exception e) {
