@@ -1,67 +1,24 @@
 package frontend;
 
-import javafx.collections.FXCollections;
+import javafx.beans.binding.Bindings;
 import javafx.collections.ObservableList;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
-import javafx.geometry.Side;
 import javafx.scene.Parent;
+import javafx.scene.Scene;
 import javafx.scene.control.*;
-import javafx.scene.input.MouseButton;
 import javafx.scene.layout.*;
-import javafx.scene.paint.Color;
-import javafx.scene.shape.Circle;
-import javafx.scene.text.Font;
 
 public class TeacherTakeAttendancePage {
 
-    private ContextMenu hamburgerMenu;
+    // Use shared store so email + status persist
+    private final ObservableList<StudentRow> rows = DataStore.getStudents();
 
-    // for selection actions
-    private TableView<StudentRow> table;
-    private Button presentBtn, absentBtn, excusedBtn;
+    public Parent build(Scene scene, String teacherName) {
 
-    public Parent createView(Runnable onBackToDashboard) {
-        BorderPane root = new BorderPane();
-        root.getStyleClass().add("app");
-
-        /* ================= TOP BAR ================= */
-        HBox topBar = new HBox(12);
-        topBar.getStyleClass().add("topbar");
-        topBar.setAlignment(Pos.CENTER_LEFT);
-
-        Circle avatar = new Circle(12, Color.web("#D9D9D9"));
-
-        Label name = new Label("Name");
-        name.getStyleClass().add("topbar-name");
-
-        Region spacer = new Region();
-        HBox.setHgrow(spacer, Priority.ALWAYS);
-
-        Label menu = new Label("≡");
-        menu.getStyleClass().add("icon-button");
-
-        hamburgerMenu = buildHamburgerMenu(onBackToDashboard);
-
-        menu.setOnMouseClicked(e -> {
-            if (e.getButton() == MouseButton.PRIMARY) {
-                if (hamburgerMenu.isShowing()) hamburgerMenu.hide();
-                else hamburgerMenu.show(menu, Side.BOTTOM, 0, 6);
-            }
-        });
-
-        root.setOnMousePressed(e -> {
-            if (hamburgerMenu != null && hamburgerMenu.isShowing()) hamburgerMenu.hide();
-        });
-
-        topBar.getChildren().addAll(avatar, name, spacer, menu);
-        root.setTop(topBar);
-
-        /* ================= CONTENT ================= */
-        VBox content = new VBox(14);
-        content.getStyleClass().add("content");
-        content.setPadding(new Insets(18));
-        root.setCenter(content);
+        VBox page = new VBox(16);
+        page.setPadding(new Insets(22));
+        page.getStyleClass().add("page");
 
         Label title = new Label("Take Attendance");
         title.getStyleClass().add("title");
@@ -69,168 +26,159 @@ public class TeacherTakeAttendancePage {
         Label subtitle = new Label("Select class and generate QR code");
         subtitle.getStyleClass().add("subtitle");
 
-        Label selectLbl = new Label("Select class");
-        selectLbl.getStyleClass().add("field-label");
+        // ---- CLASS SELECT ----
+        Label selectClass = new Label("Select class");
+        selectClass.getStyleClass().add("section-title");
 
-        ComboBox<String> classCombo = new ComboBox<>();
-        classCombo.getItems().addAll("Choose a class", "OOP1", "Databases", "Web Dev");
-        classCombo.setValue("Choose a class");
-        classCombo.getStyleClass().add("filter-combo");
+        ComboBox<String> classBox = new ComboBox<>();
+        classBox.getItems().addAll("Class A", "Class B", "Class C");
+        classBox.setPromptText("Choose a class");
+        classBox.setMaxWidth(200);
 
-        /* ================= QR CARD ================= */
-        VBox qrOuter = new VBox(10);
-        qrOuter.getStyleClass().add("qr-outer");
+        // ---- QR PLACEHOLDER ----
+        VBox qrCard = new VBox(12);
+        qrCard.getStyleClass().add("card");
+        qrCard.setPadding(new Insets(16));
 
         Label qrTitle = new Label("Attendance QR Code");
         qrTitle.getStyleClass().add("section-title");
 
-        StackPane qrBox = new StackPane();
-        qrBox.getStyleClass().add("qr-box");
-        qrBox.setMinHeight(220);
+        Region qrArea = new Region();
+        qrArea.setPrefHeight(180);
+        qrArea.getStyleClass().add("qr-area");
 
-        Label qrIcon = new Label("〰");
-        qrIcon.setFont(Font.font(26));
-        qrBox.getChildren().add(qrIcon);
+        Label manualTitle = new Label("Manual Code");
+        manualTitle.getStyleClass().add("small-title");
 
-        VBox manual = new VBox(4);
-        manual.getStyleClass().add("manual-code");
-        manual.setAlignment(Pos.CENTER);
+        Label manualCode = new Label("code-4948-838-01");
+        manualCode.getStyleClass().add("small-subtitle");
 
-        Label m1 = new Label("Manual Code");
-        m1.getStyleClass().add("manual-title");
+        VBox manualBox = new VBox(4, manualTitle, manualCode);
+        manualBox.setAlignment(Pos.CENTER);
+        manualBox.getStyleClass().add("manual-box");
 
-        Label m2 = new Label("code-4948-838-01");
-        m2.getStyleClass().add("manual-value");
+        qrCard.getChildren().addAll(qrTitle, qrArea, manualBox);
 
-        manual.getChildren().addAll(m1, m2);
-
-        qrOuter.getChildren().addAll(qrTitle, qrBox, manual);
-
-        /* ================= STUDENTS HEADER ================= */
-        Label studentsTitle = new Label("Students (3)");
+        // ================= STUDENTS SECTION =================
+        Label studentsTitle = new Label();
         studentsTitle.getStyleClass().add("section-title");
+        studentsTitle.textProperty().bind(Bindings.size(rows).asString("Students (%d)"));
 
-        Button markAll = new Button("Mark All Present");
-        markAll.getStyleClass().add("mark-all-btn");
+        Button btnPresent = new Button("Present");
+        btnPresent.getStyleClass().addAll("pill", "pill-green");
 
-        presentBtn = new Button("Present");
-        absentBtn = new Button("Absent");
-        excusedBtn = new Button("Excused");
+        Button btnAbsent = new Button("Absent");
+        btnAbsent.getStyleClass().addAll("pill", "pill-red");
 
-        presentBtn.getStyleClass().add("status-btn-present");
-        absentBtn.getStyleClass().add("status-btn-absent");
-        excusedBtn.getStyleClass().add("status-btn-excused");
+        Button btnExcused = new Button("Excused");
+        btnExcused.getStyleClass().addAll("pill", "pill-orange");
 
-        // hidden until row selected
-        presentBtn.setVisible(false);
-        absentBtn.setVisible(false);
-        excusedBtn.setVisible(false);
+        Button markAllPresent = new Button("Mark All Present");
+        markAllPresent.getStyleClass().addAll("pill", "pill-green");
 
-        HBox selectActions = new HBox(8, presentBtn, absentBtn, excusedBtn);
-        selectActions.setAlignment(Pos.CENTER_RIGHT);
+        HBox buttons = new HBox(10, btnPresent, btnAbsent, btnExcused, markAllPresent);
+        buttons.setAlignment(Pos.CENTER_RIGHT);
 
-        Region sspacer = new Region();
-        HBox.setHgrow(sspacer, Priority.ALWAYS);
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
 
-        HBox studentsHeader = new HBox(12, studentsTitle, sspacer, selectActions, markAll);
+        HBox studentsHeader = new HBox(12, studentsTitle, spacer, buttons);
         studentsHeader.setAlignment(Pos.CENTER_LEFT);
 
-        /* ================= TABLE ================= */
-        table = new TableView<>();
+        TableView<StudentRow> table = new TableView<>(rows);
         table.getStyleClass().add("students-table");
-        table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
-        table.getSelectionModel().setSelectionMode(SelectionMode.SINGLE);
+        table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+        table.setFixedCellSize(30);
+        table.setPrefHeight(260);
 
-        TableColumn<StudentRow, String> nameCol = new TableColumn<>("Student");
-        nameCol.setCellValueFactory(data -> data.getValue().studentNameProperty());
+        TableColumn<StudentRow, String> colName = new TableColumn<>("Student");
+        colName.setCellValueFactory(data -> data.getValue().studentNameProperty());
 
-        TableColumn<StudentRow, String> statusCol = new TableColumn<>("Status");
-        statusCol.setCellValueFactory(data -> data.getValue().statusProperty());
+        TableColumn<StudentRow, String> colEmail = new TableColumn<>("Email");
+        colEmail.setCellValueFactory(data -> data.getValue().emailProperty());
 
-        table.getColumns().addAll(nameCol, statusCol);
+        TableColumn<StudentRow, String> colStatus = new TableColumn<>("Status");
+        colStatus.setCellValueFactory(data -> data.getValue().statusProperty());
 
-        ObservableList<StudentRow> items = FXCollections.observableArrayList(
-                new StudentRow("User", "Present"),
-                new StudentRow("User", "Absent"),
-                new StudentRow("User", "Excused")
-        );
+        table.getColumns().addAll(colName, colEmail, colStatus);
 
-        table.setItems(items);
+        // Disable buttons until row selected
+        btnPresent.disableProperty().bind(table.getSelectionModel().selectedItemProperty().isNull());
+        btnAbsent.disableProperty().bind(table.getSelectionModel().selectedItemProperty().isNull());
+        btnExcused.disableProperty().bind(table.getSelectionModel().selectedItemProperty().isNull());
 
-        // when row selected -> show buttons
-        table.getSelectionModel().selectedItemProperty().addListener((obs, oldSel, newSel) -> {
-            boolean selected = newSel != null;
-            presentBtn.setVisible(selected);
-            absentBtn.setVisible(selected);
-            excusedBtn.setVisible(selected);
+        // If you want them hidden until selection, keep this:
+        btnPresent.visibleProperty().bind(table.getSelectionModel().selectedItemProperty().isNotNull());
+        btnAbsent.visibleProperty().bind(table.getSelectionModel().selectedItemProperty().isNotNull());
+        btnExcused.visibleProperty().bind(table.getSelectionModel().selectedItemProperty().isNotNull());
+
+        btnPresent.managedProperty().bind(btnPresent.visibleProperty());
+        btnAbsent.managedProperty().bind(btnAbsent.visibleProperty());
+        btnExcused.managedProperty().bind(btnExcused.visibleProperty());
+
+        // Actions
+        btnPresent.setOnAction(e -> {
+            StudentRow s = table.getSelectionModel().getSelectedItem();
+            if (s != null) {
+                s.setStatus("Present");
+                s.setExcuseReason("");
+                table.refresh();
+            }
         });
 
-        // button actions -> change selected status
-        presentBtn.setOnAction(e -> setSelectedStatus("Present"));
-        absentBtn.setOnAction(e -> setSelectedStatus("Absent"));
-        excusedBtn.setOnAction(e -> setSelectedStatus("Excused"));
+        btnAbsent.setOnAction(e -> {
+            StudentRow s = table.getSelectionModel().getSelectedItem();
+            if (s != null) {
+                s.setStatus("Absent");
+                s.setExcuseReason("");
+                table.refresh();
+            }
+        });
 
-        // mark all present
-        markAll.setOnAction(e -> {
-            for (StudentRow s : table.getItems()) s.setStatus("Present");
+        // IMPORTANT: Excused opens the new page to write reason
+        btnExcused.setOnAction(e -> {
+            StudentRow s = table.getSelectionModel().getSelectedItem();
+            if (s == null) return;
+
+            scene.setRoot(
+                    new TeacherExcuseReasonPage().build(
+                            scene,
+                            teacherName,
+                            s,
+                            () -> scene.setRoot(build(scene, teacherName))
+                    )
+            );
+        });
+
+        markAllPresent.setOnAction(e -> {
+            for (StudentRow s : rows) {
+                s.setStatus("Present");
+                s.setExcuseReason("");
+            }
             table.refresh();
         });
 
-        content.getChildren().addAll(
+        page.getChildren().addAll(
                 title,
                 subtitle,
-                selectLbl,
-                classCombo,
-                qrOuter,
+                selectClass,
+                classBox,
+                qrCard,
                 studentsHeader,
                 table
         );
 
-        return root;
-    }
-
-    private void setSelectedStatus(String status) {
-        StudentRow selected = table.getSelectionModel().getSelectedItem();
-        if (selected == null) return;
-        selected.setStatus(status);
-        table.refresh();
-    }
-
-    private ContextMenu buildHamburgerMenu(Runnable onBackToDashboard) {
-
-        MenuItem dashboard = new MenuItem("Dashboard", new Label("▦"));
-        dashboard.setOnAction(e -> {
-            hamburgerMenu.hide();
-            onBackToDashboard.run();
-        });
-
-        // this page
-        MenuItem takeAttendance = new MenuItem("Take Attendance", new Label("📷"));
-        takeAttendance.setOnAction(e -> hamburgerMenu.hide());
-
-        MenuItem reports = new MenuItem("Reports", new Label("📋"));
-        reports.setOnAction(e -> {
-            hamburgerMenu.hide();
-            TeacherReportsPage page = new TeacherReportsPage();
-            Parent view = page.createView(onBackToDashboard);
-            hamburgerMenu.getOwnerNode().getScene().setRoot(view);
-        });
-
-        MenuItem signout = new MenuItem("Sign out", new Label("⎋"));
-        signout.setOnAction(e -> {
-            hamburgerMenu.hide();
-            System.out.println("TODO: Sign out");
-        });
-
-        ContextMenu menu = new ContextMenu(
-                dashboard,
-                takeAttendance,
-                reports,
-                new SeparatorMenuItem(),
-                signout
+        return AppLayout.wrapWithSidebar(
+                teacherName,
+                page,
+                "takeAttendance",
+                new AppLayout.Navigator() {
+                    @Override public void goDashboard() { scene.setRoot(new TeacherDashboardApp().build(scene, teacherName)); }
+                    @Override public void goTakeAttendance() { scene.setRoot(build(scene, teacherName)); }
+                    @Override public void goReports() { scene.setRoot(new TeacherReportsPage().build(scene, teacherName)); }
+                    @Override public void goEmail() { scene.setRoot(new TeacherEmailPage().build(scene, teacherName)); }
+                    @Override public void logout() { System.out.println("TODO: Logout"); }
+                }
         );
-
-        menu.getStyleClass().add("hamburger-menu");
-        return menu;
     }
 }

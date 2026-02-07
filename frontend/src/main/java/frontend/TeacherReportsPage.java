@@ -1,123 +1,57 @@
 package frontend;
 
 import javafx.geometry.Insets;
-import javafx.geometry.Pos;
-import javafx.geometry.Side;
 import javafx.scene.Parent;
-import javafx.scene.control.*;
-import javafx.scene.input.MouseButton;
-import javafx.scene.layout.*;
-import javafx.scene.paint.Color;
-import javafx.scene.shape.Circle;
+import javafx.scene.Scene;
+import javafx.scene.control.Label;
+import javafx.scene.layout.VBox;
 
 public class TeacherReportsPage {
 
-    private ContextMenu hamburgerMenu;
+    public Parent build(Scene scene, String teacherName) {
 
-    public Parent createView(Runnable onBackToDashboard) {
-        BorderPane root = new BorderPane();
-        root.getStyleClass().add("app");
-
-        /* ================= TOP BAR ================= */
-        HBox topBar = new HBox(12);
-        topBar.getStyleClass().add("topbar");
-        topBar.setAlignment(Pos.CENTER_LEFT);
-
-        Circle avatar = new Circle(12, Color.web("#D9D9D9"));
-
-        Label name = new Label("Name");
-        name.getStyleClass().add("topbar-name");
-
-        Region spacer = new Region();
-        HBox.setHgrow(spacer, Priority.ALWAYS);
-
-        Label menu = new Label("≡");
-        menu.getStyleClass().add("icon-button");
-
-        hamburgerMenu = buildHamburgerMenu(onBackToDashboard);
-
-        menu.setOnMouseClicked(e -> {
-            if (e.getButton() == MouseButton.PRIMARY) {
-                if (hamburgerMenu.isShowing()) hamburgerMenu.hide();
-                else hamburgerMenu.show(menu, Side.BOTTOM, 0, 6);
-            }
-        });
-
-        root.setOnMousePressed(e -> {
-            if (hamburgerMenu != null && hamburgerMenu.isShowing()) hamburgerMenu.hide();
-        });
-
-        topBar.getChildren().addAll(avatar, name, spacer, menu);
-        root.setTop(topBar);
-
-        /* ================= CONTENT ================= */
-        VBox content = new VBox(14);
-        content.getStyleClass().add("content");
-        content.setPadding(new Insets(18));
-        root.setCenter(content);
+        VBox page = new VBox(14);
+        page.setPadding(new Insets(22));
+        page.getStyleClass().add("page");
 
         Label title = new Label("Reports");
         title.getStyleClass().add("title");
 
-        Label subtitle = new Label("View class attendance reports");
-        subtitle.getStyleClass().add("subtitle");
+        Label info = new Label("Reports page (connect backend later).");
+        info.getStyleClass().add("subtitle");
 
-        VBox empty = new VBox(8);
-        empty.getStyleClass().add("classes-card");
-        empty.setAlignment(Pos.CENTER);
-        empty.setMinHeight(200);
+        page.getChildren().addAll(title, info);
 
-        Label icon = new Label("📋");
-        icon.getStyleClass().add("empty-icon");
+        return AppLayout.wrapWithSidebar(
+                teacherName,
+                page,
+                "reports",
+                new AppLayout.Navigator() {
+                    @Override
+                    public void goDashboard() {
+                        scene.setRoot(new TeacherDashboardApp().build(scene, teacherName));
+                    }
 
-        Label t = new Label("No reports yet");
-        t.getStyleClass().add("empty-title");
+                    @Override
+                    public void goTakeAttendance() {
+                        scene.setRoot(new TeacherTakeAttendancePage().build(scene, teacherName));
+                    }
 
-        Label s = new Label("Reports will appear here when classes have attendance.");
-        s.getStyleClass().add("empty-subtitle");
+                    @Override
+                    public void goReports() {
+                        scene.setRoot(build(scene, teacherName));
+                    }
 
-        empty.getChildren().addAll(icon, t, s);
+                    @Override
+                    public void goEmail() {
+                        scene.setRoot(new TeacherEmailPage().build(scene, teacherName));
+                    }
 
-        content.getChildren().addAll(title, subtitle, empty);
-
-        return root;
-    }
-
-    private ContextMenu buildHamburgerMenu(Runnable onBackToDashboard) {
-
-        MenuItem dashboard = new MenuItem("Dashboard", new Label("▦"));
-        dashboard.setOnAction(e -> {
-            hamburgerMenu.hide();
-            onBackToDashboard.run();
-        });
-
-        MenuItem takeAttendance = new MenuItem("Take Attendance", new Label("📷"));
-        takeAttendance.setOnAction(e -> {
-            hamburgerMenu.hide();
-            TeacherTakeAttendancePage page = new TeacherTakeAttendancePage();
-            Parent view = page.createView(onBackToDashboard);
-            hamburgerMenu.getOwnerNode().getScene().setRoot(view);
-        });
-
-        // this page
-        MenuItem reports = new MenuItem("Reports", new Label("📋"));
-        reports.setOnAction(e -> hamburgerMenu.hide());
-
-        MenuItem signout = new MenuItem("Sign out", new Label("⎋"));
-        signout.setOnAction(e -> {
-            hamburgerMenu.hide();
-            System.out.println("TODO: Sign out");
-        });
-
-        ContextMenu menu = new ContextMenu(
-                dashboard,
-                takeAttendance,
-                reports,
-                new SeparatorMenuItem(),
-                signout
+                    @Override
+                    public void logout() {
+                        System.out.println("TODO: Logout");
+                    }
+                }
         );
-
-        menu.getStyleClass().add("hamburger-menu");
-        return menu;
     }
 }
