@@ -3,6 +3,7 @@ package config;
 import model.Attendance;
 import model.AttendanceStatus;
 import dto.AttendanceView;
+import model.MarkedBy;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -13,13 +14,14 @@ import java.util.List;
 public class AttendanceSQL {
 
     public void save(Attendance attendance) {
-        String sql = "INSERT INTO attendance (student_id, session_id, status) VALUES (?, ?, ?)";
+        String sql = "INSERT INTO attendance (student_id, session_id, status, marked_by) VALUES (?, ?, ?, ?)";
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
 
             stmt.setLong(1, attendance.getStudentId());
             stmt.setLong(2, attendance.getSessionId());
             stmt.setString(3, attendance.getStatus().name());
+            stmt.setString(4, attendance.getMarkedBy().name());
 
             stmt.executeUpdate();
         } catch (Exception e) {
@@ -41,7 +43,8 @@ public class AttendanceSQL {
                 Attendance attendance = new Attendance(
                         rs.getLong("student_id"),
                         rs.getLong("session_id"),
-                        AttendanceStatus.valueOf(rs.getString("status"))
+                        AttendanceStatus.valueOf(rs.getString("status")),
+                        MarkedBy.valueOf(rs.getString("marked_by"))
                 );
                 attendanceList.add(attendance);
             }
@@ -65,7 +68,8 @@ public class AttendanceSQL {
                 Attendance attendance = new Attendance(
                         rs.getLong("student_id"),
                         rs.getLong("session_id"),
-                        AttendanceStatus.valueOf(rs.getString("status"))
+                        AttendanceStatus.valueOf(rs.getString("status")),
+                        MarkedBy.valueOf(rs.getString("marked_by"))
                 );
                 attendanceList.add(attendance);
             }
