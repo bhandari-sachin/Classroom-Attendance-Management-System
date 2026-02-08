@@ -2,5 +2,6 @@ package model;
 
 public enum UserRole {
     ADMIN,
-    TEACHER
+    TEACHER,
+    STUDENT
 }

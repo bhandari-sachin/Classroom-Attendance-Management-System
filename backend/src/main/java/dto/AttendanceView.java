@@ -4,16 +4,18 @@ import java.time.LocalDate;
 
 public class AttendanceView {
 
-    private Long studentId;
-    private String name;
+    private Long studentNumber;
+    private String firstName;
+    private String lastName;
     private LocalDate sessionDate;
     private String status;
 
-    public AttendanceView(Long studentId, String name
+    public AttendanceView(Long studentNumber, String firstName, String lastName
                           , LocalDate sessionDate,
                           String status) {
-        this.studentId = studentId;
-        this.name = name;
+        this.studentNumber = studentNumber;
+        this.firstName = firstName;
+        this.lastName = lastName;
         this.sessionDate = sessionDate;
         this.status = status;
     }

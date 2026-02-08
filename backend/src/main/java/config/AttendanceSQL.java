@@ -57,7 +57,7 @@ public class AttendanceSQL {
     // Fetch attendance records for a class
     public List<Attendance> findByClassId(Long classId) {
         List<Attendance> attendanceList = new ArrayList<>();
-        String sql = "SELECT a.* FROM attendance a JOIN session s ON a.session_id = s.id WHERE s.class_id = ?";
+        String sql = "SELECT a.* FROM attendance a JOIN sessions s ON a.session_id = s.id WHERE s.class_id = ?";
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
 
@@ -88,20 +88,22 @@ public class AttendanceSQL {
         List<AttendanceView> results = new ArrayList<>();
 
         String sql = """
-        SELECT s.id,
-               s.name,
+        SELECT u.id,
+               u.first_name,
+               u.last_name,
                se.session_date,
                a.status
         FROM attendance a
-        JOIN session se ON a.session_id = se.id
-        JOIN student s ON a.student_id = s.id  
+        JOIN sessions se ON a.session_id = se.id
+        JOIN users u ON a.student_id = u.id  
         WHERE se.class_id = ?
           AND (
-                CAST(s.id AS CHAR) LIKE ?
-             OR LOWER(s.name) LIKE ?
+                CAST(u.id AS CHAR) LIKE ?
+             OR LOWER(u.first_name) LIKE ?
+             OR LOWER(u.last_name) LIKE ?
              OR LOWER(CONCAT(u.first_name, ' ', u.last_name)) LIKE ?
           )
-        ORDER BY s.name, se.session_date
+        ORDER BY u.last_name, u.first_name, se.session_date
     """;
 
         try (Connection conn = DatabaseConnection.getConnection();
@@ -120,7 +122,8 @@ public class AttendanceSQL {
             while (rs.next()) {
                 results.add(new AttendanceView(
                         rs.getLong("student_id"),
-                        rs.getString("name"),
+                        rs.getString("first_name"),
+                        rs.getString("last_name"),
                         rs.getDate("session_date").toLocalDate(),
                         rs.getString("status")
                 ));
@@ -134,7 +137,7 @@ public class AttendanceSQL {
     }
 
     public String getSessionCode(Long sessionId) {
-        String sql = "SELECT qr_token FROM session WHERE id = ?";
+        String sql = "SELECT qr_token FROM sessions WHERE id = ?";
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
 

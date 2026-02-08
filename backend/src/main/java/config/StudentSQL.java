@@ -12,7 +12,7 @@ import java.util.List;
 public class StudentSQL {
 
     public Student findById(Long studentId) {
-        String sql = "SELECT * FROM student WHERE id = ?";
+        String sql = "SELECT * FROM users WHERE id = ? AND user_type = 'STUDENT'";
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
 
@@ -21,9 +21,11 @@ public class StudentSQL {
 
             if (rs.next()) {
                 return new Student(
-                        rs.getLong("student_id"),
-                        rs.getString("name"),
-                        rs.getString("email")
+                        rs.getLong("id"),
+                        rs.getString("first_name"),
+                        rs.getString("last_name"),
+                        rs.getString("email"),
+                        rs.getLong("student_code")
                 );
             }
         } catch (Exception e) {
@@ -34,10 +36,10 @@ public class StudentSQL {
 
     public List<Student> findByClassId(Long classId) {
         String sql = """
-            SELECT DISTINCT s.id
-            FROM student s
-            JOIN attendance a ON s.id = a.student_id
-            JOIN session se ON a.session_id = se.id
+            SELECT DISTINCT u.id
+            FROM users u
+            JOIN attendance a ON u.id = a.student_id
+            JOIN sessions se ON a.session_id = se.id
             WHERE se.class_id = ?
         """;
 
@@ -51,9 +53,11 @@ public class StudentSQL {
 
             while (rs.next()) {
                 students.add(new Student(
-                        rs.getLong("student_id"),
-                        rs.getString("name"),
-                        rs.getString("email")
+                        rs.getLong("id"),
+                        rs.getString("first_name"),
+                        rs.getString("last_name"),
+                        rs.getString("email"),
+                        rs.getLong("student_code")
                 ));
             }
         } catch (Exception e) {

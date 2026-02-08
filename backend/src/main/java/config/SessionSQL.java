@@ -11,7 +11,7 @@ import java.util.List;
 public class SessionSQL {
 
     public Session findById(Long sessionId) {
-        String sql = "SELECT * FROM session WHERE id = ?";
+        String sql = "SELECT * FROM sessions WHERE id = ?";
 
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
@@ -36,7 +36,7 @@ public class SessionSQL {
 
     public List<Session> findByClassId(Long classId) {
         String sql = """
-            SELECT * FROM session
+            SELECT * FROM sessions
             WHERE class_id = ?
             ORDER BY session_date DESC
         """;
@@ -65,7 +65,7 @@ public class SessionSQL {
 
     public void updateQRCode(Long sessionId, String code) {
         String sql = """
-            UPDATE session
+            UPDATE sessions
             SET qr_token = ?
             WHERE id = ?
         """;

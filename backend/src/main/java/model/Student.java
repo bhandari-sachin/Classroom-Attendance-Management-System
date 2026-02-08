@@ -3,21 +3,29 @@ package model;
 public class Student {
 
     private Long studentId;
-    private String name;
+    private String firstName;
+    private String lastName;
     private String email;
+    private Long studentNumber;
 
-    public Student(Long studentId, String name, String email) {
+    public Student(Long studentId, String firstName, String lastName, String email, Long studentNumber) {
         this.studentId = studentId;
-        this.name = name;
+        this.firstName = firstName;
+        this.lastName = lastName;
         this.email = email;
+        this.studentNumber = studentNumber;
     }
 
     public Long getStudentId() {
         return studentId;
     }
 
-    public String getFirstName() {
-        return name;
+    public String getName() {
+        return firstName + " " + lastName;
+    }
+
+    public Long getStudentNumber() {
+        return studentNumber;
     }
 
     public String getEmail() {

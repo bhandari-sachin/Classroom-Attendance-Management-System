@@ -13,6 +13,9 @@ public class Attendance {
         this.sessionId = sessionId;
         this.status = status;
         this.markedBy = markedBy;
+        if (status == AttendanceStatus.EXCUSED) {
+            // add logic to set remarks
+        }
     }
 
     public Long getStudentId() {
