@@ -14,33 +14,57 @@ public class AttendanceService {
     }
 
     public void markPresent(Long studentId, Long sessionId) {
-        Attendance attendance = new Attendance(
+        if (attendanceSQL.exists(studentId, sessionId)) {
+            attendanceSQL.updateStatus(
                 studentId,
                 sessionId,
                 AttendanceStatus.PRESENT,
                 MarkedBy.TEACHER
-        );
-        attendanceSQL.save(attendance);
+           );
+        } else {
+            attendanceSQL.save(new Attendance(
+                    studentId,
+                    sessionId,
+                    AttendanceStatus.PRESENT,
+                    MarkedBy.TEACHER
+            ));
+        }
     }
 
-    public void markAbsent(Long studentId, Long sessionId, String reason) {
-        Attendance attendance = new Attendance(
-                studentId,
-                sessionId,
-                AttendanceStatus.ABSENT,
-                MarkedBy.TEACHER
-        );
-        attendanceSQL.save(attendance);
+    public void markAbsent(Long studentId, Long sessionId) {
+        if (attendanceSQL.exists(studentId, sessionId)) {
+            attendanceSQL.updateStatus(
+                    studentId,
+                    sessionId,
+                    AttendanceStatus.ABSENT,
+                    MarkedBy.TEACHER
+            );
+        } else {
+            attendanceSQL.save(new Attendance(
+                    studentId,
+                    sessionId,
+                    AttendanceStatus.ABSENT,
+                    MarkedBy.TEACHER
+            ));
+        }
     }
 
-    public void markExcused(Long studentId, Long sessionId, String reason) {
-        Attendance attendance = new Attendance(
-                studentId,
-                sessionId,
-                AttendanceStatus.EXCUSED,
-                MarkedBy.TEACHER
-        );
-        attendanceSQL.save(attendance);
+    public void markExcused(Long studentId, Long sessionId) {
+        if (attendanceSQL.exists(studentId, sessionId)) {
+            attendanceSQL.updateStatus(
+                    studentId,
+                    sessionId,
+                    AttendanceStatus.EXCUSED,
+                    MarkedBy.TEACHER
+            );
+        } else {
+            attendanceSQL.save(new Attendance(
+                    studentId,
+                    sessionId,
+                    AttendanceStatus.EXCUSED,
+                    MarkedBy.TEACHER
+            ));
+        }
     }
 
     public boolean submitAttendanceCode(Long studentId, Long sessionId, String code) {
@@ -50,13 +74,21 @@ public class AttendanceService {
             return false;
         }
 
-        Attendance attendance = new Attendance(
-                studentId,
-                sessionId,
-                AttendanceStatus.PRESENT,
-                MarkedBy.QR
-        );
-        attendanceSQL.save(attendance);
+        if (attendanceSQL.exists(studentId, sessionId)) {
+            attendanceSQL.updateStatus(
+                    studentId,
+                    sessionId,
+                    AttendanceStatus.PRESENT,
+                    MarkedBy.QR
+            );
+        } else {
+            attendanceSQL.save(new Attendance(
+                    studentId,
+                    sessionId,
+                    AttendanceStatus.PRESENT,
+                    MarkedBy.QR
+            ));
+        }
         return true;
     }
 

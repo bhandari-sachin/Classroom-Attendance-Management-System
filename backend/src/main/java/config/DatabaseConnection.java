@@ -6,29 +6,12 @@ import java.sql.SQLException;
 
 public class DatabaseConnection {
 
-    private static Connection conn = null;
+    private static final String URL =
+            "jdbc:mysql://localhost:3306/classroom_attendance?serverTimezone=UTC";
+    private static final String USER = "db_user";
+    private static final String PASSWORD = "db_password";
 
     public static Connection getConnection() throws SQLException {
-        if (conn==null) {
-            try {
-                conn = DriverManager.getConnection(
-                        "jdbc:mysql://localhost:3306/classroom_attendance?user=db_user&password=db_password");
-            } catch (SQLException e) {
-                System.out.println("Connection failed.");
-                e.printStackTrace();
-            }
-            return conn;
-        }
-        else {
-            return conn;
-        }
-    }
-    public static void terminate() {
-        try {
-            getConnection().close();
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
+        return DriverManager.getConnection(URL, USER, PASSWORD);
     }
 }
-

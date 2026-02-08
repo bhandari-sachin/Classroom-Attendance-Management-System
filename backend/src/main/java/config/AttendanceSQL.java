@@ -13,6 +13,32 @@ import java.util.List;
 
 public class AttendanceSQL {
 
+    public boolean exists(Long studentId, Long sessionId) {
+
+        String sql = """
+        SELECT COUNT(*) FROM attendance
+        WHERE student_id = ? AND session_id = ?
+    """;
+
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setLong(1, studentId);
+            stmt.setLong(2, sessionId);
+
+            ResultSet rs = stmt.executeQuery();
+
+            if (rs.next()) {
+                return rs.getInt(1) > 0;
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return false;
+    }
+
     public void save(Attendance attendance) {
         String sql = "INSERT INTO attendance (student_id, session_id, status, marked_by) VALUES (?, ?, ?, ?)";
         try (Connection conn = DatabaseConnection.getConnection();
@@ -28,6 +54,35 @@ public class AttendanceSQL {
             e.printStackTrace();
         }
     }
+
+    public void updateStatus(
+            Long studentId,
+            Long sessionId,
+            AttendanceStatus status,
+            MarkedBy markedBy
+    ) {
+
+        String sql = """
+        UPDATE attendance
+        SET status = ?, marked_by = ?
+        WHERE student_id = ? AND session_id = ?
+    """;
+
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setString(1, status.name());
+            stmt.setString(2, markedBy.name());
+            stmt.setLong(3, studentId);
+            stmt.setLong(4, sessionId);
+
+            stmt.executeUpdate();
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
 
     // Fetch attendance records for a student
     public List<Attendance> findByStudentId(Long studentId) {

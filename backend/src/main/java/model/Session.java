@@ -1,5 +1,6 @@
 package model;
 
+import java.sql.Date;
 import java.time.LocalDate;
 
 public class Session {
@@ -9,10 +10,13 @@ public class Session {
     private LocalDate date;
     private String QRCode;
 
-    public Session(Long sessionId, Long classId, LocalDate date) {
+    public Session(Long sessionId, Long classId, LocalDate date, String qrToken) {
         this.sessionId = sessionId;
         this.classId = classId;
         this.date = date;
+    }
+
+    public Session(Long id, Long classId, Date sessionDate, String qrCode) {
     }
 
     public Long getSessionId() {

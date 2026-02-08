@@ -2,15 +2,13 @@ package config;
 
 import model.Session;
 
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
+import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 
 public class SessionSQL {
 
-    public Session findById(Long sessionId) {
+    public Session findById(Long sessionId) throws SQLException {
         String sql = "SELECT * FROM sessions WHERE id = ?";
 
         try (Connection conn = DatabaseConnection.getConnection();
@@ -20,26 +18,27 @@ public class SessionSQL {
             ResultSet rs = stmt.executeQuery();
 
             if (rs.next()) {
-                Session session = new Session(
+                return new Session(
                         rs.getLong("id"),
                         rs.getLong("class_id"),
-                        rs.getDate("session_date").toLocalDate()
+                        rs.getDate("session_date").toLocalDate(),
+                        rs.getString("qr_token")
                 );
-                session.setQRCode(rs.getString("qr_token"));
-                return session;
             }
+
         } catch (Exception e) {
             e.printStackTrace();
         }
+
         return null;
     }
 
     public List<Session> findByClassId(Long classId) {
         String sql = """
-            SELECT * FROM sessions
-            WHERE class_id = ?
-            ORDER BY session_date DESC
-        """;
+                    SELECT * FROM sessions
+                    WHERE class_id = ?
+                    ORDER BY session_date DESC
+                """;
 
         List<Session> sessions = new ArrayList<>();
 
@@ -53,8 +52,8 @@ public class SessionSQL {
                 sessions.add(new Session(
                         rs.getLong("id"),
                         rs.getLong("class_id"),
-                        rs.getDate("session_date").toLocalDate()
-                ));
+                        rs.getDate("session_date").toLocalDate(),
+                        rs.getString("qr_token")));
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -65,10 +64,10 @@ public class SessionSQL {
 
     public void updateQRCode(Long sessionId, String code) {
         String sql = """
-            UPDATE sessions
-            SET qr_token = ?
-            WHERE id = ?
-        """;
+                    UPDATE sessions
+                    SET qr_token = ?
+                    WHERE id = ?
+                """;
 
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {

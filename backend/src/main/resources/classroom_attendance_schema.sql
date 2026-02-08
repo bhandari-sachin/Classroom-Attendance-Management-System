@@ -103,8 +103,8 @@ CREATE TABLE attendance
     UNIQUE (student_id, session_id),
 
     CONSTRAINT chk_attendance_status
-        CHECK (status IN ('PRESENT', 'ABSENT', 'LATE', 'EXCUSED')),
+        CHECK (status IN ('PRESENT', 'ABSENT', 'EXCUSED')),
 
     CONSTRAINT chk_marked_by
-        CHECK (marked_by IN ('QR', 'TEACHER', 'SYSTEM'))
+        CHECK (marked_by IN ('QR', 'TEACHER'))
 );
