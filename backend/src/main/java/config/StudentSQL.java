@@ -36,11 +36,11 @@ public class StudentSQL {
 
     public List<Student> findByClassId(Long classId) {
         String sql = """
-            SELECT DISTINCT u.id
+            SELECT DISTINCT u.*
             FROM users u
-            JOIN attendance a ON u.id = a.student_id
-            JOIN sessions se ON a.session_id = se.id
-            WHERE se.class_id = ?
+            JOIN enrollments e ON u.id = e.student_id
+            WHERE e.class_id = ?
+            AND u.user_type = 'STUDENT'
         """;
 
         List<Student> students = new ArrayList<>();

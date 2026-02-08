@@ -88,7 +88,7 @@ public class AttendanceSQL {
         List<AttendanceView> results = new ArrayList<>();
 
         String sql = """
-        SELECT u.id,
+        SELECT u.id AS student_id,
                u.first_name,
                u.last_name,
                se.session_date,
