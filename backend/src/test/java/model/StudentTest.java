@@ -13,32 +13,36 @@ public class StudentTest {
     @Test
     void constructorAndGetters_returnValues() {
         Long id = 101L;
+        String firstName = "Jane";
+        String lastName = "Doe";
         String name = "Jane Doe";
         String email = "jane.doe@example.com";
+        Long studentNumber = 1234567L;
 
-        Student s = new Student(id, name, email);
+        Student s = new Student(id, firstName, lastName, email, studentNumber);
 
         Assertions.assertEquals(id, s.getStudentId());
-        // Note: getter is getFirstName() although field is 'name'
-        Assertions.assertEquals(name, s.getFirstName());
+        Assertions.assertEquals(name, s.getName());
         Assertions.assertEquals(email, s.getEmail());
+        Assertions.assertEquals(studentNumber, s.getStudentNumber());
     }
 
     @Test
     void constructor_allowsNullValues() {
-        Student s = new Student(null, null, null);
+        Student s = new Student(null, null, null, null, null);
         Assertions.assertNull(s.getStudentId());
         Assertions.assertNull(s.getFirstName());
+        Assertions.assertNull(s.getLastName());
         Assertions.assertNull(s.getEmail());
     }
 
     @Test
     void instancesAreIndependent() {
-        Student a = new Student(1L, "A", "a@example.com");
-        Student b = new Student(2L, "B", "b@example.com");
+        Student a = new Student(1L, "A", "B", "a@example.com", 7654321L);
+        Student b = new Student(2L, "C", "D", "b@example.com", 7654322L);
 
         Assertions.assertNotEquals(a.getStudentId(), b.getStudentId());
-        Assertions.assertNotEquals(a.getFirstName(), b.getFirstName());
+        Assertions.assertNotEquals(a.getName(), b.getName());
         Assertions.assertNotEquals(a.getEmail(), b.getEmail());
     }
 }

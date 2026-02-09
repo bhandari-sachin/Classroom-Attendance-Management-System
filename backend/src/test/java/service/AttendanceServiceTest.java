@@ -102,7 +102,7 @@ public class AttendanceServiceTest {
     @Test
     void filterAttendance_delegatesToSql() {
         StubAttendanceSQL stub = new StubAttendanceSQL();
-        List<AttendanceView> expected = Arrays.asList(new AttendanceView(1L, "A", LocalDate.now(), "PRESENT"));
+        List<AttendanceView> expected = Arrays.asList(new AttendanceView(1L, "A", "B", LocalDate.now(), "PRESENT"));
         stub.filterResult = expected;
 
         AttendanceService svc = new AttendanceService(stub);
