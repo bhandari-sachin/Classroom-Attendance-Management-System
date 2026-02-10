@@ -4,18 +4,18 @@ import javafx.application.Application;
 import javafx.scene.Scene;
 import javafx.stage.Stage;
 
-public class AdminMainApp extends Application {
+public class StudentMainApp extends Application {
 
     @Override
     public void start(Stage stage) {
-        String adminName = "Name"; // later from login
+        String studentName = "Name"; // later from login
 
         // Create the scene first, then pass it into build(...)
         Scene scene = new Scene(new javafx.scene.layout.StackPane(), 1100, 700);
-        scene.setRoot(new AdminDashboardApp().build(scene, adminName));
+        scene.setRoot(new StudentDashboardApp().build(scene, studentName));
 
         // Load CSS if present
-        var css = getClass().getResource("/admin-dashboard.css");
+        var css = getClass().getResource("/dashboard.css");
         if (css != null) {
             scene.getStylesheets().add(css.toExternalForm());
         }

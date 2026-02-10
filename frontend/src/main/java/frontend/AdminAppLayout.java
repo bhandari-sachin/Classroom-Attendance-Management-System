@@ -25,7 +25,7 @@ public class AdminAppLayout {
     public static Parent wrapWithSidebar(String name, Node content, String activeKey, Navigator nav) {
         return wrapWithSidebar(
                 name,
-                "Teacher Panel",
+                "Student Panel",
                 "Dashboard",
                 "Take Attendance",
                 "Reports",
