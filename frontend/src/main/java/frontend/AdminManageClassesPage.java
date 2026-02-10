@@ -1,0 +1,71 @@
+package frontend;
+
+import javafx.geometry.Insets;
+import javafx.geometry.Pos;
+import javafx.scene.Parent;
+import javafx.scene.Scene;
+import javafx.scene.control.*;
+import javafx.scene.layout.*;
+
+public class AdminManageClassesPage {
+
+    public Parent build(Scene scene, String adminName) {
+        VBox content = new VBox(14);
+        content.getStyleClass().add("content");
+        content.setPadding(new Insets(18));
+
+        HBox titleRow = new HBox(12);
+        titleRow.setAlignment(Pos.CENTER_LEFT);
+
+        VBox titleCol = new VBox(4);
+        Label title = new Label("Manage Classes");
+        title.getStyleClass().add("title");
+
+        Label subtitle = new Label("Create and manage classes");
+        subtitle.getStyleClass().add("subtitle");
+        titleCol.getChildren().addAll(title, subtitle);
+
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+
+        Button add = new Button("+   Add class");
+        add.getStyleClass().add("primary-btn");
+
+        titleRow.getChildren().addAll(titleCol, spacer, add);
+
+        TextField search = new TextField();
+        search.setPromptText("Search classes...");
+        search.getStyleClass().add("search-field");
+
+        Label section = new Label("Detailed Records");
+        section.getStyleClass().add("section-title");
+
+        TableView<ClassRow> table = AdminUI.buildClassesTable();
+
+        content.getChildren().addAll(titleRow, search, section, table);
+
+        ScrollPane scroll = new ScrollPane(content);
+        scroll.setFitToWidth(true);
+        scroll.getStyleClass().add("scroll");
+
+        return AdminAppLayout.wrapWithSidebar(
+                adminName,
+                "Admin Panel",
+                "Dashboard",
+                "Manage Classes",
+                "Manage Users",
+                "Attendance Reports",
+                scroll,
+                "takeAttendance", // active = Manage Classes
+                new AdminAppLayout.Navigator() {
+                    @Override public void goDashboard() { scene.setRoot(new AdminDashboardApp().build(scene, adminName)); }
+                    @Override public void goTakeAttendance() { scene.setRoot(build(scene, adminName)); }
+                    @Override public void goReports() { scene.setRoot(new AdminManageUsersPage().build(scene, adminName)); }
+                    @Override public void goEmail() { scene.setRoot(new AdminAttendanceReportsPage().build(scene, adminName)); }
+                    @Override public void logout() { System.out.println("TODO: Admin Logout"); }
+                }
+        );
+
+
+    }
+}
