@@ -352,3 +352,53 @@
     -fx-font-size: 11px;
     -fx-text-fill: #6B7280;
 }
+.app-root {
+    -fx-background-color: #F4F5F6;
+    -fx-font-family: "Segoe UI", "Inter", system-ui;
+}
+
+.sidebar {
+    -fx-background-color: white;
+    -fx-border-color: #ECEFF2;
+    -fx-border-width: 0 1 0 0;
+}
+
+.sidebar-name {
+    -fx-font-size: 14px;
+    -fx-font-weight: 800;
+}
+
+.sidebar-role {
+    -fx-font-size: 12px;
+    -fx-text-fill: #6B7280;
+}
+
+.sidebar-nav { }
+
+.nav-item {
+    -fx-padding: 10 10 10 10;
+    -fx-font-size: 13px;
+    -fx-font-weight: 700;
+    -fx-text-fill: #111827;
+    -fx-cursor: hand;
+    -fx-background-radius: 10;
+}
+
+.nav-item:hover {
+    -fx-background-color: #F3F4F6;
+}
+
+.nav-item-active {
+    -fx-background-color: #EAF3F2;
+    -fx-text-fill: #2F6F67;
+}
+
+.logout-link {
+    -fx-text-fill: #E05A5A;
+    -fx-font-weight: 800;
+    -fx-cursor: hand;
+}
+
+.content-wrap {
+    -fx-padding: 0; /* page already has padding */
+}

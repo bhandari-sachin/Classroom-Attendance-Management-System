@@ -1,269 +1,108 @@
 package frontend;
 
-import javafx.animation.TranslateTransition;
-import javafx.application.Application;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
-import javafx.scene.control.*;
-import javafx.scene.input.MouseButton;
+import javafx.scene.control.Button;
+import javafx.scene.control.Label;
+import javafx.scene.control.Separator;
 import javafx.scene.layout.*;
-import javafx.scene.paint.Color;
-import javafx.scene.shape.Circle;
-import javafx.stage.Stage;
-import javafx.util.Duration;
 
-public class StudentDashboardApp extends Application {
+import static javafx.application.Application.launch;
 
-    private Scene scene;
-    private Parent dashboardRoot;
-    private StackPane dashboardStack;
+public class StudentDashboardApp {
 
-
-    // TODO: Replace with real user from login/backend (dummy data for now)
-    private String studentName = "Name";
-
-    // TODO: Replace with real attendance stats from backend
+    // Dummy data (replace later from backend)
     private int presentCount = 0;
     private int absentCount = 0;
     private int excusedCount = 0;
     private double attendanceRate = 0.0; // 0.0 -> 0%
 
-    // Side menu (drawer)
-    private VBox sideMenu;
-    private Pane overlay;
-    private boolean menuOpen = false;
-    private final double MENU_WIDTH = 240;
+    public Parent build(Scene scene, String studentName) {
 
-    @Override
-    public void start(Stage stage) {
-        BorderPane root = new BorderPane();
-        root.getStyleClass().add("app");
+        VBox page = new VBox(16);
+        page.setPadding(new Insets(26));
+        page.getStyleClass().add("page");
 
-        // ---- Top bar ----
-        HBox topBar = new HBox(12);
-        topBar.getStyleClass().add("topbar");
-        topBar.setAlignment(Pos.CENTER_LEFT);
-
-        Circle avatar = new Circle(12, Color.web("#D9D9D9"));
-
-        Label name = new Label(studentName);
-        name.getStyleClass().add("topbar-name");
-
-        Region spacer = new Region();
-        HBox.setHgrow(spacer, Priority.ALWAYS);
-
-        Button menuBtn = new Button("≡");
-        menuBtn.getStyleClass().add("icon-button");
-
-        topBar.getChildren().addAll(avatar, name, spacer, menuBtn);
-        root.setTop(topBar);
-
-        // ---- Content ----
-        VBox content = new VBox(14);
-        content.getStyleClass().add("content");
-        content.setPadding(new Insets(18));
-        root.setCenter(content);
-
-        Label title = new Label("Welcome back, User!");
-        title.getStyleClass().add("title");
+        // Header
+        Label title = new Label("Welcome back, " + studentName + "!");
+        title.getStyleClass().add("dash-title");
 
         Label subtitle = new Label("Here’s your attendance overview for this month");
-        subtitle.getStyleClass().add("subtitle");
+        subtitle.getStyleClass().add("dash-subtitle");
 
-        Button markAttendance = attendanceCard();
-        GridPane statsGrid = statsGrid();
+        // Action card (Mark attendance)
+        Button markAttendance = attendanceCard(scene, studentName);
 
+        // Stats grid (2x2)
+        GridPane stats = statsGrid();
+
+        // Classes header row
         HBox classesHeader = new HBox(10);
         classesHeader.setAlignment(Pos.CENTER_LEFT);
 
         Label classesTitle = new Label("Your classes");
         classesTitle.getStyleClass().add("section-title");
 
-        Region classesSpacer = new Region();
-        HBox.setHgrow(classesSpacer, Priority.ALWAYS);
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
 
         Button viewAll = new Button("View All Attendance  →");
         viewAll.getStyleClass().add("link-button");
-        viewAll.setOnAction(e -> openAttendancePage());
+        viewAll.setOnAction(e ->
+                scene.setRoot(new StudentAttendancePage().build(scene, studentName))
+        );
 
-        classesHeader.getChildren().addAll(classesTitle, classesSpacer, viewAll);
+        classesHeader.getChildren().addAll(classesTitle, spacer, viewAll);
 
         VBox classesCard = emptyClassesCard();
 
-        content.getChildren().addAll(
+        page.getChildren().addAll(
                 title,
                 subtitle,
                 markAttendance,
-                statsGrid,
+                stats,
                 new Separator(),
                 classesHeader,
                 classesCard
         );
 
-        // ---- Wrap root in a StackPane so we can overlay the drawer ----
-        dashboardRoot = root;
+        // Wrap in shared sidebar layout
+        return AppLayout.wrapWithSidebar(
+                studentName,
+                page,
+                "dashboard",
+                new AppLayout.Navigator() {
+                    @Override public void goDashboard() {
+                        scene.setRoot(build(scene, studentName));
+                    }
 
-        sideMenu = buildSideMenu();
-        overlay = buildOverlay();
+                    @Override public void goTakeAttendance() {
+                        // Map "Take Attendance" menu item to "Mark Attendance" for students
+                        scene.setRoot(new StudentMarkAttendancePage().build(scene, studentName));
+                    }
 
-        dashboardStack = new StackPane(root, overlay, sideMenu);
-        StackPane.setAlignment(sideMenu, Pos.TOP_LEFT);
+                    @Override public void goReports() {
+                        // Map "Reports" menu item to Student Attendance overview
+                        scene.setRoot(new StudentAttendancePage().build(scene, studentName));
+                    }
 
-// Start hidden (offscreen)
-        sideMenu.setTranslateX(-MENU_WIDTH);
-        overlay.setVisible(false);
-        overlay.setMouseTransparent(true);
+                    @Override public void goEmail() {
+                        // Optional: student email/contact page
+                        scene.setRoot(new StudentEmailPage().build(scene, studentName));
+                    }
 
-        menuBtn.setOnMouseClicked(e -> {
-            if (e.getButton() == MouseButton.PRIMARY) toggleMenu();
-        });
-
-// Scene
-        scene = new Scene(dashboardStack, 600, 650);
-        scene.getStylesheets().add(getClass().getResource("/dashboard.css").toExternalForm());
-
-        stage.setTitle("Student-Dashboard");
-        stage.setScene(scene);
-        stage.setMinWidth(420);
-        stage.setMinHeight(600);
-        stage.show();
-    }
-
-    // ---------------- Side Menu ----------------
-
-    private VBox buildSideMenu() {
-        VBox menu = new VBox(10);
-        menu.setPrefWidth(MENU_WIDTH);
-        menu.setMinWidth(MENU_WIDTH);
-        menu.setMaxWidth(MENU_WIDTH);
-        menu.setPadding(new Insets(18));
-        menu.getStyleClass().add("side-menu");
-
-        Label header = new Label("Menu");
-        header.getStyleClass().add("side-menu-title");
-
-        Button dashboardBtn = sideMenuItem("▦", "Dashboard");
-        dashboardBtn.setOnAction(e -> {
-            closeMenu();
-            goBackToDashboard();
-        });
-
-        Button markBtn = sideMenuItem("📖", "Mark Attendance");
-        markBtn.setOnAction(e -> {
-            closeMenu();
-            openMarkAttendancePage();
-        });
-
-        Button reportsBtn = sideMenuItem("📋", "Reports");
-        reportsBtn.setOnAction(e -> {
-            closeMenu();
-            openAttendancePage();
-        });
-
-        Separator sep = new Separator();
-
-        Button signOutBtn = sideMenuItem("⎋", "Sign out");
-        signOutBtn.setOnAction(e -> {
-            closeMenu();
-            System.out.println("TODO: Sign out");
-        });
-
-        menu.getChildren().addAll(header, dashboardBtn, markBtn, reportsBtn, sep, signOutBtn);
-        return menu;
-    }
-
-    private Button sideMenuItem(String icon, String text) {
-        Label ic = new Label(icon);
-        ic.getStyleClass().add("side-menu-icon");
-
-        Label t = new Label(text);
-        t.getStyleClass().add("side-menu-text");
-
-        HBox row = new HBox(10, ic, t);
-        row.setAlignment(Pos.CENTER_LEFT);
-
-        Button btn = new Button();
-        btn.setGraphic(row);
-        btn.setMaxWidth(Double.MAX_VALUE);
-        btn.getStyleClass().add("side-menu-btn");
-        return btn;
-    }
-
-    private Pane buildOverlay() {
-        Pane p = new Pane();
-        p.getStyleClass().add("drawer-overlay");
-        p.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE);
-
-        // Click outside closes
-        p.setOnMouseClicked(e -> closeMenu());
-        return p;
-    }
-
-    private void toggleMenu() {
-        if (menuOpen) closeMenu();
-        else openMenu();
-    }
-
-    private void openMenu() {
-        menuOpen = true;
-        overlay.setVisible(true);
-        overlay.setMouseTransparent(false);
-
-        TranslateTransition tt = new TranslateTransition(Duration.millis(220), sideMenu);
-        tt.setToX(0);
-        tt.play();
-    }
-
-    private void closeMenu() {
-        if (!menuOpen) return;
-        menuOpen = false;
-
-        TranslateTransition tt = new TranslateTransition(Duration.millis(220), sideMenu);
-        tt.setToX(-MENU_WIDTH);
-        tt.setOnFinished(e -> {
-            overlay.setVisible(false);
-            overlay.setMouseTransparent(true);
-        });
-        tt.play();
-    }
-
-    // ---------------- Navigation ----------------
-
-    private void openAttendancePage() {
-        closeMenu();
-        StudentAttendancePage page = new StudentAttendancePage();
-        Parent view = page.createView(
-                this::goBackToDashboard,
-                this::openMarkAttendancePage,
-                () -> {}
+                    @Override public void logout() {
+                        System.out.println("TODO: Student Logout");
+                    }
+                }
         );
-        scene.setRoot(view);
     }
 
+    // ===== UI blocks / helpers =====
 
-    private void goBackToDashboard() {
-        closeMenu();
-        scene.setRoot(dashboardStack);
-    }
-
-
-    private void openMarkAttendancePage() {
-        closeMenu();
-        StudentMarkAttendancePage page = new StudentMarkAttendancePage();
-        Parent view = page.createView(
-                this::goBackToDashboard,
-                this::openAttendancePage,
-                () -> {}
-        );
-        scene.setRoot(view);
-    }
-
-
-    // UI blocks
-
-    private Button attendanceCard() {
+    private Button attendanceCard(Scene scene, String studentName) {
         Button btn = new Button();
         btn.getStyleClass().add("attendance-card");
         btn.setMaxWidth(Double.MAX_VALUE);
@@ -292,24 +131,28 @@ public class StudentDashboardApp extends Application {
         box.getChildren().addAll(icon, texts, spacer, arrow);
         btn.setGraphic(box);
 
-        btn.setOnAction(e -> openMarkAttendancePage());
+        btn.setOnAction(e ->
+                scene.setRoot(new StudentMarkAttendancePage().build(scene, studentName))
+        );
+
         return btn;
     }
 
     private GridPane statsGrid() {
         GridPane grid = new GridPane();
-        grid.setHgap(12);
-        grid.setVgap(12);
+        grid.setHgap(14);
+        grid.setVgap(14);
+        grid.getStyleClass().add("dash-stats");
 
-        ColumnConstraints col1 = new ColumnConstraints();
-        col1.setHgrow(Priority.ALWAYS);
-        col1.setFillWidth(true);
+        ColumnConstraints c1 = new ColumnConstraints();
+        c1.setHgrow(Priority.ALWAYS);
+        c1.setFillWidth(true);
 
-        ColumnConstraints col2 = new ColumnConstraints();
-        col2.setHgrow(Priority.ALWAYS);
-        col2.setFillWidth(true);
+        ColumnConstraints c2 = new ColumnConstraints();
+        c2.setHgrow(Priority.ALWAYS);
+        c2.setFillWidth(true);
 
-        grid.getColumnConstraints().addAll(col1, col2);
+        grid.getColumnConstraints().addAll(c1, c2);
 
         grid.add(statCardWithBadge("Present", String.valueOf(presentCount), "This month", "#3BAA66", "✓"), 0, 0);
         grid.add(statCardWithBadge("Absent", String.valueOf(absentCount), "This month", "#E05A5A", "✕"), 1, 0);
@@ -380,4 +223,5 @@ public class StudentDashboardApp extends Application {
         card.getChildren().addAll(cal, t, s);
         return card;
     }
+
 }

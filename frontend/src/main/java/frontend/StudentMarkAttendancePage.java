@@ -1,68 +1,33 @@
 package frontend;
 
-import javafx.animation.TranslateTransition;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Parent;
+import javafx.scene.Scene;
 import javafx.scene.control.*;
-import javafx.scene.input.MouseButton;
 import javafx.scene.layout.*;
-import javafx.scene.paint.Color;
-import javafx.scene.shape.Circle;
 import javafx.scene.text.Font;
-import javafx.util.Duration;
 
 public class StudentMarkAttendancePage {
 
-    // Side menu (drawer)
-    private VBox sideMenu;
-    private Pane overlay;
-    private boolean menuOpen = false;
-    private final double MENU_WIDTH = 240;
+    public Parent build(Scene scene, String studentName) {
 
-    public Parent createView(
-            Runnable onBackToDashboard,
-            Runnable onOpenReports,
-            Runnable onOpenMarkAttendance // this page (can be no-op)
-    ) {
-        BorderPane root = new BorderPane();
-        root.getStyleClass().add("app");
+        VBox page = new VBox(16);
+        page.setPadding(new Insets(26));
+        page.getStyleClass().add("page");
 
-        /* ================= TOP BAR ================= */
-        HBox topBar = new HBox(12);
-        topBar.getStyleClass().add("topbar");
-        topBar.setAlignment(Pos.CENTER_LEFT);
-
-        Circle avatar = new Circle(12, Color.web("#D9D9D9"));
-
-        Label name = new Label("Name");
-        name.getStyleClass().add("topbar-name");
-
-        Region spacer = new Region();
-        HBox.setHgrow(spacer, Priority.ALWAYS);
-
-        Button menuBtn = new Button("≡");
-        menuBtn.getStyleClass().add("icon-button");
-
-        topBar.getChildren().addAll(avatar, name, spacer, menuBtn);
-        root.setTop(topBar);
-
-        /* ================= CONTENT ================= */
-        VBox content = new VBox(14);
-        content.getStyleClass().add("content");
-        content.setPadding(new Insets(18));
-        root.setCenter(content);
-
-        // Back link
+        // Optional back link (keep if you want)
         Button back = new Button("← Back to Dashboard");
         back.getStyleClass().add("back-link");
-        back.setOnAction(e -> onBackToDashboard.run());
+        back.setOnAction(e ->
+                scene.setRoot(new StudentDashboardApp().build(scene, studentName))
+        );
 
         Label title = new Label("Scan QR Code");
-        title.getStyleClass().add("title");
+        title.getStyleClass().add("dash-title");
 
         Label subtitle = new Label("Mark your attendance by scanning the class QR code");
-        subtitle.getStyleClass().add("subtitle");
+        subtitle.getStyleClass().add("dash-subtitle");
 
         // QR placeholder card
         VBox qrCard = new VBox();
@@ -80,7 +45,7 @@ public class StudentMarkAttendancePage {
 
         qrCard.getChildren().add(cameraBox);
 
-        // manual entry
+        // Manual entry
         VBox manualCard = new VBox(10);
         manualCard.getStyleClass().add("manual-card");
 
@@ -112,6 +77,7 @@ public class StudentMarkAttendancePage {
         submit.setOnAction(e -> {
             String code = codeField.getText().trim();
             System.out.println("Submitted code: " + code);
+            // TODO: call backend / validate code / show success toast
         });
 
         manualCard.getChildren().addAll(
@@ -122,7 +88,7 @@ public class StudentMarkAttendancePage {
                 submit
         );
 
-        // how it works
+        // How it works
         VBox howCard = new VBox(8);
         howCard.getStyleClass().add("how-card");
 
@@ -139,7 +105,7 @@ public class StudentMarkAttendancePage {
 
         howCard.getChildren().addAll(howTitle, step1, step2, step3);
 
-        content.getChildren().addAll(
+        page.getChildren().addAll(
                 back,
                 title,
                 subtitle,
@@ -148,117 +114,31 @@ public class StudentMarkAttendancePage {
                 howCard
         );
 
-        // ---------------- Drawer wrapper ----------------
-        sideMenu = buildSideMenu(onBackToDashboard, onOpenMarkAttendance, onOpenReports);
-        overlay = buildOverlay();
+        return AppLayout.wrapWithSidebar(
+                studentName,
+                page,
+                "takeAttendance", // for student: "Mark Attendance" page
+                new AppLayout.Navigator() {
+                    @Override public void goDashboard() {
+                        scene.setRoot(new StudentDashboardApp().build(scene, studentName));
+                    }
 
-        StackPane stack = new StackPane(root, overlay, sideMenu);
-        StackPane.setAlignment(sideMenu, Pos.TOP_LEFT);
+                    @Override public void goTakeAttendance() {
+                        scene.setRoot(build(scene, studentName)); // already here
+                    }
 
-        sideMenu.setTranslateX(-MENU_WIDTH);
-        overlay.setVisible(false);
-        overlay.setMouseTransparent(true);
+                    @Override public void goReports() {
+                        scene.setRoot(new StudentAttendancePage().build(scene, studentName));
+                    }
 
-        menuBtn.setOnMouseClicked(e -> {
-            if (e.getButton() == MouseButton.PRIMARY) toggleMenu();
-        });
+                    @Override public void goEmail() {
+                        scene.setRoot(new StudentEmailPage().build(scene, studentName));
+                    }
 
-        return stack;
-    }
-
-    // ---------------- Side Menu ----------------
-
-    private VBox buildSideMenu(Runnable onBackToDashboard, Runnable onOpenMarkAttendance, Runnable onOpenReports) {
-        VBox menu = new VBox(10);
-        menu.setPrefWidth(MENU_WIDTH);
-        menu.setMinWidth(MENU_WIDTH);
-        menu.setMaxWidth(MENU_WIDTH);
-        menu.setPadding(new Insets(18));
-        menu.getStyleClass().add("side-menu");
-
-        Label header = new Label("Menu");
-        header.getStyleClass().add("side-menu-title");
-
-        Button dashboardBtn = sideMenuItem("▦", "Dashboard");
-        dashboardBtn.setOnAction(e -> {
-            closeMenu();
-            onBackToDashboard.run();
-        });
-
-        Button markBtn = sideMenuItem("📖", "Mark Attendance");
-        markBtn.setOnAction(e -> {
-            closeMenu();
-            if (onOpenMarkAttendance != null) onOpenMarkAttendance.run(); // already here can be no-op
-        });
-
-        Button reportsBtn = sideMenuItem("📋", "Reports");
-        reportsBtn.setOnAction(e -> {
-            closeMenu();
-            if (onOpenReports != null) onOpenReports.run();
-        });
-
-        Separator sep = new Separator();
-
-        Button signOutBtn = sideMenuItem("⎋", "Sign out");
-        signOutBtn.setOnAction(e -> {
-            closeMenu();
-            System.out.println("TODO: Sign out");
-        });
-
-        menu.getChildren().addAll(header, dashboardBtn, markBtn, reportsBtn, sep, signOutBtn);
-        return menu;
-    }
-
-    private Button sideMenuItem(String icon, String text) {
-        Label ic = new Label(icon);
-        ic.getStyleClass().add("side-menu-icon");
-
-        Label t = new Label(text);
-        t.getStyleClass().add("side-menu-text");
-
-        HBox row = new HBox(10, ic, t);
-        row.setAlignment(Pos.CENTER_LEFT);
-
-        Button btn = new Button();
-        btn.setGraphic(row);
-        btn.setMaxWidth(Double.MAX_VALUE);
-        btn.getStyleClass().add("side-menu-btn");
-        return btn;
-    }
-
-    private Pane buildOverlay() {
-        Pane p = new Pane();
-        p.getStyleClass().add("drawer-overlay");
-        p.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE);
-        p.setOnMouseClicked(e -> closeMenu());
-        return p;
-    }
-
-    private void toggleMenu() {
-        if (menuOpen) closeMenu();
-        else openMenu();
-    }
-
-    private void openMenu() {
-        menuOpen = true;
-        overlay.setVisible(true);
-        overlay.setMouseTransparent(false);
-
-        TranslateTransition tt = new TranslateTransition(Duration.millis(220), sideMenu);
-        tt.setToX(0);
-        tt.play();
-    }
-
-    private void closeMenu() {
-        if (!menuOpen) return;
-        menuOpen = false;
-
-        TranslateTransition tt = new TranslateTransition(Duration.millis(220), sideMenu);
-        tt.setToX(-MENU_WIDTH);
-        tt.setOnFinished(e -> {
-            overlay.setVisible(false);
-            overlay.setMouseTransparent(true);
-        });
-        tt.play();
+                    @Override public void logout() {
+                        System.out.println("TODO: Student Logout");
+                    }
+                }
+        );
     }
 }
