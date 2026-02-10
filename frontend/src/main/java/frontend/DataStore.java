@@ -21,6 +21,11 @@ public class DataStore {
         teachers.add(new TeacherRow("Mr. Johnson", "johnson@school.com"));
         teachers.add(new TeacherRow("Ms. Williams", "williams@school.com"));
     }
+            FXCollections.observableArrayList(
+                    new StudentRow("User", "user1@example.com", "Present"),
+                    new StudentRow("User", "user2@example.com", "Present"),
+                    new StudentRow("User", "user3@example.com", "Present")
+            );
 
     public static ObservableList<StudentRow> getStudents() {
         return students;
