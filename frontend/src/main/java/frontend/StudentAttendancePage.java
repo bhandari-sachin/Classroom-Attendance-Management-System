@@ -114,11 +114,11 @@ public class StudentAttendancePage {
                 recordsCard
         );
 
-        return AppLayout.wrapWithSidebar(
+        return AdminAppLayout.wrapWithSidebar(
                 studentName,
                 page,
                 "reports", // for student: Reports == Attendance history page
-                new AppLayout.Navigator() {
+                new AdminAppLayout.Navigator() {
                     @Override public void goDashboard() {
                         scene.setRoot(new StudentDashboardApp().build(scene, studentName));
                     }

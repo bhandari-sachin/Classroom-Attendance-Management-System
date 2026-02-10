@@ -40,11 +40,11 @@ public class StudentEmailPage {
 
         page.getChildren().addAll(title, info, table);
 
-        return AppLayout.wrapWithSidebar(
+        return AdminAppLayout.wrapWithSidebar(
                 studentName,
                 page,
                 "email",
-                new AppLayout.Navigator() {
+                new AdminAppLayout.Navigator() {
                     @Override public void goDashboard() {
                         scene.setRoot(new StudentDashboardApp().build(scene, studentName));
                     }

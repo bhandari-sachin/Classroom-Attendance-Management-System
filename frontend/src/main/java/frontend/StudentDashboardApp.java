@@ -69,11 +69,11 @@ public class StudentDashboardApp {
         );
 
         // Wrap in shared sidebar layout
-        return AppLayout.wrapWithSidebar(
+        return AdminAppLayout.wrapWithSidebar(
                 studentName,
                 page,
                 "dashboard",
-                new AppLayout.Navigator() {
+                new AdminAppLayout.Navigator() {
                     @Override public void goDashboard() {
                         scene.setRoot(build(scene, studentName));
                     }

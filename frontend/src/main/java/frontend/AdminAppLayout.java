@@ -11,7 +11,7 @@ import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
 
-public class AppLayout {
+public class AdminAppLayout {
 
     public interface Navigator {
         void goDashboard();

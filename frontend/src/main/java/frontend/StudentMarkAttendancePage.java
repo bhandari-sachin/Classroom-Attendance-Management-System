@@ -114,11 +114,11 @@ public class StudentMarkAttendancePage {
                 howCard
         );
 
-        return AppLayout.wrapWithSidebar(
+        return AdminAppLayout.wrapWithSidebar(
                 studentName,
                 page,
                 "takeAttendance", // for student: "Mark Attendance" page
-                new AppLayout.Navigator() {
+                new AdminAppLayout.Navigator() {
                     @Override public void goDashboard() {
                         scene.setRoot(new StudentDashboardApp().build(scene, studentName));
                     }

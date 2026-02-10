@@ -84,7 +84,7 @@ public class AdminAttendanceReportsPage {
         scroll.setFitToWidth(true);
         scroll.getStyleClass().add("scroll");
 
-        return AppLayout.wrapWithSidebar(
+        return AdminAppLayout.wrapWithSidebar(
                 adminName,
                 "Admin Panel",
                 "Dashboard",
@@ -93,7 +93,7 @@ public class AdminAttendanceReportsPage {
                 "Attendance Reports",
                 scroll,
                 "email", // activeKey for Attendance Reports (4th item)
-                new AppLayout.Navigator() {
+                new AdminAppLayout.Navigator() {
                     @Override public void goDashboard() { scene.setRoot(new AdminDashboardApp().build(scene, adminName)); }
                     @Override public void goTakeAttendance() { scene.setRoot(new AdminManageClassesPage().build(scene, adminName)); }
                     @Override public void goReports() { scene.setRoot(new AdminManageUsersPage().build(scene, adminName)); }

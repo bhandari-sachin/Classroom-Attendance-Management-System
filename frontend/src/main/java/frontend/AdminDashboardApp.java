@@ -9,7 +9,7 @@ public class AdminDashboardApp {
 
         Parent scroll = AdminPages.dashboardPage(scene, adminName);
 
-        return AppLayout.wrapWithSidebar(
+        return AdminAppLayout.wrapWithSidebar(
                 adminName,
                 "Admin Panel",
                 "Dashboard",
@@ -18,7 +18,7 @@ public class AdminDashboardApp {
                 "Attendance Reports",
                 scroll,
                 "dashboard",
-                new AppLayout.Navigator() {
+                new AdminAppLayout.Navigator() {
                     @Override public void goDashboard() { scene.setRoot(new AdminDashboardApp().build(scene, adminName)); }
                     @Override public void goTakeAttendance() { scene.setRoot(new AdminManageClassesPage().build(scene, adminName)); }
                     @Override public void goReports() { scene.setRoot(new AdminManageUsersPage().build(scene, adminName)); }
