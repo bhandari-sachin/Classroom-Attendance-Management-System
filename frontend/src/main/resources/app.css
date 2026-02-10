@@ -1,0 +1,129 @@
+/* ===== App shell ===== */
+.app-root {
+    -fx-background-color: #F6F7FB;
+}
+
+.content-wrap {
+    -fx-padding: 0;
+}
+
+.page {
+    -fx-background-color: transparent;
+}
+
+/* ===== Sidebar ===== */
+.sidebar {
+    -fx-background-color: white;
+    -fx-border-color: #ECEFF2;
+    -fx-border-width: 0 1 0 0;
+}
+
+.sidebar-name {
+    -fx-font-size: 14px;
+    -fx-font-weight: 800;
+}
+
+.sidebar-role {
+    -fx-font-size: 12px;
+    -fx-text-fill: #6B7280;
+}
+
+.nav-item {
+    -fx-padding: 12 14;
+    -fx-background-radius: 12;
+    -fx-font-weight: 700;
+    -fx-cursor: hand;
+}
+
+.nav-item:hover {
+    -fx-background-color: #F3F4F6;
+}
+
+.nav-item-active {
+    -fx-background-color: #0EA5E9;
+    -fx-text-fill: white;
+}
+
+.logout-link {
+    -fx-text-fill: #EF4444;
+    -fx-font-weight: 800;
+    -fx-cursor: hand;
+}
+
+/* ===== Dashboard (old style) ===== */
+.dash-title {
+    -fx-font-size: 28px;
+    -fx-font-weight: 900;
+}
+
+.dash-subtitle {
+    -fx-text-fill: #6B7280;
+}
+
+.dash-actions {
+    -fx-padding: 6 0 0 0;
+}
+
+.big-card {
+    -fx-padding: 16;
+    -fx-background-radius: 16;
+    -fx-cursor: hand;
+}
+
+.card-green {
+    -fx-background-color: #6FC7B7;
+}
+
+.card-purple {
+    -fx-background-color: #6C5CE7;
+}
+
+.big-card-title {
+    -fx-font-size: 16px;
+    -fx-font-weight: 900;
+    -fx-text-fill: white;
+}
+
+.big-card-subtitle {
+    -fx-font-size: 11px;
+    -fx-text-fill: rgba(255,255,255,0.95);
+}
+
+.stat-card {
+    -fx-padding: 14;
+    -fx-background-color: white;
+    -fx-border-color: #ECEFF2;
+    -fx-border-radius: 14;
+    -fx-background-radius: 14;
+}
+
+.stat-label {
+    -fx-font-size: 13px;
+    -fx-font-weight: 800;
+    -fx-text-fill: #374151;
+}
+
+.stat-value {
+    -fx-font-size: 28px;
+    -fx-font-weight: 900;
+}
+
+.classes-card {
+    -fx-background-color: white;
+    -fx-border-color: #ECEFF2;
+    -fx-border-radius: 14;
+    -fx-background-radius: 14;
+}
+
+.empty-icon {
+    -fx-font-size: 26px;
+}
+
+.empty-title {
+    -fx-font-weight: 900;
+    -fx-text-fill: #111827;
+}
+
+.empty-subtitle {
+    -fx-text-fill: #6B7280;
+}

@@ -1,0 +1,212 @@
+.app {
+    -fx-background-color: #F6F7FB;
+}
+
+.topbar {
+    -fx-padding: 14 18;
+    -fx-background-color: white;
+    -fx-border-color: #ECEFF2;
+    -fx-border-width: 0 0 1 0;
+}
+
+.topbar-name {
+    -fx-font-size: 13px;
+    -fx-font-weight: 800;
+    -fx-text-fill: #111827;
+}
+
+.icon-button {
+    -fx-font-size: 18px;
+    -fx-font-weight: 900;
+    -fx-text-fill: #111827;
+    -fx-cursor: hand;
+}
+
+.content {
+    -fx-background-color: transparent;
+}
+
+.title {
+    -fx-font-size: 28px;
+    -fx-font-weight: 900;
+    -fx-text-fill: #111827;
+}
+
+.subtitle {
+    -fx-font-size: 12px;
+    -fx-text-fill: #6B7280;
+}
+
+.section-title {
+    -fx-font-size: 16px;
+    -fx-font-weight: 900;
+    -fx-text-fill: #111827;
+}
+
+/* action cards */
+.action-card {
+    -fx-background-radius: 14;
+    -fx-padding: 14;
+    -fx-cursor: hand;
+    -fx-border-radius: 14;
+}
+
+.take-card {
+    -fx-background-color: #6FC7B7;
+}
+
+.report-card {
+    -fx-background-color: #6C5CE7;
+}
+
+.action-title {
+    -fx-font-size: 16px;
+    -fx-font-weight: 900;
+    -fx-text-fill: white;
+}
+
+.action-subtitle {
+    -fx-font-size: 11px;
+    -fx-text-fill: white;
+}
+
+.action-arrow {
+    -fx-text-fill: white;
+    -fx-font-size: 18px;
+    -fx-font-weight: 900;
+}
+
+/* stat cards */
+.stat-card {
+    -fx-background-color: white;
+    -fx-background-radius: 12;
+    -fx-border-color: #ECEFF2;
+    -fx-border-radius: 12;
+}
+
+.stat-label {
+    -fx-font-size: 13px;
+    -fx-font-weight: 800;
+    -fx-text-fill: #4B5563;
+}
+
+.stat-value {
+    -fx-font-size: 26px;
+    -fx-font-weight: 900;
+    -fx-text-fill: #111827;
+}
+
+.stat-badge {
+    -fx-min-width: 28px;
+    -fx-min-height: 28px;
+    -fx-background-radius: 10;
+}
+
+.stat-badge-purple { -fx-background-color: #6C5CE7; }
+.stat-badge-teal   { -fx-background-color: #6FC7B7; }
+.stat-badge-green  { -fx-background-color: #3BAA66; }
+.stat-badge-red    { -fx-background-color: #E05A5A; }
+
+/* empty card */
+.classes-card {
+    -fx-background-color: white;
+    -fx-background-radius: 12;
+    -fx-border-color: #ECEFF2;
+    -fx-border-radius: 12;
+    -fx-padding: 16;
+}
+
+.empty-icon {
+    -fx-font-size: 18px;
+}
+
+.empty-title {
+    -fx-font-size: 14px;
+    -fx-font-weight: 900;
+    -fx-text-fill: #111827;
+}
+
+.empty-subtitle {
+    -fx-font-size: 12px;
+    -fx-text-fill: #6B7280;
+}
+
+/* combobox */
+.filter-combo {
+    -fx-background-radius: 10;
+    -fx-border-radius: 10;
+}
+
+/* QR area */
+.qr-outer {
+    -fx-background-color: white;
+    -fx-background-radius: 12;
+    -fx-border-color: #ECEFF2;
+    -fx-border-radius: 12;
+    -fx-padding: 14;
+}
+
+.qr-box {
+    -fx-background-color: #F3F4F6;
+    -fx-background-radius: 14;
+    -fx-border-color: #E5E7EB;
+    -fx-border-radius: 14;
+}
+
+.manual-code {
+    -fx-background-color: #F3F4F6;
+    -fx-background-radius: 12;
+    -fx-padding: 12;
+}
+
+.manual-title {
+    -fx-font-size: 12px;
+    -fx-text-fill: #111827;
+    -fx-font-weight: 800;
+}
+
+.manual-value {
+    -fx-font-size: 12px;
+    -fx-text-fill: #111827;
+}
+
+/* students header buttons */
+.mark-all-btn {
+    -fx-background-color: #3BAA66;
+    -fx-text-fill: white;
+    -fx-background-radius: 14;
+    -fx-font-weight: 900;
+    -fx-cursor: hand;
+}
+
+.status-btn-present {
+    -fx-background-color: #3BAA66;
+    -fx-text-fill: white;
+    -fx-background-radius: 14;
+    -fx-font-weight: 900;
+    -fx-cursor: hand;
+}
+
+.status-btn-absent {
+    -fx-background-color: #E05A5A;
+    -fx-text-fill: white;
+    -fx-background-radius: 14;
+    -fx-font-weight: 900;
+    -fx-cursor: hand;
+}
+
+.status-btn-excused {
+    -fx-background-color: #E09A3B;
+    -fx-text-fill: white;
+    -fx-background-radius: 14;
+    -fx-font-weight: 900;
+    -fx-cursor: hand;
+}
+
+/* table */
+.students-table {
+    -fx-background-color: white;
+    -fx-border-color: #ECEFF2;
+    -fx-border-radius: 12;
+    -fx-background-radius: 12;
+}
