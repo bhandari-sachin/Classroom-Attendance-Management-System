@@ -68,37 +68,44 @@ public class StudentDashboardApp {
                 classesCard
         );
 
-        // Wrap in shared sidebar layout
-        return AdminAppLayout.wrapWithSidebar(
-                studentName,
-                page,
-                "dashboard",
-                new AdminAppLayout.Navigator() {
-                    @Override public void goDashboard() {
-                        scene.setRoot(build(scene, studentName));
-                    }
+        return AppLayout.wrapWithSidebar(
+        studentName,
+        "Student Panel",
+        "Dashboard",
+        "Mark Attendance",
+        "My Attendance",
+        "Contact",
+        page,
+        "dashboard",
+        new AppLayout.Navigator() {
 
-                    @Override public void goTakeAttendance() {
-                        // Map "Take Attendance" menu item to "Mark Attendance" for students
-                        scene.setRoot(new StudentMarkAttendancePage().build(scene, studentName));
-                    }
+            @Override
+            public void goDashboard() {
+                scene.setRoot(build(scene, studentName));
+            }
 
-                    @Override public void goReports() {
-                        // Map "Reports" menu item to Student Attendance overview
-                        scene.setRoot(new StudentAttendancePage().build(scene, studentName));
-                    }
+            @Override
+            public void goTakeAttendance() {
+                scene.setRoot(new StudentMarkAttendancePage().build(scene, studentName));
+            }
 
-                    @Override public void goEmail() {
-                        // Optional: student email/contact page
-                        scene.setRoot(new StudentEmailPage().build(scene, studentName));
-                    }
+            @Override
+            public void goReports() {
+                scene.setRoot(new StudentAttendancePage().build(scene, studentName));
+            }
 
-                    @Override public void logout() {
-                        System.out.println("TODO: Student Logout");
-                    }
-                }
-        );
-    }
+            @Override
+            public void goEmail() {
+                scene.setRoot(new StudentEmailPage().build(scene, studentName));
+            }
+
+            @Override
+            public void logout() {
+                System.out.println("TODO: Student Logout");
+            }
+        }
+    );
+}
 
     // ===== UI blocks / helpers =====
 
