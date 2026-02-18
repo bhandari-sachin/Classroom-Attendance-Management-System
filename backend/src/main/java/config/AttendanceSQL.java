@@ -1,5 +1,6 @@
 package config;
 
+import dto.AttendanceStats;
 import model.Attendance;
 import model.AttendanceStatus;
 import dto.AttendanceView;
@@ -189,6 +190,38 @@ public class AttendanceSQL {
         }
 
         return results;
+    }
+
+    //Statistics
+    public AttendanceStats getOverallStats(){
+        String sql = """
+        SELECT
+            SUM(CASE WHEN status = 'PRESENT' THEN 1 ELSE 0 END) as present_count,
+            SUM(CASE WHEN status = 'ABSENT' THEN 1 ELSE 0 END) as absent_count,
+            SUM(CASE WHEN status = 'EXCUSED' THEN 1 ELSE 0 END) as excused_count,
+            COUNT(*) as total_records
+        FROM attendance
+    """;
+
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            ResultSet rs = stmt.executeQuery();
+
+            if (rs.next()) {
+                int present = rs.getInt("present_count");
+                int absent = rs.getInt("absent_count");
+                int excused = rs.getInt("excused_count");
+                int total = rs.getInt("total_records");
+
+                return new AttendanceStats(present, absent, excused, total);
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return new AttendanceStats(0, 0, 0, 0);
     }
 
     public String getSessionCode(Long sessionId) {

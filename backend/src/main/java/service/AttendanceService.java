@@ -1,5 +1,6 @@
 package service;
 
+import dto.AttendanceStats;
 import model.*;
 import config.SessionSQL;
 import config.AttendanceSQL;
@@ -120,4 +121,7 @@ public class AttendanceService {
         return attendanceSQL.filterAttendanceByStudent(classId, searchTerm);
     }
 
+    public AttendanceStats getOverallStats() {
+        return attendanceSQL.getOverallStats();
+    }
 }
