@@ -1,16 +1,20 @@
 package service;
 
 import model.*;
+import config.SessionSQL;
 import config.AttendanceSQL;
 import dto.AttendanceView;
 
+import java.sql.SQLException;
 import java.util.List;
 
 public class AttendanceService {
     private final AttendanceSQL attendanceSQL;
+    private final SessionSQL sessionSQL;
 
-    public AttendanceService(AttendanceSQL attendanceSQL) {
+    public AttendanceService(AttendanceSQL attendanceSQL, SessionSQL sessionSQL) {
         this.attendanceSQL = attendanceSQL;
+        this.sessionSQL = sessionSQL;
     }
 
     public void markPresent(Long studentId, Long sessionId) {
@@ -67,9 +71,18 @@ public class AttendanceService {
         }
     }
 
-    public boolean submitAttendanceCode(Long studentId, Long sessionId, String code) {
+    public boolean submitAttendanceCode(Long studentId, Long sessionId, String code) throws SQLException {
 
+        Session session = sessionSQL.findById(sessionId);
         String correctCode = attendanceSQL.getSessionCode(sessionId);
+        if (session == null) {
+            return false;
+        }
+
+        if (!"ACTIVE".equals(session.getStatus())) {
+            return false;
+        }
+
         if (!code.equals(correctCode)) {
             return false;
         }

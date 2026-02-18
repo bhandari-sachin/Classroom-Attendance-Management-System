@@ -81,7 +81,7 @@ CREATE TABLE sessions
     CONSTRAINT chk_session_time CHECK (end_time > start_time),
 
     CONSTRAINT chk_session_status
-        CHECK (status IN ('SCHEDULED', 'CANCELLED', 'COMPLETED')),
+        CHECK (status IN ('SCHEDULED', 'ACTIVE', 'CANCELLED', 'COMPLETED')),
 
     UNIQUE (class_id, session_date, start_time)
 );
