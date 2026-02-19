@@ -158,4 +158,27 @@ public class AttendanceService {
         return attendanceSQL.getStatsByDateRange(start, end);
     }
 
+    public AttendanceStats getClassStatsThisMonth(Long classId) {
+        LocalDate now = LocalDate.now();
+        LocalDate start = now.withDayOfMonth(1);
+        LocalDate end = now.withDayOfMonth(now.lengthOfMonth());
+
+        return attendanceSQL.getStatsForClassByDateRange(classId, start, end);
+    }
+
+    public AttendanceStats getClassStatsLastMonth(Long classId) {
+        LocalDate now = LocalDate.now().minusMonths(1);
+        LocalDate start = now.withDayOfMonth(1);
+        LocalDate end = now.withDayOfMonth(now.lengthOfMonth());
+
+        return attendanceSQL.getStatsForClassByDateRange(classId, start, end);
+    }
+
+    public AttendanceStats getClassStatsThisYear(Long classId) {
+        LocalDate now = LocalDate.now();
+        LocalDate start = now.withDayOfYear(1);
+        LocalDate end = now.withDayOfYear(now.lengthOfYear());
+
+        return attendanceSQL.getStatsForClassByDateRange(classId, start, end);
+    }
 }

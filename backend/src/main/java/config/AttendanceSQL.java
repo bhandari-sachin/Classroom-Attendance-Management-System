@@ -347,4 +347,42 @@ public class AttendanceSQL {
         }
         return null;
     }
+
+    public AttendanceStats getStatsForClassByDateRange(Long classId, LocalDate start, LocalDate end) {
+        String sql = """
+        SELECT
+            SUM(CASE WHEN a.status = 'PRESENT' THEN 1 ELSE 0 END) AS present_count,
+            SUM(CASE WHEN a.status = 'ABSENT' THEN 1 ELSE 0 END) AS absent_count,
+            SUM(CASE WHEN a.status = 'EXCUSED' THEN 1 ELSE 0 END) AS excused_count,
+            COUNT(*) AS total_records
+        FROM attendance a
+        JOIN sessions s ON a.session_id = s.id
+        WHERE s.class_id = ?
+          AND s.session_date BETWEEN ? AND ?
+        """;
+
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setLong(1, classId);
+            stmt.setDate(2, Date.valueOf(start));
+            stmt.setDate(3, Date.valueOf(end));
+
+            ResultSet rs = stmt.executeQuery();
+
+            if (rs.next()) {
+                int present = rs.getInt("present_count");
+                int absent = rs.getInt("absent_count");
+                int excused = rs.getInt("excused_count");
+                int total = rs.getInt("total_records");
+
+                return new AttendanceStats(present, absent, excused, total);
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return new AttendanceStats(0, 0, 0, 0);
+    }
 }

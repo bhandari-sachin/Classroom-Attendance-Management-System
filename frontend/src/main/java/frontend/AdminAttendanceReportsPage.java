@@ -16,6 +16,7 @@ import service.UserService;
 import model.User;
 import model.CourseClass;
 
+import java.time.LocalDate;
 import java.util.List;
 
 public class AdminAttendanceReportsPage {
@@ -76,7 +77,7 @@ public class AdminAttendanceReportsPage {
         Label summaryTitle = new Label("Class summary");
         summaryTitle.getStyleClass().add("section-title");
 
-        // placeholder container for class summary card (mutable via array)
+        // placeholder container for class summary card
         final Pane[] classSummaryHolder = new Pane[] { new StackPane() };
 
         Label recordsTitle = new Label("All Records");
@@ -93,7 +94,6 @@ public class AdminAttendanceReportsPage {
                 usersList.add(new UserRow(u.getName(), u.getEmail(), u.getRole(), String.valueOf(userService.getEnrolledClasses(u.getId()))));
             }
         }
-        table.setItems(usersList);
 
         // helper to update stats and class summary
         Runnable updateStats = () -> {
@@ -113,7 +113,11 @@ public class AdminAttendanceReportsPage {
                     statsData = new AttendanceStats(0, 0, 0, 0);
                 } else {
                     CourseClass selected = classes.get(classIndex - 1);
-                    statsData = attendanceService.getStatsForClass(selected.getId());
+                    switch (timeFilter.getValue()) {
+                        case "Last Month" -> statsData = attendanceService.getClassStatsLastMonth(selected.getId());
+                        case "This Year" -> statsData = attendanceService.getClassStatsThisYear(selected.getId());
+                        default -> statsData = attendanceService.getClassStatsThisMonth(selected.getId());
+                    }
                 }
             }
 
