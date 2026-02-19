@@ -1,6 +1,6 @@
 package config;
 
-import model.Class;
+import model.CourseClass;
 import model.Student;
 
 import java.sql.Connection;
@@ -83,7 +83,7 @@ public class ClassSQL {
     }
 
     // Admin features
-    public void createClass(Class c) {
+    public void createClass(CourseClass c) {
         String sql = """
                 INSERT INTO classes (class_code, name, teacher_id, semester, academic_year, max_capacity)
                 VALUES (?, ?, ?, ?, ?, ?)
@@ -105,7 +105,7 @@ public class ClassSQL {
             e.printStackTrace();
         }
     }
-    public void updateClass(Class c) {
+    public void updateClass(CourseClass c) {
         String sql = """
                 UPDATE classes
                 SET class_code = ?, name = ?, teacher_id = ?, semester = ?, academic_year = ?, max_capacity = ?
@@ -177,13 +177,14 @@ public class ClassSQL {
         }
     }
 
-    public List<Class> findAll() {
+    public List<CourseClass> findAll() {
 
-        List<Class> classes = new ArrayList<>();
+        List<CourseClass> classes = new ArrayList<>();
 
         String sql = """
-                SELECT *
-                FROM classes
+                SELECT c.*, u.first_name AS teacher_first_name, u.last_name AS teacher_last_name, u.email AS teacher_email
+                FROM classes c
+                LEFT JOIN users u ON c.teacher_id = u.id
                 ORDER BY academic_year DESC, semester DESC
                 """;
 
@@ -193,7 +194,7 @@ public class ClassSQL {
             ResultSet rs = stmt.executeQuery();
 
             while (rs.next()) {
-                classes.add(new Class(
+                CourseClass cls = new CourseClass(
                         rs.getLong("id"),
                         rs.getString("class_code"),
                         rs.getString("name"),
@@ -201,7 +202,12 @@ public class ClassSQL {
                         rs.getString("semester"),
                         rs.getString("academic_year"),
                         rs.getInt("max_capacity")
-                ));
+                );
+                cls.setTeacherName(
+                        rs.getString("teacher_first_name") + " " + rs.getString("teacher_last_name")
+                );
+                cls.setTeacherEmail(rs.getString("teacher_email"));
+                classes.add(cls);
             }
 
         } catch (Exception e) {
@@ -211,9 +217,9 @@ public class ClassSQL {
         return classes;
     }
 
-    public List<Class> findByTeacherId(Long teacherId) {
+    public List<CourseClass> findByTeacherId(Long teacherId) {
 
-        List<Class> classes = new ArrayList<>();
+        List<CourseClass> classes = new ArrayList<>();
 
         String sql = """
                 SELECT *
@@ -230,7 +236,7 @@ public class ClassSQL {
             ResultSet rs = stmt.executeQuery();
 
             while (rs.next()) {
-                classes.add(new Class(
+                classes.add(new CourseClass(
                         rs.getLong("id"),
                         rs.getString("class_code"),
                         rs.getString("name"),
@@ -271,7 +277,7 @@ public class ClassSQL {
                         rs.getString("first_name"),
                         rs.getString("last_name"),
                         rs.getString("email"),
-                        rs.getLong("student_code")
+                        rs.getString("student_code")
                 ));
             }
         } catch (Exception e) {

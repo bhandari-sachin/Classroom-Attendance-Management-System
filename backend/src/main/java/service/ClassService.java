@@ -1,7 +1,7 @@
 package service;
 
 import config.ClassSQL;
-import model.Class;
+import model.CourseClass;
 import model.Student;
 
 import java.util.List;
@@ -14,11 +14,11 @@ public class ClassService {
         this.classSQL = classSQL;
     }
 
-    public void createClass(Class c) {
+    public void createClass(CourseClass c) {
         classSQL.createClass(c);
     }
 
-    public  void updateClass(Class c) {
+    public  void updateClass(CourseClass c) {
         classSQL.updateClass(c);
     }
 
@@ -26,6 +26,9 @@ public class ClassService {
         classSQL.deleteClass(classId);
     }
 
+    public int getEnrollmentCount(Long classId) {
+        return classSQL.getEnrollmentCount(classId);
+    }
     public void enrollStudent(Long studentId, Long classId) {
         if (classSQL.isStudentEnrolled(studentId, classId)) {
             throw new IllegalStateException("Student is already enrolled in this class.");
@@ -38,11 +41,11 @@ public class ClassService {
         classSQL.enrollStudent(studentId, classId);
     }
 
-    public List<Class> getAllClasses() {
+    public List<CourseClass> getAllClasses() {
         return classSQL.findAll();
     }
 
-    public List<Class> getClassesByTeacher(Long teacherId) {
+    public List<CourseClass> getClassesByTeacher(Long teacherId) {
         return classSQL.findByTeacherId(teacherId);
     }
 

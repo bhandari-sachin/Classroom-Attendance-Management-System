@@ -27,9 +27,8 @@ public class UserSQL {
                         rs.getString("first_name"),
                         rs.getString("last_name"),
                         UserRole.valueOf(rs.getString("user_type")),
-                        rs.getObject("student_code") == null
-                                ? null
-                                : rs.getLong("student_code")
+                        // read student_code as String
+                        rs.getString("student_code")
                         ));
             }
         } catch (Exception e) {
@@ -59,9 +58,8 @@ public class UserSQL {
                         rs.getString("first_name"),
                         rs.getString("last_name"),
                         UserRole.valueOf(rs.getString("user_type")),
-                        rs.getObject("student_code") == null
-                                ? null
-                                : rs.getLong("student_code")
+                        // read student_code as String
+                        rs.getString("student_code")
                 ));
             }
 
@@ -142,9 +140,8 @@ public class UserSQL {
                         rs.getString("first_name"),
                         rs.getString("last_name"),
                         UserRole.valueOf(rs.getString("user_type")),
-                        rs.getObject("student_code") == null
-                                ? null
-                                : rs.getLong("student_code")
+                        // read student_code as String
+                        rs.getString("student_code")
                 ));
             }
 
@@ -154,5 +151,30 @@ public class UserSQL {
 
         return users;
     }
+
+    public int countUserClasses(Long userId) {
+        String sql = """
+        SELECT COUNT(e.class_id) AS enrolled_classes
+        FROM users u
+            LEFT JOIN enrollments e ON u.id = e.student_id
+        WHERE u.id = ?
+        GROUP BY u.id
+    """;
+
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setLong(1, userId);
+            ResultSet rs = stmt.executeQuery();
+
+            if (rs.next()) return rs.getInt("enrolled_classes");
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return 0;
+    }
+
 
 }

@@ -1,6 +1,6 @@
 package model;
 
-public class Class {
+public class CourseClass {
     private Long id;
     private String classCode;
     private String name;
@@ -8,14 +8,16 @@ public class Class {
     private String semester;
     private String academicYear;
     private Integer maxCapacity;
+    private String teacherName;
+    private String teacherEmail;
 
-    public Class(Long id,
-                 String classCode,
-                 String name,
-                 Long teacherId,
-                 String semester,
-                 String academicYear,
-                 Integer maxCapacity) {
+    public CourseClass(Long id,
+                       String classCode,
+                       String name,
+                       Long teacherId,
+                       String semester,
+                       String academicYear,
+                       Integer maxCapacity) {
 
         this.id = id;
         this.classCode = classCode;
@@ -52,6 +54,22 @@ public class Class {
 
     public Integer getMaxCapacity() {
         return maxCapacity;
+    }
+
+    public String getTeacherName() {
+        return teacherName;
+    }
+
+    public void setTeacherName(String teacherName) {
+        this.teacherName = teacherName;
+    }
+
+    public String getTeacherEmail() {
+        return teacherEmail;
+    }
+
+    public void setTeacherEmail(String teacherEmail) {
+        this.teacherEmail = teacherEmail;
     }
 
     @Override

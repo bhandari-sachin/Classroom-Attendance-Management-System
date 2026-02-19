@@ -10,11 +10,15 @@ public class UserService {
 
     private final UserSQL userSQL;
 
+    public int getEnrolledClasses(Long userId) {
+        return userSQL.countUserClasses(userId);
+    }
+
     public UserService(UserSQL userSQL) {
         this.userSQL = userSQL;
     }
 
-    public List<User> getAllUsers(User currentUser) {
+    public List<User> getAllUsers() {
         return userSQL.findAll();
     }
 

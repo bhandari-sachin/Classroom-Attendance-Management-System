@@ -20,7 +20,7 @@ public class AppLayout {
         void logout();
     }
 
-    public static Parent wrapWithSidebar(String teacherName, Node content, String activeKey, Navigator nav) {
+    public static Parent wrapWithSidebar(String teacherName, String studentPanel, String dashboard, String markAttendance, String myAttendance, String contact, Node content, String activeKey, Navigator nav) {
 
         BorderPane root = new BorderPane();
         root.getStyleClass().add("app-root");
