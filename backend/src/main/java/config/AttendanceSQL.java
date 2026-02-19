@@ -7,8 +7,10 @@ import dto.AttendanceView;
 import model.MarkedBy;
 
 import java.sql.Connection;
+import java.sql.Date;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -223,6 +225,111 @@ public class AttendanceSQL {
 
         return new AttendanceStats(0, 0, 0, 0);
     }
+
+    public AttendanceStats getStatsForClass(Long classId) {
+        String sql = """
+        SELECT
+            SUM(CASE WHEN a.status = 'PRESENT' THEN 1 ELSE 0 END) as present_count,
+            SUM(CASE WHEN a.status = 'ABSENT' THEN 1 ELSE 0 END) as absent_count,
+            SUM(CASE WHEN a.status = 'EXCUSED' THEN 1 ELSE 0 END) as excused_count,
+            COUNT(*) as total_records
+        FROM attendance a
+        JOIN sessions s ON a.session_id = s.id
+        WHERE s.class_id = ?
+    """;
+
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setLong(1, classId);
+            ResultSet rs = stmt.executeQuery();
+
+            if (rs.next()) {
+                int present = rs.getInt("present_count");
+                int absent = rs.getInt("absent_count");
+                int excused = rs.getInt("excused_count");
+                int total = rs.getInt("total_records");
+
+                return new AttendanceStats(present, absent, excused, total);
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return new AttendanceStats(0, 0, 0, 0);
+    }
+
+    public AttendanceStats getStatsForStudent(Long studentId) {
+        String sql = """
+        SELECT
+            SUM(CASE WHEN status = 'PRESENT' THEN 1 ELSE 0 END) as present_count,
+            SUM(CASE WHEN status = 'ABSENT' THEN 1 ELSE 0 END) as absent_count,
+            SUM(CASE WHEN status = 'EXCUSED' THEN 1 ELSE 0 END) as excused_count,
+            COUNT(*) as total_records
+        FROM attendance
+        WHERE student_id = ?
+    """;
+
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setLong(1, studentId);
+            ResultSet rs = stmt.executeQuery();
+
+            if (rs.next()) {
+                int present = rs.getInt("present_count");
+                int absent = rs.getInt("absent_count");
+                int excused = rs.getInt("excused_count");
+                int total = rs.getInt("total_records");
+
+                return new AttendanceStats(present, absent, excused, total);
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return new AttendanceStats(0, 0, 0, 0);
+    }
+
+    public AttendanceStats getStatsByDateRange(LocalDate start, LocalDate end) {
+
+        String sql = """
+        SELECT
+            SUM(CASE WHEN a.status = 'PRESENT' THEN 1 ELSE 0 END) AS present_count,
+            SUM(CASE WHEN a.status = 'ABSENT' THEN 1 ELSE 0 END) AS absent_count,
+            SUM(CASE WHEN a.status = 'EXCUSED' THEN 1 ELSE 0 END) AS excused_count,
+            COUNT(*) AS total_records
+        FROM attendance a
+        JOIN sessions s ON a.session_id = s.id
+        WHERE s.session_date BETWEEN ? AND ?
+    """;
+
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setDate(1, Date.valueOf(start));
+            stmt.setDate(2, Date.valueOf(end));
+
+            ResultSet rs = stmt.executeQuery();
+
+            if (rs.next()) {
+                return new AttendanceStats(
+                        rs.getInt("present_count"),
+                        rs.getInt("absent_count"),
+                        rs.getInt("excused_count"),
+                        rs.getInt("total_records")
+                );
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return new AttendanceStats(0,0,0,0);
+    }
+
 
     public String getSessionCode(Long sessionId) {
         String sql = "SELECT qr_token FROM sessions WHERE id = ?";
