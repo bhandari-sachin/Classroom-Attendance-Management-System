@@ -43,7 +43,7 @@ public class AttendanceSQL {
     }
 
     public void save(Attendance attendance) {
-        String sql = "INSERT INTO attendance (student_id, session_id, status, marked_by) VALUES (?, ?, ?, ?)";
+        String sql = "INSERT INTO attendance (student_id, session_id, status, marked_by, remarks) VALUES (?, ?, ?, ?, ?)";
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
 
@@ -51,6 +51,7 @@ public class AttendanceSQL {
             stmt.setLong(2, attendance.getSessionId());
             stmt.setString(3, attendance.getStatus().name());
             stmt.setString(4, attendance.getMarkedBy().name());
+            stmt.setString(5, attendance.getRemarks());
 
             stmt.executeUpdate();
         } catch (Exception e) {
@@ -62,12 +63,12 @@ public class AttendanceSQL {
             Long studentId,
             Long sessionId,
             AttendanceStatus status,
-            MarkedBy markedBy
-    ) {
+            MarkedBy markedBy,
+            String remarks) {
 
         String sql = """
         UPDATE attendance
-        SET status = ?, marked_by = ?
+        SET status = ?, marked_by = ?, remarks = ?
         WHERE student_id = ? AND session_id = ?
     """;
 
@@ -76,8 +77,9 @@ public class AttendanceSQL {
 
             stmt.setString(1, status.name());
             stmt.setString(2, markedBy.name());
-            stmt.setLong(3, studentId);
-            stmt.setLong(4, sessionId);
+            stmt.setString(3, remarks);
+            stmt.setLong(4, studentId);
+            stmt.setLong(5, sessionId);
 
             stmt.executeUpdate();
 
