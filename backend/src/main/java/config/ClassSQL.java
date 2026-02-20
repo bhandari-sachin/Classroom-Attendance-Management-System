@@ -285,4 +285,40 @@ public class ClassSQL {
         }
         return students;
     }
+
+    public List<CourseClass> findByStudentId(Long studentId) {
+        List<CourseClass> classes = new ArrayList<>();
+
+        String sql = """
+                SELECT c.*
+                FROM classes c
+                JOIN enrollments e ON c.id = e.class_id
+                WHERE e.student_id = ?
+                ORDER BY academic_year DESC, semester DESC
+                """;
+
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setLong(1, studentId);
+            ResultSet rs = stmt.executeQuery();
+
+            while (rs.next()) {
+                classes.add(new CourseClass(
+                        rs.getLong("id"),
+                        rs.getString("class_code"),
+                        rs.getString("name"),
+                        rs.getLong("teacher_id"),
+                        rs.getString("semester"),
+                        rs.getString("academic_year"),
+                        rs.getInt("max_capacity")
+                ));
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return classes;
+    }
 }

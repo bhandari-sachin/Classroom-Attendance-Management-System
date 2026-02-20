@@ -52,4 +52,8 @@ public class ClassService {
     public List<Student> getStudentsInClass(Long classId) {
         return classSQL.getStudentsInClass(classId);
     }
+
+    public List<CourseClass> getClassesForStudent(Long studentId) {
+        return classSQL.findByStudentId(studentId);
+    }
 }

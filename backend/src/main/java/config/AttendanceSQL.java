@@ -293,6 +293,124 @@ public class AttendanceSQL {
         return new AttendanceStats(0, 0, 0, 0);
     }
 
+    public AttendanceStats getStatsForStudentByDate(Long studentId, LocalDate start, LocalDate end) {
+
+        String sql = """
+    SELECT
+        SUM(CASE WHEN a.status = 'PRESENT' THEN 1 ELSE 0 END) AS present_count,
+        SUM(CASE WHEN a.status = 'ABSENT' THEN 1 ELSE 0 END) AS absent_count,
+        SUM(CASE WHEN a.status = 'EXCUSED' THEN 1 ELSE 0 END) AS excused_count,
+        COUNT(*) AS total_records
+    FROM attendance a
+    JOIN sessions s ON a.session_id = s.id
+    WHERE a.student_id = ?
+      AND s.session_date BETWEEN ? AND ?
+    """;
+
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setLong(1, studentId);
+            stmt.setDate(2, Date.valueOf(start));
+            stmt.setDate(3, Date.valueOf(end));
+
+            ResultSet rs = stmt.executeQuery();
+
+            if (rs.next()) {
+                return new AttendanceStats(
+                        rs.getInt("present_count"),
+                        rs.getInt("absent_count"),
+                        rs.getInt("excused_count"),
+                        rs.getInt("total_records")
+                );
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return new AttendanceStats(0,0,0,0);
+    }
+
+    public AttendanceStats getStatsForStudentInClass(Long studentId, Long classId) {
+
+        String sql = """
+        SELECT
+            SUM(CASE WHEN a.status = 'PRESENT' THEN 1 ELSE 0 END) AS present_count,
+            SUM(CASE WHEN a.status = 'ABSENT' THEN 1 ELSE 0 END) AS absent_count,
+            SUM(CASE WHEN a.status = 'EXCUSED' THEN 1 ELSE 0 END) AS excused_count,
+            COUNT(*) AS total_records
+        FROM attendance a
+        JOIN sessions s ON a.session_id = s.id
+        WHERE a.student_id = ?
+          AND s.class_id = ?
+    """;
+
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setLong(1, studentId);
+            stmt.setLong(2, classId);
+
+            ResultSet rs = stmt.executeQuery();
+
+            if (rs.next()) {
+                return new AttendanceStats(
+                        rs.getInt("present_count"),
+                        rs.getInt("absent_count"),
+                        rs.getInt("excused_count"),
+                        rs.getInt("total_records")
+                );
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return new AttendanceStats(0,0,0,0);
+    }
+
+    public AttendanceStats getStatsForStudentInClassByDate(Long studentId, Long classId, LocalDate start, LocalDate end) {
+
+        String sql = """
+        SELECT
+            SUM(CASE WHEN a.status = 'PRESENT' THEN 1 ELSE 0 END) AS present_count,
+            SUM(CASE WHEN a.status = 'ABSENT' THEN 1 ELSE 0 END) AS absent_count,
+            SUM(CASE WHEN a.status = 'EXCUSED' THEN 1 ELSE 0 END) AS excused_count,
+            COUNT(*) AS total_records
+        FROM attendance a
+        JOIN sessions s ON a.session_id = s.id
+        WHERE a.student_id = ?
+          AND s.class_id = ?
+            AND s.session_date BETWEEN ? AND ?
+    """;
+
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setLong(1, studentId);
+            stmt.setLong(2, classId);
+            stmt.setDate(3, Date.valueOf(start));
+            stmt.setDate(4, Date.valueOf(end));
+
+            ResultSet rs = stmt.executeQuery();
+
+            if (rs.next()) {
+                return new AttendanceStats(
+                        rs.getInt("present_count"),
+                        rs.getInt("absent_count"),
+                        rs.getInt("excused_count"),
+                        rs.getInt("total_records")
+                );
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return new AttendanceStats(0,0,0,0);
+    }
+
     public AttendanceStats getStatsByDateRange(LocalDate start, LocalDate end) {
 
         String sql = """

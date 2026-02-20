@@ -134,6 +134,33 @@ public class AttendanceService {
         return attendanceSQL.getStatsForStudent(studentId);
     }
 
+    public AttendanceStats getStudentOverallThisMonth(Long studentId) {
+        LocalDate now = LocalDate.now();
+        return attendanceSQL.getStatsForStudentByDate(
+                studentId,
+                now.withDayOfMonth(1),
+                now.withDayOfMonth(now.lengthOfMonth())
+        );
+    }
+
+    public AttendanceStats getStudentOverallLastMonth(Long studentId) {
+        LocalDate now = LocalDate.now().minusMonths(1);
+        return attendanceSQL.getStatsForStudentByDate(
+                studentId,
+                now.withDayOfMonth(1),
+                now.withDayOfMonth(now.lengthOfMonth())
+        );
+    }
+
+    public AttendanceStats getStudentOverallThisYear(Long studentId) {
+        LocalDate now = LocalDate.now();
+        return attendanceSQL.getStatsForStudentByDate(
+                studentId,
+                now.withDayOfYear(1),
+                now.withDayOfYear(now.lengthOfYear())
+        );
+    }
+
     public AttendanceStats getStatsThisMonth() {
         LocalDate now = LocalDate.now();
         LocalDate start = now.withDayOfMonth(1);
@@ -180,5 +207,28 @@ public class AttendanceService {
         LocalDate end = now.withDayOfYear(now.lengthOfYear());
 
         return attendanceSQL.getStatsForClassByDateRange(classId, start, end);
+    }
+    public AttendanceStats getStudentStatsThisMonth(Long studentId, Long classId) {
+        LocalDate now = LocalDate.now();
+        LocalDate start = now.withDayOfMonth(1);
+        LocalDate end = now.withDayOfMonth(now.lengthOfMonth());
+
+        return attendanceSQL.getStatsForStudentInClassByDate(studentId, classId, start, end);
+    }
+
+    public AttendanceStats getStudentStatsLastMonth(Long studentId, Long classId) {
+        LocalDate now = LocalDate.now().minusMonths(1);
+        LocalDate start = now.withDayOfMonth(1);
+        LocalDate end = now.withDayOfMonth(now.lengthOfMonth());
+
+        return attendanceSQL.getStatsForStudentInClassByDate(studentId, classId, start, end);
+    }
+
+    public AttendanceStats getStudentStatsThisYear(Long studentId, Long classId) {
+        LocalDate now = LocalDate.now();
+        LocalDate start = now.withDayOfYear(1);
+        LocalDate end = now.withDayOfYear(now.lengthOfYear());
+
+        return attendanceSQL.getStatsForStudentInClassByDate(studentId, classId, start, end);
     }
 }
