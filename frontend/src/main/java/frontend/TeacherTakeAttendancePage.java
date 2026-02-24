@@ -14,10 +14,12 @@ import javafx.scene.layout.*;
 import model.CourseClass;
 import model.Student;
 import model.Session;
+import service.AttendanceService;
 import service.ClassService;
 import service.SessionService;
 import config.ClassSQL;
 import config.SessionSQL;
+import config.AttendanceSQL;
 import util.QRCodeGenerator;
 
 import java.awt.image.BufferedImage;
@@ -27,8 +29,6 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 
-import com.google.zxing.WriterException;
-
 public class TeacherTakeAttendancePage {
 
     // Use ObservableList populated from backend
@@ -36,6 +36,7 @@ public class TeacherTakeAttendancePage {
 
     private final ClassService classService = new ClassService(new ClassSQL());
     private final SessionService sessionService = new SessionService(new SessionSQL());
+    private final AttendanceService attendanceService = new AttendanceService(new AttendanceSQL(), new SessionSQL());
 
     public Parent build(Scene scene, String teacherName) {
 
@@ -55,7 +56,7 @@ public class TeacherTakeAttendancePage {
 
         ComboBox<CourseClass> classBox = new ComboBox<>();
         classBox.setPromptText("Choose a class");
-        classBox.setMaxWidth(400);
+        classBox.setMaxWidth(200);
 
         // Load classes from backend
         List<CourseClass> classes = classService.getAllClasses();
@@ -79,9 +80,6 @@ public class TeacherTakeAttendancePage {
         });
 
         // ---- SESSION SELECT ----
-        Label selectSessionLbl = new Label("Select session");
-        selectSessionLbl.getStyleClass().add("section-title");
-
         ComboBox<Session> sessionBox = new ComboBox<>();
         sessionBox.setPromptText("Choose a session");
         sessionBox.setMaxWidth(400);
@@ -89,22 +87,16 @@ public class TeacherTakeAttendancePage {
             @Override
             protected void updateItem(Session item, boolean empty) {
                 super.updateItem(item, empty);
-                if (empty || item == null) {
-                    setText(null);
-                } else {
-                    setText(item.getSessionDate() + " " + item.getStartTime() + " — " + (item.getTopic() == null ? "" : item.getTopic()));
-                }
+                if (empty || item == null) setText(null);
+                else setText(item.getSessionDate() + " " + item.getStartTime() + " — " + (item.getTopic() == null ? "" : item.getTopic()));
             }
         });
         sessionBox.setButtonCell(new ListCell<>() {
             @Override
             protected void updateItem(Session item, boolean empty) {
                 super.updateItem(item, empty);
-                if (empty || item == null) {
-                    setText(null);
-                } else {
-                    setText(item.getSessionDate() + " " + item.getStartTime() + " — " + (item.getTopic() == null ? "" : item.getTopic()));
-                }
+                if (empty || item == null) setText(null);
+                else setText(item.getSessionDate() + " " + item.getStartTime() + " — " + (item.getTopic() == null ? "" : item.getTopic()));
             }
         });
 
@@ -115,7 +107,7 @@ public class TeacherTakeAttendancePage {
             if (newV != null) {
                 List<Student> students = classService.getStudentsInClass(newV.getId());
                 for (Student s : students) {
-                    rows.add(new StudentRow(s.getName(), s.getEmail(), "Absent"));
+                    rows.add(new StudentRow(s.getStudentId(), s.getName(), s.getEmail(), "Absent"));
                 }
 
                 List<Session> sessions = sessionService.getSessionsByClassId(newV.getId());
@@ -123,7 +115,7 @@ public class TeacherTakeAttendancePage {
             }
         });
 
-        // ---- QR PLACEHOLDER ----
+        // ---- QR CARD ----
         VBox qrCard = new VBox(12);
         qrCard.getStyleClass().add("card");
         qrCard.setPadding(new Insets(16));
@@ -132,7 +124,6 @@ public class TeacherTakeAttendancePage {
         qrTitle.getStyleClass().add("section-title");
 
         ImageView qrImageView = new ImageView();
-        qrImageView.setFitWidth(180);
         qrImageView.setFitHeight(180);
         qrImageView.setPreserveRatio(true);
         qrImageView.getStyleClass().add("qr-area");
@@ -150,7 +141,9 @@ public class TeacherTakeAttendancePage {
         Button startSessionBtn = new Button("Start Session");
         startSessionBtn.getStyleClass().addAll("pill", "pill-green");
 
-        // start session -> generate code, persist via SessionService, show QR
+        Button endSessionBtn = new Button("End Session");
+        endSessionBtn.getStyleClass().addAll("pill");
+
         startSessionBtn.setOnAction(e -> {
             Session sel = sessionBox.getValue();
             if (sel == null) {
@@ -165,7 +158,6 @@ public class TeacherTakeAttendancePage {
 
                 BufferedImage img = QRCodeGenerator.generateQRCodeImage(code, 300, 300);
 
-                // convert BufferedImage to JavaFX Image without Swing dependency
                 ByteArrayOutputStream baos = new ByteArrayOutputStream();
                 ImageIO.write(img, "png", baos);
                 baos.flush();
@@ -174,10 +166,6 @@ public class TeacherTakeAttendancePage {
                 qrImageView.setImage(fxImage);
                 baos.close();
 
-            } catch (WriterException ex) {
-                ex.printStackTrace();
-                Alert a = new Alert(Alert.AlertType.ERROR, "Failed to generate QR image: " + ex.getMessage(), ButtonType.OK);
-                a.showAndWait();
             } catch (Exception ex) {
                 ex.printStackTrace();
                 Alert a = new Alert(Alert.AlertType.ERROR, "Error starting session: " + ex.getMessage(), ButtonType.OK);
@@ -185,10 +173,25 @@ public class TeacherTakeAttendancePage {
             }
         });
 
-        HBox qrTop = new HBox(12, qrImageView, manualBox);
-        qrTop.setAlignment(Pos.CENTER);
+        endSessionBtn.setOnAction(e -> {
+            Session sel = sessionBox.getValue();
+            if (sel == null) {
+                Alert a = new Alert(Alert.AlertType.WARNING, "Please select a session first.", ButtonType.OK);
+                a.showAndWait();
+                return;
+            }
+            try {
+                sessionService.endSession(sel.getId());
+                qrImageView.setImage(null);
+                manualCode.setText("");
+            } catch (Exception ex) {
+                ex.printStackTrace();
+                Alert a = new Alert(Alert.AlertType.ERROR, "Error ending session: " + ex.getMessage(), ButtonType.OK);
+                a.showAndWait();
+            }
+        });
 
-        qrCard.getChildren().addAll(qrTitle, qrTop, startSessionBtn);
+        qrCard.getChildren().addAll(qrTitle, sessionBox, qrImageView, manualBox, new HBox(8, startSessionBtn, endSessionBtn));
 
         // ================= STUDENTS SECTION =================
         Label studentsTitle = new Label();
@@ -238,7 +241,6 @@ public class TeacherTakeAttendancePage {
         btnAbsent.disableProperty().bind(table.getSelectionModel().selectedItemProperty().isNull());
         btnExcused.disableProperty().bind(table.getSelectionModel().selectedItemProperty().isNull());
 
-        // If you want them hidden until selection, keep this:
         btnPresent.visibleProperty().bind(table.getSelectionModel().selectedItemProperty().isNotNull());
         btnAbsent.visibleProperty().bind(table.getSelectionModel().selectedItemProperty().isNotNull());
         btnExcused.visibleProperty().bind(table.getSelectionModel().selectedItemProperty().isNotNull());
@@ -250,58 +252,81 @@ public class TeacherTakeAttendancePage {
         // Actions
         btnPresent.setOnAction(e -> {
             StudentRow s = table.getSelectionModel().getSelectedItem();
-            if (s != null) {
+            Session sess = sessionBox.getSelectionModel().getSelectedItem();
+            if (s != null && sess != null) {
+                if (s.getStudentId() != null) attendanceService.markPresent(s.getStudentId(), sess.getId());
                 s.setStatus("Present");
                 s.setExcuseReason("");
                 table.refresh();
+            } else {
+                Alert a = new Alert(Alert.AlertType.WARNING, "Select a student and an active session first.", ButtonType.OK);
+                a.showAndWait();
             }
         });
 
         btnAbsent.setOnAction(e -> {
             StudentRow s = table.getSelectionModel().getSelectedItem();
-            if (s != null) {
+            Session sess = sessionBox.getSelectionModel().getSelectedItem();
+            if (s != null && sess != null) {
+                if (s.getStudentId() != null) attendanceService.markAbsent(s.getStudentId(), sess.getId());
                 s.setStatus("Absent");
                 s.setExcuseReason("");
                 table.refresh();
+            } else {
+                Alert a = new Alert(Alert.AlertType.WARNING, "Select a student and an active session first.", ButtonType.OK);
+                a.showAndWait();
             }
         });
 
         // IMPORTANT: Excused opens the new page to write reason
         btnExcused.setOnAction(e -> {
             StudentRow s = table.getSelectionModel().getSelectedItem();
-            if (s == null) return;
+            Session sess = sessionBox.getSelectionModel().getSelectedItem();
+            if (s == null || sess == null) {
+                Alert a = new Alert(Alert.AlertType.WARNING, "Select a student and a session first.", ButtonType.OK);
+                a.showAndWait();
+                return;
+            }
 
             scene.setRoot(
                     new TeacherExcuseReasonPage().build(
                             scene,
                             teacherName,
                             s,
-                            () -> scene.setRoot(build(scene, teacherName))
+                            () -> {
+                                // on done: persist excuse if there's a reason
+                                if (s.getExcuseReason() != null && !s.getExcuseReason().isEmpty() && s.getStudentId() != null) {
+                                    attendanceService.markExcused(s.getStudentId(), sess.getId(), s.getExcuseReason());
+                                }
+                                scene.setRoot(build(scene, teacherName));
+                            }
                     )
             );
         });
 
         markAllPresent.setOnAction(e -> {
+            Session sess = sessionBox.getSelectionModel().getSelectedItem();
+            if (sess == null) {
+                Alert a = new Alert(Alert.AlertType.WARNING, "Select a session first.", ButtonType.OK);
+                a.showAndWait();
+                return;
+            }
             for (StudentRow s : rows) {
+                if (s.getStudentId() != null) attendanceService.markPresent(s.getStudentId(), sess.getId());
                 s.setStatus("Present");
                 s.setExcuseReason("");
             }
             table.refresh();
         });
 
-        VBox leftCol = new VBox(12, selectClass, classBox, selectSessionLbl, sessionBox, qrCard);
-        leftCol.setMaxWidth(420);
-
-        VBox rightCol = new VBox(12, studentsHeader, table);
-        rightCol.setFillWidth(true);
-
-        HBox main = new HBox(18, leftCol, rightCol);
-        HBox.setHgrow(rightCol, Priority.ALWAYS);
-
         page.getChildren().addAll(
                 title,
                 subtitle,
-                main
+                selectClass,
+                classBox,
+                qrCard,
+                studentsHeader,
+                table
         );
 
         return AppLayout.wrapWithSidebar(
