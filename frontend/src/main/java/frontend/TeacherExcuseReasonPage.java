@@ -59,7 +59,7 @@ public class TeacherExcuseReasonPage {
 
         return AppLayout.wrapWithSidebar(
                 teacherName,
-                page,
+                "Student Panel", "Dashboard", "Mark Attendance", "My Attendance", "Contact", page,
                 "takeAttendance",
                 new AppLayout.Navigator() {
                     @Override public void goDashboard() { scene.setRoot(new TeacherDashboardApp().build(scene, teacherName)); }
