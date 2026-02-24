@@ -128,6 +128,13 @@ public class TeacherTakeAttendancePage {
         qrImageView.setPreserveRatio(true);
         qrImageView.getStyleClass().add("qr-area");
 
+        HBox qrImageHolder = new HBox(qrImageView);
+        qrImageHolder.setAlignment(Pos.CENTER);
+        qrImageHolder.setMaxWidth(Double.MAX_VALUE);
+        VBox.setVgrow(qrImageHolder, Priority.NEVER);
+        qrImageHolder.prefWidthProperty().bind(qrCard.widthProperty());
+        HBox.setHgrow(qrImageHolder, Priority.ALWAYS);
+
         Label manualTitle = new Label("Manual Code");
         manualTitle.getStyleClass().add("small-title");
 
@@ -191,7 +198,7 @@ public class TeacherTakeAttendancePage {
             }
         });
 
-        qrCard.getChildren().addAll(qrTitle, sessionBox, qrImageView, manualBox, new HBox(8, startSessionBtn, endSessionBtn));
+        qrCard.getChildren().addAll(qrTitle, sessionBox, qrImageHolder, manualBox, new HBox(8, startSessionBtn, endSessionBtn));
 
         // ================= STUDENTS SECTION =================
         Label studentsTitle = new Label();
