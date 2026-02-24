@@ -110,7 +110,7 @@ public class TeacherDashboardApp {
 
         return AppLayout.wrapWithSidebar(
                 teacherName,
-                page,
+                "Student Panel", "Dashboard", "Mark Attendance", "My Attendance", "Contact", page,
                 "dashboard",
                 new AppLayout.Navigator() {
                     @Override public void goDashboard() { scene.setRoot(build(scene, teacherName)); }

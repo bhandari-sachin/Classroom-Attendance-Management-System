@@ -24,7 +24,7 @@ public class TeacherReportsPage {
 
         return AppLayout.wrapWithSidebar(
                 teacherName,
-                page,
+                "Student Panel", "Dashboard", "Mark Attendance", "My Attendance", "Contact", page,
                 "reports",
                 new AppLayout.Navigator() {
                     @Override

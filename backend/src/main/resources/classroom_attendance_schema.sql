@@ -95,6 +95,7 @@ CREATE TABLE attendance
     session_id BIGINT NOT NULL,
     status     VARCHAR(20) DEFAULT 'ABSENT',
     marked_by  VARCHAR(20) DEFAULT 'QR',
+    remarks    VARCHAR(255) NULL,
     marked_at  TIMESTAMP   DEFAULT CURRENT_TIMESTAMP,
 
     FOREIGN KEY (student_id) REFERENCES users (id) ON DELETE CASCADE,
@@ -108,3 +109,94 @@ CREATE TABLE attendance
     CONSTRAINT chk_marked_by
         CHECK (marked_by IN ('QR', 'TEACHER'))
 );
+
+SET FOREIGN_KEY_CHECKS = 0;
+
+TRUNCATE TABLE attendance;
+TRUNCATE TABLE sessions;
+TRUNCATE TABLE enrollments;
+TRUNCATE TABLE classes;
+TRUNCATE TABLE users;
+
+SET FOREIGN_KEY_CHECKS = 1;
+
+INSERT INTO users (
+    email,
+    password_hash,
+    first_name,
+    last_name,
+    user_type,
+    student_code
+) VALUES
+-- Admin
+('admin@school.com', 'hash_admin', 'System', 'Admin', 'ADMIN', NULL),
+
+-- Teachers
+('smith@school.com', 'hash_teacher', 'John', 'Smith', 'TEACHER', NULL),
+('johnson@school.com', 'hash_teacher', 'Emily', 'Johnson', 'TEACHER', NULL),
+
+-- Students
+('alice@student.com', 'hash_student', 'Alice', 'Brown', 'STUDENT', 'S2024001'),
+('bob@student.com', 'hash_student', 'Bob', 'Clark', 'STUDENT', 'S2024002'),
+('charlie@student.com', 'hash_student', 'Charlie', 'Lee', 'STUDENT', 'S2023009');
+
+
+INSERT INTO classes (
+    class_code,
+    name,
+    teacher_id,
+    semester,
+    academic_year,
+    max_capacity
+) VALUES
+      ('CS101-F24', 'Database Systems', 2, 'Fall', '2024', 40),
+      ('CS205-F24', 'Software Engineering', 3, 'Fall', '2024', 35);
+INSERT INTO enrollments (
+    student_id,
+    class_id,
+    status
+) VALUES
+
+      (4, 1, 'ACTIVE'),
+      (5, 1, 'ACTIVE'),
+      (6, 1, 'ACTIVE'),
+
+
+      (4, 2, 'ACTIVE'),
+      (6, 2, 'ACTIVE');
+
+
+INSERT INTO sessions (
+    class_id,
+    session_date,
+    start_time,
+    end_time,
+    topic,
+    qr_token,
+    status
+) VALUES
+      (1, '2026-02-07', '09:00:00', '10:30:00', 'Introduction to Databases', 'QR_DB_001', 'COMPLETED'),
+      (1, '2026-02-09', '09:00:00', '10:30:00', 'ER Modeling', 'QR_DB_002', 'COMPLETED'),
+      (2, '2026-02-07', '11:00:00', '12:30:00', 'Agile & Scrum Basics', 'QR_SE_001', 'COMPLETED');
+
+
+INSERT INTO attendance (
+    student_id,
+    session_id,
+    status,
+    marked_by
+) VALUES
+
+      (4, 1, 'PRESENT', 'QR'),
+      (5, 1, 'PRESENT', 'QR'),
+      (6, 1, 'ABSENT', 'TEACHER'),
+
+
+      (4, 2, 'PRESENT', 'QR'),
+      (5, 2, 'PRESENT', 'QR'),
+      (6, 2, 'EXCUSED', 'TEACHER'),
+
+
+      (4, 3, 'PRESENT', 'QR'),
+      (6, 3, 'ABSENT', 'QR');
+
