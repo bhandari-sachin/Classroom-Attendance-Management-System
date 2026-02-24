@@ -41,13 +41,13 @@ public class TeacherEmailPage {
 
         return AppLayout.wrapWithSidebar(
                 teacherName,
-                page,
+                "Student Panel", "Dashboard", "Mark Attendance", "My Attendance", "Contact", page,
                 "email",
                 new AppLayout.Navigator() {
-                    @Override public void goDashboard() { scene.setRoot(new TeacherDashboardApp().build(scene, teacherName)); }
+                    @Override public void goDashboard() { scene.setRoot(build(scene, teacherName)); }
                     @Override public void goTakeAttendance() { scene.setRoot(new TeacherTakeAttendancePage().build(scene, teacherName)); }
                     @Override public void goReports() { scene.setRoot(new TeacherReportsPage().build(scene, teacherName)); }
-                    @Override public void goEmail() { scene.setRoot(build(scene, teacherName)); }
+                    @Override public void goEmail() { scene.setRoot(new TeacherEmailPage().build(scene, teacherName)); }
                     @Override public void logout() { System.out.println("TODO: Logout"); }
                 }
         );
