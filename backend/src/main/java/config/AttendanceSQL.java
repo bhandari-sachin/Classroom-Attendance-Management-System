@@ -1,9 +1,8 @@
 package config;
 
-import dto.AttendanceStats;
+import dto.*;
 import model.Attendance;
 import model.AttendanceStatus;
-import dto.AttendanceView;
 import model.MarkedBy;
 
 import java.sql.Connection;
@@ -450,7 +449,139 @@ public class AttendanceSQL {
         return new AttendanceStats(0,0,0,0);
     }
 
+    // exporting stats
+    public List<StudentClassReportRow> getStudentYearlyReport(Long studentId, int year) {
 
+        String sql = """
+        SELECT c.name,
+               SUM(CASE WHEN a.status='PRESENT' THEN 1 ELSE 0 END),
+               SUM(CASE WHEN a.status='ABSENT' THEN 1 ELSE 0 END),
+               SUM(CASE WHEN a.status='EXCUSED' THEN 1 ELSE 0 END),
+               COUNT(*)
+        FROM attendance a
+        JOIN sessions s ON a.session_id = s.id
+        JOIN classes c ON s.class_id = c.id
+        WHERE a.student_id = ?
+          AND YEAR(s.session_date) = ?
+        GROUP BY c.name
+    """;
+
+        List<StudentClassReportRow> list = new ArrayList<>();
+
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setLong(1, studentId);
+            stmt.setInt(2, year);
+
+            ResultSet rs = stmt.executeQuery();
+
+            while (rs.next()) {
+                int present = rs.getInt(2);
+                int total = rs.getInt(5);
+
+                list.add(new StudentClassReportRow(
+                        rs.getString(1),
+                        present,
+                        rs.getInt(3),
+                        rs.getInt(4),
+                        total == 0 ? 0 : (present * 100.0 / total)
+                ));
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return list;
+    }
+
+    public List<TeacherStudentReportRow> getTeacherClassReport(Long teacherId, Long classId) {
+
+        String sql = """
+        SELECT CONCAT(u.first_name,' ',u.last_name),
+               SUM(CASE WHEN a.status='PRESENT' THEN 1 ELSE 0 END),
+               SUM(CASE WHEN a.status='ABSENT' THEN 1 ELSE 0 END),
+               SUM(CASE WHEN a.status='EXCUSED' THEN 1 ELSE 0 END),
+               COUNT(*)
+        FROM attendance a
+        JOIN users u ON a.student_id = u.id
+        JOIN sessions s ON a.session_id = s.id
+        JOIN classes c ON s.class_id = c.id
+        WHERE c.teacher_id = ?
+          AND c.id = ?
+        GROUP BY u.id
+    """;
+
+        List<TeacherStudentReportRow> list = new ArrayList<>();
+
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setLong(1, teacherId);
+            stmt.setLong(2, classId);
+
+            ResultSet rs = stmt.executeQuery();
+
+            while (rs.next()) {
+                int present = rs.getInt(2);
+                int total = rs.getInt(5);
+
+                list.add(new TeacherStudentReportRow(
+                        rs.getString(1),
+                        present,
+                        rs.getInt(3),
+                        rs.getInt(4),
+                        total == 0 ? 0 : (present * 100.0 / total)
+                ));
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return list;
+    }
+
+    public List<AttendanceReportRow> getAllStudentsStats() {
+
+        String sql = """
+        SELECT u.id,
+               u.first_name,
+               u.last_name,
+               SUM(CASE WHEN a.status='PRESENT' THEN 1 ELSE 0 END) present,
+               SUM(CASE WHEN a.status='ABSENT' THEN 1 ELSE 0 END) absent,
+               SUM(CASE WHEN a.status='EXCUSED' THEN 1 ELSE 0 END) excused,
+               COUNT(*) total
+        FROM users u
+        LEFT JOIN attendance a ON u.id = a.student_id
+        WHERE u.user_type = 'STUDENT'
+        GROUP BY u.id
+    """;
+
+        List<AttendanceReportRow> list = new ArrayList<>();
+        try(Connection conn = DatabaseConnection.getConnection();
+            PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            ResultSet rs = stmt.executeQuery();
+
+            while(rs.next()) {
+                list.add(new AttendanceReportRow(
+                        rs.getLong("id"),
+                        rs.getString("first_name"),
+                        rs.getString("last_name"),
+                        rs.getInt("present"),
+                        rs.getInt("absent"),
+                        rs.getInt("excused"),
+                        rs.getInt("total")
+                ));
+            }
+        } catch (Exception e){ e.printStackTrace(); }
+
+        return list;
+    }
+
+    // Sessions
     public String getSessionCode(Long sessionId) {
         String sql = "SELECT qr_token FROM sessions WHERE id = ?";
         try (Connection conn = DatabaseConnection.getConnection();
