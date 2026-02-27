@@ -1,5 +1,8 @@
 package frontend;
 
+import frontend.auth.AppRouter;
+import frontend.auth.AuthState;
+import frontend.auth.JwtStore;
 import javafx.collections.ObservableList;
 import javafx.geometry.Insets;
 import javafx.scene.Parent;
@@ -14,7 +17,11 @@ public class StudentEmailPage {
     // For now: show teacher contacts (replace later from backend)
     private final ObservableList<TeacherRow> rows = DataStore.getTeachers();
 
-    public Parent build(Scene scene, String studentName) {
+    public Parent build(Scene scene, AppRouter router, JwtStore jwtStore, AuthState state) {
+
+        String studentName = (state.getName() == null || state.getName().isBlank())
+                ? "Name"
+                : state.getName();
 
         VBox page = new VBox(14);
         page.setPadding(new Insets(22));
@@ -40,29 +47,23 @@ public class StudentEmailPage {
 
         page.getChildren().addAll(title, info, table);
 
-        return AdminAppLayout.wrapWithSidebar(
+        return AppLayout.wrapWithSidebar(
                 studentName,
+                "Student Panel",
+                "Dashboard",
+                "Mark Attendance",
+                "My Attendance",
+                "Email",
                 page,
-                "email",
-                new AdminAppLayout.Navigator() {
-                    @Override public void goDashboard() {
-                        scene.setRoot(new StudentDashboardApp().build(scene, studentName));
-                    }
-
-                    @Override public void goTakeAttendance() {
-                        scene.setRoot(new StudentMarkAttendancePage().build(scene, studentName));
-                    }
-
-                    @Override public void goReports() {
-                        scene.setRoot(new StudentAttendancePage().build(scene, studentName));
-                    }
-
-                    @Override public void goEmail() {
-                        scene.setRoot(build(scene, studentName));
-                    }
-
+                "fourth", // ✅ active = Email
+                new AppLayout.Navigator() {
+                    @Override public void goDashboard() { router.go("student-dashboard"); }
+                    @Override public void goTakeAttendance() { router.go("student-mark"); }
+                    @Override public void goReports() { router.go("student-attendance"); }
+                    @Override public void goEmail() { router.go("student-email"); }
                     @Override public void logout() {
-                        System.out.println("TODO: Student Logout");
+                        jwtStore.clear();
+                        router.go("login");
                     }
                 }
         );

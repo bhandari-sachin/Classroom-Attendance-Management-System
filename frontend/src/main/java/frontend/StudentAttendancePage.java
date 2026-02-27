@@ -1,5 +1,8 @@
 package frontend;
 
+import frontend.auth.AppRouter;
+import frontend.auth.AuthState;
+import frontend.auth.JwtStore;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Group;
@@ -23,7 +26,11 @@ public class StudentAttendancePage {
     private int totalDays = 0;
     private double attendanceRate = 0.0; // 0.0 -> 0%
 
-    public Parent build(Scene scene, String studentName) {
+    public Parent build(Scene scene, AppRouter router, JwtStore jwtStore, AuthState state) {
+
+        String studentName = (state.getName() == null || state.getName().isBlank())
+                ? "Name"
+                : state.getName();
 
         VBox page = new VBox(16);
         page.setPadding(new Insets(26));
@@ -114,25 +121,23 @@ public class StudentAttendancePage {
                 recordsCard
         );
 
-        return AdminAppLayout.wrapWithSidebar(
+        return AppLayout.wrapWithSidebar(
                 studentName,
+                "Student Panel",
+                "Dashboard",
+                "Mark Attendance",
+                "My Attendance",
+                "Email",
                 page,
-                "reports", // for student: Reports == Attendance history page
-                new AdminAppLayout.Navigator() {
-                    @Override public void goDashboard() {
-                        scene.setRoot(new StudentDashboardApp().build(scene, studentName));
-                    }
-                    @Override public void goTakeAttendance() {
-                        scene.setRoot(new StudentMarkAttendancePage().build(scene, studentName));
-                    }
-                    @Override public void goReports() {
-                        scene.setRoot(build(scene, studentName)); // already here
-                    }
-                    @Override public void goEmail() {
-                        scene.setRoot(new StudentEmailPage().build(scene, studentName));
-                    }
+                "third", // ✅ active = My Attendance
+                new AppLayout.Navigator() {
+                    @Override public void goDashboard() { router.go("student-dashboard"); }
+                    @Override public void goTakeAttendance() { router.go("student-mark"); }
+                    @Override public void goReports() { router.go("student-attendance"); }
+                    @Override public void goEmail() { router.go("student-email"); }
                     @Override public void logout() {
-                        System.out.println("TODO: Student Logout");
+                        jwtStore.clear();
+                        router.go("login");
                     }
                 }
         );
@@ -177,7 +182,6 @@ public class StudentAttendancePage {
         badge.setMinSize(26, 26);
         badge.setMaxSize(26, 26);
 
-        // keep inline badge color (overrides CSS)
         badge.setStyle(
                 "-fx-background-color: " + colorHex + ";" +
                         "-fx-background-radius: 8;"

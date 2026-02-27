@@ -1,16 +1,24 @@
 package frontend;
 
+import frontend.auth.AppRouter;
+import frontend.auth.AuthState;
+import frontend.auth.JwtStore;
 import javafx.geometry.Insets;
-import javafx.geometry.Pos;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
-import javafx.scene.control.*;
+import javafx.scene.control.Label;
+import javafx.scene.control.ScrollPane;
 import javafx.scene.layout.*;
 
 public class AdminPages {
 
     // ===== Dashboard content =====
-    public static Parent dashboardPage(Scene scene, String adminName) {
+    public static Parent dashboardPage(Scene scene, AppRouter router, JwtStore jwtStore, AuthState state) {
+
+        String adminName = (state.getName() == null || state.getName().isBlank())
+                ? "Name"
+                : state.getName();
+
         VBox content = new VBox(18);
         content.getStyleClass().add("content");
         content.setPadding(new Insets(18));
@@ -48,19 +56,13 @@ public class AdminPages {
         quickActions.getStyleClass().add("quick-actions");
 
         Pane manageClasses = AdminUI.makeActionCard("Manage Classes", "Add, edit or remove classes", "📚", "qa-green");
-        manageClasses.setOnMouseClicked(e ->
-                scene.setRoot(new AdminManageClassesPage().build(scene, adminName))
-        );
+        manageClasses.setOnMouseClicked(e -> router.go("admin-classes"));
 
         Pane manageUsers = AdminUI.makeActionCard("Manage Users", "Student registration and details", "👤", "qa-purple");
-        manageUsers.setOnMouseClicked(e ->
-                scene.setRoot(new AdminManageUsersPage().build(scene, adminName))
-        );
+        manageUsers.setOnMouseClicked(e -> router.go("admin-users"));
 
         Pane reports = AdminUI.makeActionCard("Attendance Reports", "View comprehensive reports", "🧾", "qa-green");
-        reports.setOnMouseClicked(e ->
-                scene.setRoot(new AdminAttendanceReportsPage().build(scene, adminName))
-        );
+        reports.setOnMouseClicked(e -> router.go("admin-reports"));
 
         quickActions.getChildren().addAll(manageClasses, manageUsers, reports);
 
@@ -93,6 +95,5 @@ public class AdminPages {
         scroll.getStyleClass().add("scroll");
 
         return scroll;
-
     }
-    }
+}
