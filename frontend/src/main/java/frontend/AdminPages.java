@@ -1,23 +1,11 @@
 package frontend;
 
-import config.AttendanceSQL;
-import config.ClassSQL;
-import config.SessionSQL;
-import config.UserSQL;
 import javafx.geometry.Insets;
+import javafx.geometry.Pos;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
-import service.AttendanceService;
-import service.ClassService;
-import service.UserService;
-import model.User;
-import model.UserRole;
-import model.CourseClass;
-import dto.AttendanceStats;
-
-import java.util.List;
 
 public class AdminPages {
 
@@ -38,25 +26,10 @@ public class AdminPages {
         statsGrid.setHgap(14);
         statsGrid.setVgap(14);
 
-        // Use backend services to compute stats
-        ClassService classService = new ClassService(new ClassSQL());
-        UserService userService = new UserService(new UserSQL());
-        AttendanceService attendanceService = new AttendanceService(new AttendanceSQL(), new SessionSQL());
-
-        List<CourseClass> classes = classService.getAllClasses();
-        List<User> users = userService.getAllUsers();
-
-        int totalClasses = classes == null ? 0 : classes.size();
-        long totalStudents = users == null ? 0 : users.stream().filter(u -> u.getRole() == UserRole.STUDENT).count();
-        long totalTeachers = users == null ? 0 : users.stream().filter(u -> u.getRole() == UserRole.TEACHER).count();
-
-        AttendanceStats monthStats = attendanceService.getStatsThisMonth();
-        String monthlyRate = monthStats == null ? "0%" : String.format("%.1f%%", monthStats.getAttendanceRate());
-
-        statsGrid.add(AdminUI.makeStatCard("Total Classes", String.valueOf(totalClasses), "📘", "accent-purple"), 0, 0);
-        statsGrid.add(AdminUI.makeStatCard("Students", String.valueOf(totalStudents), "🎓", "accent-green"), 1, 0);
-        statsGrid.add(AdminUI.makeStatCard("Teachers", String.valueOf(totalTeachers), "👥", "accent-orange"), 0, 1);
-        statsGrid.add(AdminUI.makeStatCard("Monthly Rate", monthlyRate, "📈", "accent-green"), 1, 1);
+        statsGrid.add(AdminUI.makeStatCard("Total Classes", "4", "📘", "accent-purple"), 0, 0);
+        statsGrid.add(AdminUI.makeStatCard("Students", "0", "🎓", "accent-green"), 1, 0);
+        statsGrid.add(AdminUI.makeStatCard("Teachers", "1", "👥", "accent-orange"), 0, 1);
+        statsGrid.add(AdminUI.makeStatCard("Monthly Rate", "0%", "📈", "accent-green"), 1, 1);
 
         ColumnConstraints c1 = new ColumnConstraints();
         c1.setHgrow(Priority.ALWAYS);
@@ -76,18 +49,17 @@ public class AdminPages {
 
         Pane manageClasses = AdminUI.makeActionCard("Manage Classes", "Add, edit or remove classes", "📚", "qa-green");
         manageClasses.setOnMouseClicked(e ->
-                scene.setRoot(new AdminManageClassesPage(new ClassService(new ClassSQL())).build(scene, adminName))
+                scene.setRoot(new AdminManageClassesPage().build(scene, adminName))
         );
 
         Pane manageUsers = AdminUI.makeActionCard("Manage Users", "Student registration and details", "👤", "qa-purple");
         manageUsers.setOnMouseClicked(e ->
-                scene.setRoot(new AdminManageUsersPage(new UserService(new UserSQL())).build(scene, adminName))
+                scene.setRoot(new AdminManageUsersPage().build(scene, adminName))
         );
 
         Pane reports = AdminUI.makeActionCard("Attendance Reports", "View comprehensive reports", "🧾", "qa-green");
         reports.setOnMouseClicked(e ->
-                scene.setRoot(new AdminAttendanceReportsPage(new AttendanceService(new AttendanceSQL(), new SessionSQL()),
-                        new ClassService(new ClassSQL())).build(scene, adminName))
+                scene.setRoot(new AdminAttendanceReportsPage().build(scene, adminName))
         );
 
         quickActions.getChildren().addAll(manageClasses, manageUsers, reports);
@@ -99,16 +71,10 @@ public class AdminPages {
         recentGrid.setHgap(14);
         recentGrid.setVgap(14);
 
-        // Populate recent classes dynamically (up to 4)
-        if (classes != null) {
-            for (int i = 0; i < Math.min(4, classes.size()); i++) {
-                CourseClass cls = classes.get(i);
-                String schedule = (cls.getSemester() == null ? "" : cls.getSemester()) + " " + (cls.getAcademicYear() == null ? "" : cls.getAcademicYear());
-                int col = i % 2;
-                int row = i / 2;
-                recentGrid.add(AdminUI.makeClassCard(cls.getName(), cls.getClassCode(), cls.getTeacherEmail() == null ? "" : cls.getTeacherEmail(), schedule), col, row);
-            }
-        }
+        recentGrid.add(AdminUI.makeClassCard("Mathematics", "TX-09374", "teacher@example.com", "MWF 9:00 AM"), 0, 0);
+        recentGrid.add(AdminUI.makeClassCard("Physics", "TX-09374", "teacher@example.com", "MWF 9:00 AM"), 1, 0);
+        recentGrid.add(AdminUI.makeClassCard("Design Patterns", "SW-27366", "teacher@example.com", "MWF 9:00 AM"), 0, 1);
+        recentGrid.add(AdminUI.makeClassCard("Software Project 1", "SW-64544", "teacher@example.com", "MWF 9:00 AM"), 1, 1);
 
         ColumnConstraints r1 = new ColumnConstraints();
         r1.setHgrow(Priority.ALWAYS);
@@ -129,4 +95,4 @@ public class AdminPages {
         return scroll;
 
     }
-}
+    }

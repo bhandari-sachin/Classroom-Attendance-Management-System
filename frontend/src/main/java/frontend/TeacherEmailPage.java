@@ -1,6 +1,5 @@
 package frontend;
 
-import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.geometry.Insets;
 import javafx.scene.Parent;
@@ -9,28 +8,12 @@ import javafx.scene.control.Label;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.layout.VBox;
-import model.User;
-import model.UserRole;
-import service.UserService;
-import config.UserSQL;
-
-import java.util.List;
 
 public class TeacherEmailPage {
 
-    private final ObservableList<StudentRow> rows = FXCollections.observableArrayList();
-    private final UserService userService = new UserService(new UserSQL());
+    private final ObservableList<StudentRow> rows = DataStore.getStudents();
 
     public Parent build(Scene scene, String teacherName) {
-
-        // Load students from backend
-        rows.clear();
-        List<User> users = userService.getAllUsers();
-        for (User u : users) {
-            if (u.getRole() == UserRole.STUDENT) {
-                rows.add(new StudentRow(u.getName(), u.getEmail(), ""));
-            }
-        }
 
         VBox page = new VBox(14);
         page.setPadding(new Insets(22));
@@ -39,7 +22,7 @@ public class TeacherEmailPage {
         Label title = new Label("Email");
         title.getStyleClass().add("title");
 
-        Label info = new Label("Student emails");
+        Label info = new Label("Student emails (connect real backend later).");
         info.getStyleClass().add("subtitle");
 
         TableView<StudentRow> table = new TableView<>(rows);

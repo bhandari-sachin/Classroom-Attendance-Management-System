@@ -5,29 +5,16 @@ import javafx.beans.property.StringProperty;
 
 public class StudentRow {
 
-    private Long studentId = null;
     private final StringProperty studentName = new SimpleStringProperty();
     private final StringProperty email = new SimpleStringProperty();
     private final StringProperty status = new SimpleStringProperty();
     private final StringProperty excuseReason = new SimpleStringProperty("");
 
-    //for dummy data
     public StudentRow(String studentName, String email, String status) {
         this.studentName.set(studentName);
         this.email.set(email);
         this.status.set(status);
     }
-
-    //studentId
-    public StudentRow(Long studentId, String studentName, String email, String status) {
-        this.studentId = studentId;
-        this.studentName.set(studentName);
-        this.email.set(email);
-        this.status.set(status);
-    }
-
-    public Long getStudentId() { return studentId; }
-    public void setStudentId(Long id) { this.studentId = id; }
 
     public String getStudentName() { return studentName.get(); }
     public void setStudentName(String v) { studentName.set(v); }

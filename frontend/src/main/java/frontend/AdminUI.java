@@ -73,36 +73,6 @@ public class AdminUI {
         return card;
     }
 
-    // Small summary card used in dashboards
-    public static Pane smallSummaryCard(String label, String value, String icon, String accentClass) {
-        VBox card = new VBox(6);
-        card.getStyleClass().addAll("card", "summary-card");
-
-        HBox row = new HBox(10);
-        row.setAlignment(Pos.CENTER_LEFT);
-
-        StackPane badge = new StackPane(new Label(icon));
-        badge.getStyleClass().addAll("icon-badge", accentClass);
-
-        VBox texts = new VBox(2);
-        Label v = new Label(value);
-        v.getStyleClass().add("stat-number");
-
-        Label l = new Label(label);
-        l.getStyleClass().add("stat-label");
-
-        texts.getChildren().addAll(v, l);
-
-        row.getChildren().addAll(badge, texts);
-        card.getChildren().add(row);
-
-        card.setMaxWidth(Double.MAX_VALUE);
-        HBox.setHgrow(card, Priority.ALWAYS);
-
-        return card;
-    }
-
-    // Class card (used in recent classes)
     public static Pane makeClassCard(String className, String code, String teacherEmail, String schedule) {
         VBox card = new VBox(8);
         card.getStyleClass().addAll("card", "class-card");
@@ -134,7 +104,34 @@ public class AdminUI {
         return card;
     }
 
-    @SuppressWarnings("unchecked")
+    public static Pane smallSummaryCard(String label, String value, String icon, String accentClass) {
+        VBox card = new VBox(6);
+        card.getStyleClass().addAll("card", "summary-card");
+
+        HBox row = new HBox(10);
+        row.setAlignment(Pos.CENTER_LEFT);
+
+        StackPane badge = new StackPane(new Label(icon));
+        badge.getStyleClass().addAll("icon-badge", accentClass);
+
+        VBox texts = new VBox(2);
+        Label v = new Label(value);
+        v.getStyleClass().add("stat-number");
+
+        Label l = new Label(label);
+        l.getStyleClass().add("stat-label");
+
+        texts.getChildren().addAll(v, l);
+
+        row.getChildren().addAll(badge, texts);
+        card.getChildren().add(row);
+
+        card.setMaxWidth(Double.MAX_VALUE);
+        HBox.setHgrow(card, Priority.ALWAYS);
+
+        return card;
+    }
+
     public static TableView<ClassRow> buildClassesTable() {
         TableView<ClassRow> table = new TableView<>();
         table.getStyleClass().add("table");
@@ -149,13 +146,10 @@ public class AdminUI {
         TableColumn<ClassRow, String> cTeacher = new TableColumn<>("Teacher");
         cTeacher.setCellValueFactory(d -> d.getValue().teacherProperty());
 
-        TableColumn<ClassRow , String> cEmail = new TableColumn<>("Email");
-        cEmail.setCellValueFactory(d -> d.getValue().emailProperty());
-
         TableColumn<ClassRow, String> cSchedule = new TableColumn<>("Schedule");
         cSchedule.setCellValueFactory(d -> d.getValue().scheduleProperty());
 
-        TableColumn<ClassRow, Number> cStudents = new TableColumn<>("Students");
+        TableColumn<ClassRow, String> cStudents = new TableColumn<>("Students");
         cStudents.setCellValueFactory(d -> d.getValue().studentsProperty());
 
         TableColumn<ClassRow, Void> cActions = new TableColumn<>("Actions");
@@ -180,10 +174,16 @@ public class AdminUI {
 
         table.getColumns().addAll(cName, cCode, cTeacher, cSchedule, cStudents, cActions);
 
+        table.getItems().addAll(
+                new ClassRow("Mathematics", "TX-09374", "teacher1@example.com", "MWF 9:00 AM", "0"),
+                new ClassRow("Physics", "TX-09347", "teacher2@example.com", "MWF 9:00 AM", "0"),
+                new ClassRow("Design Patterns", "SW-27366", "teacher3@example.com", "MWF 9:00 AM", "0"),
+                new ClassRow("Software Project 1", "SW-64544", "teacher4@example.com", "MWF 9:00 AM", "0")
+        );
+
         return table;
     }
 
-    @SuppressWarnings("unchecked")
     public static TableView<UserRow> buildUsersTable() {
         TableView<UserRow> table = new TableView<>();
         table.getStyleClass().add("table");
@@ -219,6 +219,12 @@ public class AdminUI {
         });
 
         table.getColumns().addAll(cUser, cType, cEnrolled, cActions);
+
+        table.getItems().addAll(
+                new UserRow("User\nuser@example.com", "Admin", "-"),
+                new UserRow("teacher\nteacher@example.com", "Teacher", "4")
+        );
+
         return table;
     }
 

@@ -1,45 +1,13 @@
 package frontend;
 
-import config.AttendanceSQL;
-import config.ClassSQL;
-import config.SessionSQL;
-import config.UserSQL;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
-import model.CourseClass;
-import service.AttendanceService;
-import service.ClassService;
-import service.UserService;
 
 public class AdminManageClassesPage {
-
-    private final ClassService classService;
-
-    public AdminManageClassesPage(ClassService classService) {
-        this.classService = classService;
-    }
-
-    private void loadClasses(TableView<ClassRow> table) {
-        table.getItems().clear();
-
-        for (CourseClass c : classService.getAllClasses()) {
-            int count = classService.getEnrollmentCount(c.getId());
-            table.getItems().add(
-                    new ClassRow(
-                            c.getName(),
-                            c.getClassCode(),
-                            c.getTeacherName(),
-                            c.getTeacherEmail(),
-                            c.getSemester() + " " + c.getAcademicYear(),
-                            count
-                    )
-            );
-        }
-    }
 
     public Parent build(Scene scene, String adminName) {
         VBox content = new VBox(14);
@@ -73,7 +41,6 @@ public class AdminManageClassesPage {
         section.getStyleClass().add("section-title");
 
         TableView<ClassRow> table = AdminUI.buildClassesTable();
-        loadClasses(table);
 
         content.getChildren().addAll(titleRow, search, section, table);
 
@@ -93,8 +60,8 @@ public class AdminManageClassesPage {
                 new AdminAppLayout.Navigator() {
                     @Override public void goDashboard() { scene.setRoot(new AdminDashboardApp().build(scene, adminName)); }
                     @Override public void goTakeAttendance() { scene.setRoot(build(scene, adminName)); }
-                    @Override public void goReports() { scene.setRoot(new AdminManageUsersPage(new UserService(new UserSQL())).build(scene, adminName)); }
-                    @Override public void goEmail() { scene.setRoot(new AdminAttendanceReportsPage(new AttendanceService(new AttendanceSQL(), new SessionSQL()), new ClassService(new ClassSQL())).build(scene, adminName)); }
+                    @Override public void goReports() { scene.setRoot(new AdminManageUsersPage().build(scene, adminName)); }
+                    @Override public void goEmail() { scene.setRoot(new AdminAttendanceReportsPage().build(scene, adminName)); }
                     @Override public void logout() { System.out.println("TODO: Admin Logout"); }
                 }
         );
