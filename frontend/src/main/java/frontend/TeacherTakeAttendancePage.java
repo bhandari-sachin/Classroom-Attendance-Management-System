@@ -14,12 +14,15 @@ import javafx.scene.layout.*;
 import model.CourseClass;
 import model.Student;
 import model.Session;
+import model.User;
 import service.AttendanceService;
 import service.ClassService;
 import service.SessionService;
+import service.UserService;
 import config.ClassSQL;
 import config.SessionSQL;
 import config.AttendanceSQL;
+import config.UserSQL;
 import util.QRCodeGenerator;
 
 import java.awt.image.BufferedImage;
@@ -40,6 +43,28 @@ public class TeacherTakeAttendancePage {
 
     public Parent build(Scene scene, String teacherName) {
 
+        UserService userService = new UserService(new UserSQL());
+        Long teacherId = 2L;
+        String displayName = teacherName;
+        try {
+            List<User> all = userService.getAllUsers();
+            if (all != null) {
+                for (User u : all) {
+                    if (u.getId() != null && u.getId().equals(teacherId)) {
+                        String first = u.getFirstName() == null ? "" : u.getFirstName();
+                        String last = u.getLastName() == null ? "" : u.getLastName();
+                        String combined = (first + " " + last).trim();
+                        if (!combined.isEmpty()) displayName = combined;
+                        break;
+                    }
+                }
+            }
+        } catch (Exception ex) {
+            System.err.println("Failed to fetch teacher name: " + ex.getMessage());
+        }
+
+        final String displayNameFinal = displayName;
+
         VBox page = new VBox(16);
         page.setPadding(new Insets(22));
         page.getStyleClass().add("page");
@@ -59,8 +84,9 @@ public class TeacherTakeAttendancePage {
         classBox.setMaxWidth(200);
 
         // Load classes from backend
-        List<CourseClass> classes = classService.getAllClasses();
-        ObservableList<CourseClass> classItems = FXCollections.observableArrayList(classes);
+        List<CourseClass> classes = classService.getClassesByTeacher(teacherId);
+        ObservableList<CourseClass> classItems = FXCollections.observableArrayList();
+        if (classes != null) classItems.addAll(classes);
         classBox.setItems(classItems);
 
         // show friendly label in combobox
@@ -298,14 +324,14 @@ public class TeacherTakeAttendancePage {
             scene.setRoot(
                     new TeacherExcuseReasonPage().build(
                             scene,
-                            teacherName,
+                            displayNameFinal,
                             s,
                             () -> {
                                 // on done: persist excuse if there's a reason
                                 if (s.getExcuseReason() != null && !s.getExcuseReason().isEmpty() && s.getStudentId() != null) {
                                     attendanceService.markExcused(s.getStudentId(), sess.getId(), s.getExcuseReason());
                                 }
-                                scene.setRoot(build(scene, teacherName));
+                                scene.setRoot(build(scene, displayNameFinal));
                             }
                     )
             );
@@ -337,14 +363,14 @@ public class TeacherTakeAttendancePage {
         );
 
         return AppLayout.wrapWithSidebar(
-                teacherName,
+                displayNameFinal,
                 "Student Panel", "Dashboard", "Mark Attendance", "My Attendance", "Contact", page,
                 "takeAttendance",
                 new AppLayout.Navigator() {
-                    @Override public void goDashboard() { scene.setRoot(new TeacherDashboardApp().build(scene, teacherName)); }
-                    @Override public void goTakeAttendance() { scene.setRoot(build(scene, teacherName)); }
-                    @Override public void goReports() { scene.setRoot(new TeacherReportsPage().build(scene, teacherName)); }
-                    @Override public void goEmail() { scene.setRoot(new TeacherEmailPage().build(scene, teacherName)); }
+                    @Override public void goDashboard() { scene.setRoot(new TeacherDashboardApp().build(scene, displayNameFinal)); }
+                    @Override public void goTakeAttendance() { scene.setRoot(build(scene, displayNameFinal)); }
+                    @Override public void goReports() { scene.setRoot(new TeacherReportsPage().build(scene, displayNameFinal)); }
+                    @Override public void goEmail() { scene.setRoot(new TeacherEmailPage().build(scene, displayNameFinal)); }
                     @Override public void logout() { System.out.println("TODO: Logout"); }
                 }
         );
