@@ -10,7 +10,7 @@ import javafx.scene.text.Font;
 
 public class StudentMarkAttendancePage {
 
-    public Parent build(Scene scene, String studentName) {
+    public Parent build(Scene scene, String studentName, Long studentId) {
 
         VBox page = new VBox(16);
         page.setPadding(new Insets(26));
@@ -20,7 +20,7 @@ public class StudentMarkAttendancePage {
         Button back = new Button("← Back to Dashboard");
         back.getStyleClass().add("back-link");
         back.setOnAction(e ->
-                scene.setRoot(new StudentDashboardApp().build(scene, studentName))
+                scene.setRoot(new StudentDashboardApp().build(scene, studentName, studentId))
         );
 
         Label title = new Label("Scan QR Code");
@@ -120,19 +120,19 @@ public class StudentMarkAttendancePage {
                 "takeAttendance", // for student: "Mark Attendance" page
                 new AdminAppLayout.Navigator() {
                     @Override public void goDashboard() {
-                        scene.setRoot(new StudentDashboardApp().build(scene, studentName));
+                        scene.setRoot(new StudentDashboardApp().build(scene, studentName, studentId));
                     }
 
                     @Override public void goTakeAttendance() {
-                        scene.setRoot(build(scene, studentName)); // already here
+                        scene.setRoot(build(scene, studentName, studentId));
                     }
 
                     @Override public void goReports() {
-                        scene.setRoot(new StudentAttendancePage().build(scene, studentName));
+                        scene.setRoot(new StudentAttendancePage().build(scene, studentName, studentId));
                     }
 
                     @Override public void goEmail() {
-                        scene.setRoot(new StudentEmailPage().build(scene, studentName));
+                        scene.setRoot(new StudentEmailPage().build(scene, studentName, studentId));
                     }
 
                     @Override public void logout() {

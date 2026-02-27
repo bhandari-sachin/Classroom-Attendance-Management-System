@@ -22,7 +22,7 @@ public class StudentEmailPage {
     private final ObservableList<TeacherRow> rows = FXCollections.observableArrayList();
     private final UserService userService = new UserService(new UserSQL());
 
-    public Parent build(Scene scene, String studentName) {
+    public Parent build(Scene scene, String studentName, Long studentId) {
 
         // Load teachers
         rows.clear();
@@ -63,19 +63,19 @@ public class StudentEmailPage {
                 "email",
                 new AdminAppLayout.Navigator() {
                     @Override public void goDashboard() {
-                        scene.setRoot(new StudentDashboardApp().build(scene, studentName));
+                        scene.setRoot(new StudentDashboardApp().build(scene, studentName, studentId));
                     }
 
                     @Override public void goTakeAttendance() {
-                        scene.setRoot(new StudentMarkAttendancePage().build(scene, studentName));
+                        scene.setRoot(new StudentMarkAttendancePage().build(scene, studentName, studentId));
                     }
 
                     @Override public void goReports() {
-                        scene.setRoot(new StudentAttendancePage().build(scene, studentName));
+                        scene.setRoot(new StudentAttendancePage().build(scene, studentName, studentId));
                     }
 
                     @Override public void goEmail() {
-                        scene.setRoot(build(scene, studentName));
+                        scene.setRoot(build(scene, studentName, studentId));
                     }
 
                     @Override public void logout() {

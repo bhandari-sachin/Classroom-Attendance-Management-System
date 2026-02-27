@@ -21,7 +21,7 @@ public class TeacherEmailPage {
     private final ObservableList<StudentRow> rows = FXCollections.observableArrayList();
     private final UserService userService = new UserService(new UserSQL());
 
-    public Parent build(Scene scene, String teacherName) {
+    public Parent build(Scene scene, String teacherName, Long teacherId) {
 
         // Load students from backend
         rows.clear();
@@ -61,10 +61,10 @@ public class TeacherEmailPage {
                 "Student Panel", "Dashboard", "Mark Attendance", "My Attendance", "Contact", page,
                 "email",
                 new AppLayout.Navigator() {
-                    @Override public void goDashboard() { scene.setRoot(new TeacherDashboardApp().build(scene, teacherName)); }
-                    @Override public void goTakeAttendance() { scene.setRoot(new TeacherTakeAttendancePage().build(scene, teacherName)); }
-                    @Override public void goReports() { scene.setRoot(new TeacherReportsPage().build(scene, teacherName)); }
-                    @Override public void goEmail() { scene.setRoot(build(scene, teacherName)); }
+                    @Override public void goDashboard() { scene.setRoot(new TeacherDashboardApp().build(scene, teacherName, teacherId)); }
+                    @Override public void goTakeAttendance() { scene.setRoot(new TeacherTakeAttendancePage().build(scene, teacherName, teacherId)); }
+                    @Override public void goReports() { scene.setRoot(new TeacherReportsPage().build(scene, teacherName, teacherId)); }
+                    @Override public void goEmail() { scene.setRoot(build(scene, teacherName, teacherId)); }
                     @Override public void logout() { System.out.println("TODO: Logout"); }
                 }
         );

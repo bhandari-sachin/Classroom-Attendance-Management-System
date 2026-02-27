@@ -14,15 +14,12 @@ import javafx.scene.layout.*;
 import model.CourseClass;
 import model.Student;
 import model.Session;
-import model.User;
 import service.AttendanceService;
 import service.ClassService;
 import service.SessionService;
-import service.UserService;
 import config.ClassSQL;
 import config.SessionSQL;
 import config.AttendanceSQL;
-import config.UserSQL;
 import util.QRCodeGenerator;
 
 import java.awt.image.BufferedImage;
@@ -41,29 +38,7 @@ public class TeacherTakeAttendancePage {
     private final SessionService sessionService = new SessionService(new SessionSQL());
     private final AttendanceService attendanceService = new AttendanceService(new AttendanceSQL(), new SessionSQL());
 
-    public Parent build(Scene scene, String teacherName) {
-
-        UserService userService = new UserService(new UserSQL());
-        Long teacherId = 2L;
-        String displayName = teacherName;
-        try {
-            List<User> all = userService.getAllUsers();
-            if (all != null) {
-                for (User u : all) {
-                    if (u.getId() != null && u.getId().equals(teacherId)) {
-                        String first = u.getFirstName() == null ? "" : u.getFirstName();
-                        String last = u.getLastName() == null ? "" : u.getLastName();
-                        String combined = (first + " " + last).trim();
-                        if (!combined.isEmpty()) displayName = combined;
-                        break;
-                    }
-                }
-            }
-        } catch (Exception ex) {
-            System.err.println("Failed to fetch teacher name: " + ex.getMessage());
-        }
-
-        final String displayNameFinal = displayName;
+    public Parent build(Scene scene, String teacherName, Long teacherId) {
 
         VBox page = new VBox(16);
         page.setPadding(new Insets(22));
@@ -324,14 +299,15 @@ public class TeacherTakeAttendancePage {
             scene.setRoot(
                     new TeacherExcuseReasonPage().build(
                             scene,
-                            displayNameFinal,
+                            teacherName,
+                            teacherId,
                             s,
                             () -> {
                                 // on done: persist excuse if there's a reason
                                 if (s.getExcuseReason() != null && !s.getExcuseReason().isEmpty() && s.getStudentId() != null) {
                                     attendanceService.markExcused(s.getStudentId(), sess.getId(), s.getExcuseReason());
                                 }
-                                scene.setRoot(build(scene, displayNameFinal));
+                                scene.setRoot(build(scene, teacherName, teacherId));
                             }
                     )
             );
@@ -363,14 +339,14 @@ public class TeacherTakeAttendancePage {
         );
 
         return AppLayout.wrapWithSidebar(
-                displayNameFinal,
+                teacherName,
                 "Student Panel", "Dashboard", "Mark Attendance", "My Attendance", "Contact", page,
                 "takeAttendance",
                 new AppLayout.Navigator() {
-                    @Override public void goDashboard() { scene.setRoot(new TeacherDashboardApp().build(scene, displayNameFinal)); }
-                    @Override public void goTakeAttendance() { scene.setRoot(build(scene, displayNameFinal)); }
-                    @Override public void goReports() { scene.setRoot(new TeacherReportsPage().build(scene, displayNameFinal)); }
-                    @Override public void goEmail() { scene.setRoot(new TeacherEmailPage().build(scene, displayNameFinal)); }
+                    @Override public void goDashboard() { scene.setRoot(new TeacherDashboardApp().build(scene, teacherName, teacherId)); }
+                    @Override public void goTakeAttendance() { scene.setRoot(build(scene, teacherName, teacherId)); }
+                    @Override public void goReports() { scene.setRoot(new TeacherReportsPage().build(scene, teacherName, teacherId)); }
+                    @Override public void goEmail() { scene.setRoot(new TeacherEmailPage().build(scene, teacherName, teacherId)); }
                     @Override public void logout() { System.out.println("TODO: Logout"); }
                 }
         );

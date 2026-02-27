@@ -8,7 +8,7 @@ import javafx.scene.layout.VBox;
 
 public class TeacherReportsPage {
 
-    public Parent build(Scene scene, String teacherName) {
+    public Parent build(Scene scene, String teacherName, Long teacherId) {
 
         VBox page = new VBox(14);
         page.setPadding(new Insets(22));
@@ -29,22 +29,22 @@ public class TeacherReportsPage {
                 new AppLayout.Navigator() {
                     @Override
                     public void goDashboard() {
-                        scene.setRoot(new TeacherDashboardApp().build(scene, teacherName));
+                        scene.setRoot(new TeacherDashboardApp().build(scene, teacherName, teacherId));
                     }
 
                     @Override
                     public void goTakeAttendance() {
-                        scene.setRoot(new TeacherTakeAttendancePage().build(scene, teacherName));
+                        scene.setRoot(new TeacherTakeAttendancePage().build(scene, teacherName, teacherId));
                     }
 
                     @Override
                     public void goReports() {
-                        scene.setRoot(build(scene, teacherName));
+                        scene.setRoot(build(scene, teacherName, teacherId));
                     }
 
                     @Override
                     public void goEmail() {
-                        scene.setRoot(new TeacherEmailPage().build(scene, teacherName));
+                        scene.setRoot(new TeacherEmailPage().build(scene, teacherName, teacherId));
                     }
 
                     @Override

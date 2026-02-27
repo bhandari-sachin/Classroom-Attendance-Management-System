@@ -1,5 +1,9 @@
 package frontend;
 
+import config.AttendanceSQL;
+import config.ClassSQL;
+import config.SessionSQL;
+import config.UserSQL;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Parent;
@@ -8,18 +12,36 @@ import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.Separator;
 import javafx.scene.layout.*;
+import dto.AttendanceStats;
+import model.CourseClass;
+import model.User;
+import service.AttendanceService;
+import service.ClassService;
+import service.UserService;
 
-import static javafx.application.Application.launch;
+import java.util.List;
 
 public class StudentDashboardApp {
 
-    // Dummy data (replace later from backend)
     private int presentCount = 0;
     private int absentCount = 0;
     private int excusedCount = 0;
     private double attendanceRate = 0.0; // 0.0 -> 0%
 
-    public Parent build(Scene scene, String studentName) {
+    public Parent build(Scene scene, String studentName, Long studentId) {
+
+        ClassService classService = new ClassService(new ClassSQL());
+        AttendanceService attendanceService = new AttendanceService(new AttendanceSQL(), new SessionSQL());
+        UserService userService = new UserService(new UserSQL());
+
+        // compute stats for this month
+        AttendanceStats s = attendanceService.getStudentOverallThisMonth(studentId);
+        if (s != null) {
+            presentCount = s.getPresentCount();
+            absentCount = s.getAbsentCount();
+            excusedCount = s.getExcusedCount();
+            attendanceRate = s.getAttendanceRate() / 100.0; // service returns percent, convert to 0..1
+        }
 
         VBox page = new VBox(16);
         page.setPadding(new Insets(26));
@@ -33,7 +55,7 @@ public class StudentDashboardApp {
         subtitle.getStyleClass().add("dash-subtitle");
 
         // Action card (Mark attendance)
-        Button markAttendance = attendanceCard(scene, studentName);
+        Button markAttendance = attendanceCard(scene, studentName, classService, studentId);
 
         // Stats grid (2x2)
         GridPane stats = statsGrid();
@@ -51,12 +73,30 @@ public class StudentDashboardApp {
         Button viewAll = new Button("View All Attendance  →");
         viewAll.getStyleClass().add("link-button");
         viewAll.setOnAction(e ->
-                scene.setRoot(new StudentAttendancePage().build(scene, studentName))
+                scene.setRoot(new StudentAttendancePage().build(scene, studentName, studentId))
         );
 
         classesHeader.getChildren().addAll(classesTitle, spacer, viewAll);
 
-        VBox classesCard = emptyClassesCard();
+        VBox classesCard;
+        try {
+            List<CourseClass> classes = classService.getClassesForStudent(studentId);
+            if (classes == null || classes.isEmpty()) {
+                classesCard = emptyClassesCard();
+            } else {
+                VBox list = new VBox(6);
+                list.getStyleClass().add("classes-card");
+                for (CourseClass c : classes) {
+                    Label row = new Label(c.getName() + " — " + c.getClassCode());
+                    row.getStyleClass().add("class-row");
+                    list.getChildren().add(row);
+                }
+                classesCard = list;
+            }
+        } catch (Exception ex) {
+            classesCard = emptyClassesCard();
+            System.err.println("Failed loading student classes: " + ex.getMessage());
+        }
 
         page.getChildren().addAll(
                 title,
@@ -69,47 +109,47 @@ public class StudentDashboardApp {
         );
 
         return AppLayout.wrapWithSidebar(
-        studentName,
-        "Student Panel",
-        "Dashboard",
-        "Mark Attendance",
-        "My Attendance",
-        "Contact",
-        page,
-        "dashboard",
-        new AppLayout.Navigator() {
+                studentName,
+                "Student Panel",
+                "Dashboard",
+                "Mark Attendance",
+                "My Attendance",
+                "Contact",
+                page,
+                "dashboard",
+                new AppLayout.Navigator() {
 
-            @Override
-            public void goDashboard() {
-                scene.setRoot(build(scene, studentName));
-            }
+                    @Override
+                    public void goDashboard() {
+                        scene.setRoot(build(scene, studentName, studentId));
+                    }
 
-            @Override
-            public void goTakeAttendance() {
-                scene.setRoot(new StudentMarkAttendancePage().build(scene, studentName));
-            }
+                    @Override
+                    public void goTakeAttendance() {
+                        scene.setRoot(new StudentMarkAttendancePage().build(scene, studentName, studentId));
+                    }
 
-            @Override
-            public void goReports() {
-                scene.setRoot(new StudentAttendancePage().build(scene, studentName));
-            }
+                    @Override
+                    public void goReports() {
+                        scene.setRoot(new StudentAttendancePage().build(scene, studentName, studentId));
+                    }
 
-            @Override
-            public void goEmail() {
-                scene.setRoot(new StudentEmailPage().build(scene, studentName));
-            }
+                    @Override
+                    public void goEmail() {
+                        scene.setRoot(new StudentEmailPage().build(scene, studentName, studentId));
+                    }
 
-            @Override
-            public void logout() {
-                System.out.println("TODO: Student Logout");
-            }
-        }
-    );
-}
+                    @Override
+                    public void logout() {
+                        System.out.println("TODO: Student Logout");
+                    }
+                }
+        );
+    }
 
     // ===== UI blocks / helpers =====
 
-    private Button attendanceCard(Scene scene, String studentName) {
+    private Button attendanceCard(Scene scene, String displayName, ClassService classService, Long studentId) {
         Button btn = new Button();
         btn.getStyleClass().add("attendance-card");
         btn.setMaxWidth(Double.MAX_VALUE);
@@ -139,7 +179,7 @@ public class StudentDashboardApp {
         btn.setGraphic(box);
 
         btn.setOnAction(e ->
-                scene.setRoot(new StudentMarkAttendancePage().build(scene, studentName))
+                scene.setRoot(new StudentMarkAttendancePage().build(scene, displayName, studentId))
         );
 
         return btn;

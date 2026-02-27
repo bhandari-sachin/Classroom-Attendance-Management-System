@@ -14,7 +14,7 @@ import javafx.scene.layout.VBox;
 
 public class TeacherExcuseReasonPage {
 
-    public Parent build(Scene scene, String teacherName, StudentRow student, Runnable onDoneBack) {
+    public Parent build(Scene scene, String teacherName, Long teacherId, StudentRow student, Runnable onDoneBack) {
 
         VBox page = new VBox(12);
         page.setPadding(new Insets(22));
@@ -62,10 +62,10 @@ public class TeacherExcuseReasonPage {
                 "Student Panel", "Dashboard", "Mark Attendance", "My Attendance", "Contact", page,
                 "takeAttendance",
                 new AppLayout.Navigator() {
-                    @Override public void goDashboard() { scene.setRoot(new TeacherDashboardApp().build(scene, teacherName)); }
+                    @Override public void goDashboard() { scene.setRoot(new TeacherDashboardApp().build(scene, teacherName, teacherId)); }
                     @Override public void goTakeAttendance() { onDoneBack.run(); }
-                    @Override public void goReports() { scene.setRoot(new TeacherReportsPage().build(scene, teacherName)); }
-                    @Override public void goEmail() { scene.setRoot(new TeacherEmailPage().build(scene, teacherName)); }
+                    @Override public void goReports() { scene.setRoot(new TeacherReportsPage().build(scene, teacherName, teacherId)); }
+                    @Override public void goEmail() { scene.setRoot(new TeacherEmailPage().build(scene, teacherName, teacherId)); }
                     @Override public void logout() { System.out.println("TODO: Logout"); }
                 }
         );

@@ -29,33 +29,11 @@ public class TeacherDashboardApp {
     private int presentToday = 0;
     private int absentToday = 0;
 
-    public Parent build(Scene scene, String teacherName) {
+    public Parent build(Scene scene, String teacherName, Long teacherId) {
 
         ClassService classService = new ClassService(new ClassSQL());
         AttendanceService attendanceService = new AttendanceService(new AttendanceSQL(), new SessionSQL());
         UserService userService = new UserService(new UserSQL());
-
-        Long teacherId = 3L; // temporary until auth is added
-        String displayName = teacherName;
-
-        try {
-            List<User> all = userService.getAllUsers();
-            if (all != null) {
-                for (User u : all) {
-                    if (u.getId() != null && u.getId().equals(teacherId)) {
-                        String first = u.getFirstName() == null ? "" : u.getFirstName();
-                        String last = u.getLastName() == null ? "" : u.getLastName();
-                        String combined = (first + " " + last).trim();
-                        if (!combined.isEmpty()) displayName = combined;
-                        break;
-                    }
-                }
-            }
-        } catch (Exception ex) {
-            System.err.println("Failed to fetch user display name: " + ex.getMessage());
-        }
-
-        final String displayNameFinal = displayName;
 
         List<CourseClass> classes = classService.getClassesByTeacher(teacherId);
         if (classes != null) {
@@ -90,7 +68,7 @@ public class TeacherDashboardApp {
         page.getStyleClass().add("page");
 
         // Header
-        Label greeting = new Label("Good afternoon, " + displayNameFinal + "!");
+        Label greeting = new Label("Good afternoon, " + teacherName + "!");
         greeting.getStyleClass().add("dash-title");
 
         String date = LocalDate.now().format(DateTimeFormatter.ofPattern("EEEE, MMMM d, yyyy"));
@@ -105,14 +83,14 @@ public class TeacherDashboardApp {
                 "Take Attendance",
                 "Generate QR code for your class",
                 "card-green",
-                () -> scene.setRoot(new TeacherTakeAttendancePage().build(scene, displayNameFinal))
+                () -> scene.setRoot(new TeacherTakeAttendancePage().build(scene, teacherName, teacherId))
         );
 
         VBox reportCard = bigActionCard(
                 "View Reports",
                 "Class Attendance Reports",
                 "card-purple",
-                () -> scene.setRoot(new TeacherReportsPage().build(scene, displayNameFinal))
+                () -> scene.setRoot(new TeacherReportsPage().build(scene, teacherName, teacherId))
         );
 
         HBox.setHgrow(takeCard, Priority.ALWAYS);
@@ -179,14 +157,14 @@ public class TeacherDashboardApp {
         );
 
         return AppLayout.wrapWithSidebar(
-                displayNameFinal,
+                teacherName,
                 "Student Panel", "Dashboard", "Mark Attendance", "My Attendance", "Contact", page,
                 "dashboard",
                 new AppLayout.Navigator() {
-                    @Override public void goDashboard() { scene.setRoot(build(scene, displayNameFinal)); }
-                    @Override public void goTakeAttendance() { scene.setRoot(new TeacherTakeAttendancePage().build(scene, displayNameFinal)); }
-                    @Override public void goReports() { scene.setRoot(new TeacherReportsPage().build(scene, displayNameFinal)); }
-                    @Override public void goEmail() { scene.setRoot(new TeacherEmailPage().build(scene, displayNameFinal)); }
+                    @Override public void goDashboard() { scene.setRoot(build(scene, teacherName, teacherId)); }
+                    @Override public void goTakeAttendance() { scene.setRoot(new TeacherTakeAttendancePage().build(scene, teacherName, teacherId)); }
+                    @Override public void goReports() { scene.setRoot(new TeacherReportsPage().build(scene, teacherName, teacherId)); }
+                    @Override public void goEmail() { scene.setRoot(new TeacherEmailPage().build(scene, teacherName, teacherId)); }
                     @Override public void logout() { System.out.println("TODO: Logout"); }
                 }
         );
