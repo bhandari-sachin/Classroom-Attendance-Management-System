@@ -10,9 +10,14 @@ import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
 import model.User;
+import model.UserRole;
 import service.AttendanceService;
 import service.ClassService;
 import service.UserService;
+
+import java.util.List;
+import java.util.Locale;
+import java.util.stream.Collectors;
 
 public class AdminManageUsersPage {
     private final UserService userSerice;
@@ -21,10 +26,30 @@ public class AdminManageUsersPage {
         this.userSerice = userSerice;
     }
 
-    private void loadUsers(TableView<UserRow> table) {
+    private void loadUsers(TableView<UserRow> table, String typeFilter) {
         table.getItems().clear();
 
-        for (User u : userSerice.getAllUsers()) {
+        String selectedType = typeFilter == null ? "All Types" : typeFilter;
+
+        List<User> users;
+
+        UserRole selectedRole = null;
+        if (!"All Types".equalsIgnoreCase(selectedType)) {
+            switch (selectedType.toLowerCase(Locale.ROOT)) {
+                case "student" -> selectedRole = UserRole.STUDENT;
+                case "teacher" -> selectedRole = UserRole.TEACHER;
+                case "admin" -> selectedRole = UserRole.ADMIN;
+                default -> selectedRole = null;
+            }
+        }
+
+        if (selectedRole == null) {
+            users = userSerice.getAllUsers();
+        } else {
+            users = userSerice.filterByRole(selectedRole, null);
+        }
+
+        for (User u : users) {
             table.getItems().add(
                     new UserRow(
                             u.getName(),
@@ -49,10 +74,16 @@ public class AdminManageUsersPage {
 
         HBox summary = new HBox(12);
         summary.getStyleClass().add("summary-row");
+
+        List<User> users = userSerice.getAllUsers();
+        long studentsCount = users.stream().filter(u -> u.getRole().toString().equalsIgnoreCase("student") || u.getRole().name().equalsIgnoreCase("student")).count();
+        long teachersCount = users.stream().filter(u -> u.getRole().toString().equalsIgnoreCase("teacher") || u.getRole().name().equalsIgnoreCase("teacher")).count();
+        long adminsCount = users.stream().filter(u -> u.getRole().toString().equalsIgnoreCase("admin") || u.getRole().name().equalsIgnoreCase("admin")).count();
+
         summary.getChildren().addAll(
-                AdminUI.smallSummaryCard("Students", "0", "🎓", "accent-green"),
-                AdminUI.smallSummaryCard("Teachers", "1", "👥", "accent-purple"),
-                AdminUI.smallSummaryCard("Admins", "1", "🛡", "accent-orange")
+                AdminUI.smallSummaryCard("Students", String.valueOf(studentsCount), "🎓", "accent-green"),
+                AdminUI.smallSummaryCard("Teachers", String.valueOf(teachersCount), "👥", "accent-purple"),
+                AdminUI.smallSummaryCard("Admins", String.valueOf(adminsCount), "🛡", "accent-orange")
         );
 
         HBox filters = new HBox(10);
@@ -71,7 +102,9 @@ public class AdminManageUsersPage {
         filters.getChildren().addAll(search, type);
 
         TableView<UserRow> table = AdminUI.buildUsersTable();
-        loadUsers(table);
+        loadUsers(table, type.getValue());
+
+        type.setOnAction(e -> loadUsers(table, type.getValue()));
 
         content.getChildren().addAll(title, subtitle, summary, filters, table);
 
