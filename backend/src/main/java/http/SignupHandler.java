@@ -1,6 +1,6 @@
 package http;
 
-import backend.user.UserRepository;
+import repository.UserRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
@@ -26,14 +26,14 @@ public class SignupHandler implements HttpHandler {
             return;
         }
 
-        Map<String, String> body = om.readValue(ex.getRequestBody(), Map.class);
+        Map body = om.readValue(ex.getRequestBody(), Map.class);
 
-        String email = body.get("email");
-        String password = body.get("password");
-        String firstName = body.get("firstName");
-        String lastName = body.get("lastName");
-        String role = body.get("role"); // "STUDENT" / "TEACHER"
-        String studentCode = body.get("studentCode"); // required if STUDENT
+        String email = body.get("email").toString();
+        String password = body.get("password").toString();
+        String firstName = body.get("firstName").toString();
+        String lastName = body.get("lastName").toString();
+        String role = body.get("role").toString(); // "STUDENT" / "TEACHER"
+        String studentCode = body.get("studentCode").toString(); // required if STUDENT
 
         if (users.existsByEmail(email)) {
             HttpUtil.json(ex, 400, Map.of("error", "Email already exists"));

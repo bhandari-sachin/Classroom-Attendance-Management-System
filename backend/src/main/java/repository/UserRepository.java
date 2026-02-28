@@ -83,4 +83,7 @@ public class UserRepository {
                 rs.getString("student_code")
         );
     }
+
+    public void insert(String email, String hash, String firstName, String lastName, String role, String studentCode) {
+    }
 }

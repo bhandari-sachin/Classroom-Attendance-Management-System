@@ -1,7 +1,7 @@
 package http;
 
-import backend.security.Auth;
-import backend.security.JwtService;
+import security.Auth;
+import security.JwtService;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;

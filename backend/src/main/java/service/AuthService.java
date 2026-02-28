@@ -1,23 +1,25 @@
 package service;
 
+import dto.AuthResponse;
 import model.User;
 import model.UserRole;
 import repository.UserRepository;
-import security.SecurityContext;
-import security.Session;
+import security.JwtService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 
 public class AuthService {
 
     private final UserRepository userRepository;
+    private final JwtService jwtService;
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
-    public AuthService(UserRepository userRepository) {
+    public AuthService(UserRepository userRepository, JwtService jwtService) {
         this.userRepository = userRepository;
+        this.jwtService = jwtService;
     }
 
-    // LOGIN (email + password)
-    public Session login(String email, String password) {
+    // LOGIN (email + password) -> returns JWT
+    public AuthResponse login(String email, String password) {
 
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("Invalid credentials"));
@@ -26,14 +28,18 @@ public class AuthService {
             throw new RuntimeException("Invalid credentials");
         }
 
-        Session session = new Session(
+        String token = jwtService.issueToken(
                 user.getId(),
                 user.getEmail(),
-                user.getUserType()
+                user.getUserType().name()
         );
 
-        SecurityContext.set(session);
-        return session;
+        return new AuthResponse(
+                token,
+                user.getId(),
+                user.getEmail(),
+                user.getUserType().name()
+        );
     }
 
     // SIGNUP
@@ -48,18 +54,15 @@ public class AuthService {
             throw new RuntimeException("Email already exists");
         }
 
-
         if (userType == UserRole.ADMIN) {
             throw new RuntimeException("Admin cannot self-register");
         }
-
 
         if (userType == UserRole.STUDENT) {
             if (studentCode == null || studentCode.isBlank()) {
                 throw new RuntimeException("Student code is required for students");
             }
         } else {
-
             studentCode = null;
         }
 
@@ -78,7 +81,8 @@ public class AuthService {
         userRepository.save(user);
     }
 
+
     public void logout() {
-        SecurityContext.clear();
+
     }
 }
