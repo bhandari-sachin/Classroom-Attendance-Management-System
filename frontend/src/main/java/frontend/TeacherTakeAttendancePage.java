@@ -1,5 +1,8 @@
 package frontend;
 
+import frontend.auth.AppRouter;
+import frontend.auth.AuthState;
+import frontend.auth.JwtStore;
 import javafx.beans.binding.Bindings;
 import javafx.collections.ObservableList;
 import javafx.geometry.Insets;
@@ -14,7 +17,11 @@ public class TeacherTakeAttendancePage {
     // Use shared store so email + status persist
     private final ObservableList<StudentRow> rows = DataStore.getStudents();
 
-    public Parent build(Scene scene, String teacherName) {
+    public Parent build(Scene scene, AppRouter router, JwtStore jwtStore, AuthState state) {
+
+        String teacherName = (state.getName() == null || state.getName().isBlank())
+                ? "Name"
+                : state.getName();
 
         VBox page = new VBox(16);
         page.setPadding(new Insets(22));
@@ -107,7 +114,7 @@ public class TeacherTakeAttendancePage {
         btnAbsent.disableProperty().bind(table.getSelectionModel().selectedItemProperty().isNull());
         btnExcused.disableProperty().bind(table.getSelectionModel().selectedItemProperty().isNull());
 
-        // If you want them hidden until selection, keep this:
+        // Visible only when selection exists
         btnPresent.visibleProperty().bind(table.getSelectionModel().selectedItemProperty().isNotNull());
         btnAbsent.visibleProperty().bind(table.getSelectionModel().selectedItemProperty().isNotNull());
         btnExcused.visibleProperty().bind(table.getSelectionModel().selectedItemProperty().isNotNull());
@@ -135,7 +142,6 @@ public class TeacherTakeAttendancePage {
             }
         });
 
-        // IMPORTANT: Excused opens the new page to write reason
         btnExcused.setOnAction(e -> {
             StudentRow s = table.getSelectionModel().getSelectedItem();
             if (s == null) return;
@@ -143,9 +149,11 @@ public class TeacherTakeAttendancePage {
             scene.setRoot(
                     new TeacherExcuseReasonPage().build(
                             scene,
-                            teacherName,
+                            router,
+                            jwtStore,
+                            state,
                             s,
-                            () -> scene.setRoot(build(scene, teacherName))
+                            () -> router.go("teacher-take") // ✅ go back cleanly
                     )
             );
         });
@@ -170,14 +178,22 @@ public class TeacherTakeAttendancePage {
 
         return AppLayout.wrapWithSidebar(
                 teacherName,
-                "Student Panel", "Dashboard", "Mark Attendance", "My Attendance", "Contact", page,
-                "takeAttendance",
+                "Teacher Panel",
+                "Dashboard",
+                "Take Attendance",
+                "Reports",
+                "Email",
+                page,
+                "second", // ✅ active = Take Attendance
                 new AppLayout.Navigator() {
-                    @Override public void goDashboard() { scene.setRoot(new TeacherDashboardApp().build(scene, teacherName)); }
-                    @Override public void goTakeAttendance() { scene.setRoot(build(scene, teacherName)); }
-                    @Override public void goReports() { scene.setRoot(new TeacherReportsPage().build(scene, teacherName)); }
-                    @Override public void goEmail() { scene.setRoot(new TeacherEmailPage().build(scene, teacherName)); }
-                    @Override public void logout() { System.out.println("TODO: Logout"); }
+                    @Override public void goDashboard() { router.go("teacher-dashboard"); }
+                    @Override public void goTakeAttendance() { router.go("teacher-take"); }
+                    @Override public void goReports() { router.go("teacher-reports"); }
+                    @Override public void goEmail() { router.go("teacher-email"); }
+                    @Override public void logout() {
+                        jwtStore.clear();
+                        router.go("login");
+                    }
                 }
         );
     }

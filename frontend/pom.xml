@@ -82,7 +82,7 @@
                 <artifactId>javafx-maven-plugin</artifactId>
                 <version>0.0.8</version>
                 <configuration>
-                    <mainClass>frontend.StudentMainApp</mainClass>
+                    <mainClass>frontend.MainApp</mainClass>
                 </configuration>
             </plugin>
         </plugins>

@@ -7,6 +7,7 @@ import javafx.scene.Parent;
 import javafx.scene.control.Label;
 import javafx.scene.control.Separator;
 import javafx.scene.layout.BorderPane;
+import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
 
@@ -20,7 +21,37 @@ public class AppLayout {
         void logout();
     }
 
-    public static Parent wrapWithSidebar(String teacherName, String studentPanel, String dashboard, String markAttendance, String myAttendance, String contact, Node content, String activeKey, Navigator nav) {
+    /**
+     * Default Teacher sidebar.
+     */
+    public static Parent wrapWithSidebar(String name, Node content, String activeKey, Navigator nav) {
+        return wrapWithSidebar(
+                name,
+                "Teacher Panel",
+                "Dashboard",
+                "Take Attendance",
+                "Reports",
+                "Email",
+                content,
+                activeKey,
+                nav
+        );
+    }
+
+    /**
+     * Custom labels (Teacher/Student/etc.)
+     */
+    public static Parent wrapWithSidebar(
+            String name,
+            String roleLabel,
+            String dashboardLabel,
+            String secondLabel,
+            String thirdLabel,
+            String fourthLabel,
+            Node content,
+            String activeKey,
+            Navigator nav
+    ) {
 
         BorderPane root = new BorderPane();
         root.getStyleClass().add("app-root");
@@ -31,10 +62,10 @@ public class AppLayout {
         sidebar.setPadding(new Insets(18));
         sidebar.setPrefWidth(260);
 
-        Label name = new Label(teacherName);
-        name.getStyleClass().add("sidebar-name");
+        Label nameLbl = new Label(name);
+        nameLbl.getStyleClass().add("sidebar-name");
 
-        Label role = new Label("Teacher Panel");
+        Label role = new Label(roleLabel);
         role.getStyleClass().add("sidebar-role");
 
         Separator sep = new Separator();
@@ -42,27 +73,33 @@ public class AppLayout {
         VBox navBox = new VBox(10);
         navBox.getStyleClass().add("sidebar-nav");
 
-        Label dash = navLabel("Dashboard", "dashboard", activeKey, nav::goDashboard);
-        Label take = navLabel("Take Attendance", "takeAttendance", activeKey, nav::goTakeAttendance);
-        Label reports = navLabel("Reports", "reports", activeKey, nav::goReports);
-        Label email = navLabel("Email", "email", activeKey, nav::goEmail);
+        Label dash   = navLabel(dashboardLabel, "dashboard", activeKey, nav::goDashboard);
+        Label second = navLabel(secondLabel, "second", activeKey, nav::goTakeAttendance);
+        Label third  = navLabel(thirdLabel, "third", activeKey, nav::goReports);
+        Label fourth = navLabel(fourthLabel, "fourth", activeKey, nav::goEmail);
 
-        navBox.getChildren().addAll(dash, take, reports, email);
+        navBox.getChildren().addAll(dash, second, third, fourth);
 
         Region spacer = new Region();
-        VBox.setVgrow(spacer, javafx.scene.layout.Priority.ALWAYS);
+        VBox.setVgrow(spacer, Priority.ALWAYS);
 
-        // Logout as red text link (not a button)
         Label logout = new Label("Logout");
         logout.getStyleClass().add("logout-link");
         logout.setOnMouseClicked(e -> nav.logout());
 
-        sidebar.getChildren().addAll(name, role, sep, navBox, spacer, logout);
+        sidebar.getChildren().addAll(nameLbl, role, sep, navBox, spacer, logout);
 
         // ===== CENTER CONTENT =====
         VBox centerWrap = new VBox();
         centerWrap.getStyleClass().add("content-wrap");
+        centerWrap.setFillWidth(true);
+
         centerWrap.getChildren().add(content);
+
+        if (content instanceof Region r) {
+            r.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE);
+            VBox.setVgrow(r, Priority.ALWAYS);
+        }
 
         root.setLeft(sidebar);
         root.setCenter(centerWrap);

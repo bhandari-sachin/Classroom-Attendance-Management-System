@@ -1,5 +1,8 @@
 package frontend;
 
+import frontend.auth.AppRouter;
+import frontend.auth.AuthState;
+import frontend.auth.JwtStore;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Parent;
@@ -9,8 +12,6 @@ import javafx.scene.control.Label;
 import javafx.scene.control.Separator;
 import javafx.scene.layout.*;
 
-import static javafx.application.Application.launch;
-
 public class StudentDashboardApp {
 
     // Dummy data (replace later from backend)
@@ -19,7 +20,11 @@ public class StudentDashboardApp {
     private int excusedCount = 0;
     private double attendanceRate = 0.0; // 0.0 -> 0%
 
-    public Parent build(Scene scene, String studentName) {
+    public Parent build(Scene scene, AppRouter router, JwtStore jwtStore, AuthState state) {
+
+        String studentName = (state.getName() == null || state.getName().isBlank())
+                ? "Name"
+                : state.getName();
 
         VBox page = new VBox(16);
         page.setPadding(new Insets(26));
@@ -33,7 +38,7 @@ public class StudentDashboardApp {
         subtitle.getStyleClass().add("dash-subtitle");
 
         // Action card (Mark attendance)
-        Button markAttendance = attendanceCard(scene, studentName);
+        Button markAttendance = attendanceCard(router);
 
         // Stats grid (2x2)
         GridPane stats = statsGrid();
@@ -50,9 +55,7 @@ public class StudentDashboardApp {
 
         Button viewAll = new Button("View All Attendance  →");
         viewAll.getStyleClass().add("link-button");
-        viewAll.setOnAction(e ->
-                scene.setRoot(new StudentAttendancePage().build(scene, studentName))
-        );
+        viewAll.setOnAction(e -> router.go("student-attendance"));
 
         classesHeader.getChildren().addAll(classesTitle, spacer, viewAll);
 
@@ -69,47 +72,48 @@ public class StudentDashboardApp {
         );
 
         return AppLayout.wrapWithSidebar(
-        studentName,
-        "Student Panel",
-        "Dashboard",
-        "Mark Attendance",
-        "My Attendance",
-        "Contact",
-        page,
-        "dashboard",
-        new AppLayout.Navigator() {
+                studentName,
+                "Student Panel",
+                "Dashboard",
+                "Mark Attendance",
+                "My Attendance",
+                "Email",
+                page,
+                "dashboard",
+                new AppLayout.Navigator() {
 
-            @Override
-            public void goDashboard() {
-                scene.setRoot(build(scene, studentName));
-            }
+                    @Override
+                    public void goDashboard() {
+                        router.go("student-dashboard");
+                    }
 
-            @Override
-            public void goTakeAttendance() {
-                scene.setRoot(new StudentMarkAttendancePage().build(scene, studentName));
-            }
+                    @Override
+                    public void goTakeAttendance() {
+                        router.go("student-mark");
+                    }
 
-            @Override
-            public void goReports() {
-                scene.setRoot(new StudentAttendancePage().build(scene, studentName));
-            }
+                    @Override
+                    public void goReports() {
+                        router.go("student-attendance");
+                    }
 
-            @Override
-            public void goEmail() {
-                scene.setRoot(new StudentEmailPage().build(scene, studentName));
-            }
+                    @Override
+                    public void goEmail() {
+                        router.go("student-email");
+                    }
 
-            @Override
-            public void logout() {
-                System.out.println("TODO: Student Logout");
-            }
-        }
-    );
-}
+                    @Override
+                    public void logout() {
+                        jwtStore.clear();
+                        router.go("login");
+                    }
+                }
+        );
+    }
 
     // ===== UI blocks / helpers =====
 
-    private Button attendanceCard(Scene scene, String studentName) {
+    private Button attendanceCard(AppRouter router) {
         Button btn = new Button();
         btn.getStyleClass().add("attendance-card");
         btn.setMaxWidth(Double.MAX_VALUE);
@@ -138,10 +142,7 @@ public class StudentDashboardApp {
         box.getChildren().addAll(icon, texts, spacer, arrow);
         btn.setGraphic(box);
 
-        btn.setOnAction(e ->
-                scene.setRoot(new StudentMarkAttendancePage().build(scene, studentName))
-        );
-
+        btn.setOnAction(e -> router.go("student-mark"));
         return btn;
     }
 
@@ -230,5 +231,4 @@ public class StudentDashboardApp {
         card.getChildren().addAll(cal, t, s);
         return card;
     }
-
 }

@@ -21,22 +21,26 @@ public class AdminAppLayout {
         void logout();
     }
 
-    // Default labels (Teacher)
+    /**
+     * Default labels for ADMIN sidebar.
+     */
     public static Parent wrapWithSidebar(String name, Node content, String activeKey, Navigator nav) {
         return wrapWithSidebar(
                 name,
-                "Student Panel",
+                "Admin Panel",
                 "Dashboard",
-                "Take Attendance",
-                "Reports",
-                "Email",
+                "Manage Classes",
+                "Attendance Reports",
+                "Manage Users",
                 content,
                 activeKey,
                 nav
         );
     }
 
-    // Custom labels (Admin/Student/etc.)
+    /**
+     * Custom labels (Admin/Teacher/Student/etc.)
+     */
     public static Parent wrapWithSidebar(
             String name,
             String roleLabel,
@@ -68,10 +72,10 @@ public class AdminAppLayout {
         VBox navBox = new VBox(10);
         navBox.getStyleClass().add("sidebar-nav");
 
-        Label dash = navLabel(dashboardLabel, "dashboard", activeKey, nav::goDashboard);
-        Label second = navLabel(secondLabel, "takeAttendance", activeKey, nav::goTakeAttendance);
-        Label third = navLabel(thirdLabel, "reports", activeKey, nav::goReports);
-        Label fourth = navLabel(fourthLabel, "email", activeKey, nav::goEmail);
+        Label dash   = navLabel(dashboardLabel, "dashboard", activeKey, nav::goDashboard);
+        Label second = navLabel(secondLabel, "second", activeKey, nav::goTakeAttendance);
+        Label third  = navLabel(thirdLabel, "third", activeKey, nav::goReports);
+        Label fourth = navLabel(fourthLabel, "fourth", activeKey, nav::goEmail);
 
         navBox.getChildren().addAll(dash, second, third, fourth);
 

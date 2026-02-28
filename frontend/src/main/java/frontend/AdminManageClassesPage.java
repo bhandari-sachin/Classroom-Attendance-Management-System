@@ -1,5 +1,8 @@
 package frontend;
 
+import frontend.auth.AppRouter;
+import frontend.auth.AuthState;
+import frontend.auth.JwtStore;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Parent;
@@ -9,7 +12,12 @@ import javafx.scene.layout.*;
 
 public class AdminManageClassesPage {
 
-    public Parent build(Scene scene, String adminName) {
+    public Parent build(Scene scene, AppRouter router, JwtStore jwtStore, AuthState state) {
+
+        String adminName = (state.getName() == null || state.getName().isBlank())
+                ? "Name"
+                : state.getName();
+
         VBox content = new VBox(14);
         content.getStyleClass().add("content");
         content.setPadding(new Insets(18));
@@ -30,6 +38,7 @@ public class AdminManageClassesPage {
 
         Button add = new Button("+   Add class");
         add.getStyleClass().add("primary-btn");
+
 
         titleRow.getChildren().addAll(titleCol, spacer, add);
 
@@ -56,16 +65,17 @@ public class AdminManageClassesPage {
                 "Manage Users",
                 "Attendance Reports",
                 scroll,
-                "takeAttendance", // active = Manage Classes
+                "second", // ✅ active = Manage Classes
                 new AdminAppLayout.Navigator() {
-                    @Override public void goDashboard() { scene.setRoot(new AdminDashboardApp().build(scene, adminName)); }
-                    @Override public void goTakeAttendance() { scene.setRoot(build(scene, adminName)); }
-                    @Override public void goReports() { scene.setRoot(new AdminManageUsersPage().build(scene, adminName)); }
-                    @Override public void goEmail() { scene.setRoot(new AdminAttendanceReportsPage().build(scene, adminName)); }
-                    @Override public void logout() { System.out.println("TODO: Admin Logout"); }
+                    @Override public void goDashboard() { router.go("admin-dashboard"); }
+                    @Override public void goTakeAttendance() { router.go("admin-classes"); }
+                    @Override public void goReports() { router.go("admin-users"); }
+                    @Override public void goEmail() { router.go("admin-reports"); }
+                    @Override public void logout() {
+                        jwtStore.clear();
+                        router.go("login");
+                    }
                 }
         );
-
-
     }
 }

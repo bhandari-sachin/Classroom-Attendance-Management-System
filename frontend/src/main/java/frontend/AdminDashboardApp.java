@@ -1,13 +1,20 @@
 package frontend;
 
+import frontend.auth.AppRouter;
+import frontend.auth.AuthState;
+import frontend.auth.JwtStore;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 
 public class AdminDashboardApp {
 
-    public Parent build(Scene scene, String adminName) {
+    public Parent build(Scene scene, AppRouter router, JwtStore jwtStore, AuthState state) {
 
-        Parent scroll = AdminPages.dashboardPage(scene, adminName);
+        String adminName = (state.getName() == null || state.getName().isBlank())
+                ? "Name"
+                : state.getName();
+
+        Parent scroll = AdminPages.dashboardPage(scene, router, jwtStore, state);
 
         return AdminAppLayout.wrapWithSidebar(
                 adminName,
@@ -19,11 +26,14 @@ public class AdminDashboardApp {
                 scroll,
                 "dashboard",
                 new AdminAppLayout.Navigator() {
-                    @Override public void goDashboard() { scene.setRoot(new AdminDashboardApp().build(scene, adminName)); }
-                    @Override public void goTakeAttendance() { scene.setRoot(new AdminManageClassesPage().build(scene, adminName)); }
-                    @Override public void goReports() { scene.setRoot(new AdminManageUsersPage().build(scene, adminName)); }
-                    @Override public void goEmail() { scene.setRoot(new AdminAttendanceReportsPage().build(scene, adminName)); }
-                    @Override public void logout() { System.out.println("TODO: Admin Logout"); }
+                    @Override public void goDashboard() { router.go("admin-dashboard"); }
+                    @Override public void goTakeAttendance() { router.go("admin-classes"); }
+                    @Override public void goReports() { router.go("admin-users"); }
+                    @Override public void goEmail() { router.go("admin-reports"); }
+                    @Override public void logout() {
+                        jwtStore.clear();
+                        router.go("login");
+                    }
                 }
         );
     }
