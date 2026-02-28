@@ -14,7 +14,7 @@ public class BackendMain {
     public static void main(String[] args) throws Exception {
         DatabaseInitializer.init(); // ensure tables exist
 
-        int port = 8080;
+        int port = 8081;
 
         UserRepository users = new UserRepository();
         JwtService jwtService = new JwtService(System.getenv().getOrDefault("JWT_SECRET", "SECRET"));
