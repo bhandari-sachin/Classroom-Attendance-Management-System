@@ -34,17 +34,25 @@ public class AuthService {
         return parseAuthState(res.body());
     }
 
-    public AuthState signup(String name, String email, String password, Role role, String idNumber)
+    public void signup(String firstName, String lastName, String email, String password, Role role, String studentCode)
             throws IOException, InterruptedException {
 
         String jsonBody = """
-    {"name": "%s", "email": "%s", "password": "%s", "role": "%s", "idNumber": "%s"}
+    {
+      "email": "%s",
+      "password": "%s",
+      "firstName": "%s",
+      "lastName": "%s",
+      "role": "%s",
+      "studentCode": "%s"
+    }
     """.formatted(
-                escape(name),
                 escape(email),
                 escape(password),
-                role == null ? "STUDENT" : escape(role.name()),
-                escape(idNumber)
+                escape(firstName),
+                escape(lastName),
+                escape(role == null ? "STUDENT" : role.name()),
+                escape(studentCode == null ? "" : studentCode)
         );
 
         HttpRequest req = HttpRequest.newBuilder()
@@ -59,7 +67,6 @@ public class AuthService {
             throw new RuntimeException("Signup failed: " + res.statusCode() + " " + res.body());
         }
 
-        return parseAuthState(res.body());
     }
 
     // --- tiny JSON parsing without extra libs ---

@@ -1,11 +1,11 @@
 package frontend.ui;
 
 import frontend.auth.*;
+import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
-import javafx.scene.text.Text;
 
 import java.util.Optional;
 
@@ -24,9 +24,11 @@ public class SignupPage extends StackPane {
         Label sub = new Label("Sign up to start using the system");
         sub.getStyleClass().add("subtitle");
 
-        // ===== Fields =====
-        TextField name = new TextField();
-        name.setPromptText("Full name");
+        TextField firstName = new TextField();
+        firstName.setPromptText("First name");
+
+        TextField lastName = new TextField();
+        lastName.setPromptText("Last name");
 
         TextField email = new TextField();
         email.setPromptText("Email");
@@ -35,31 +37,31 @@ public class SignupPage extends StackPane {
         password.setPromptText("Password");
 
         ComboBox<Role> role = new ComboBox<>();
-        role.getItems().addAll(Role.STUDENT, Role.TEACHER, Role.ADMIN);
+        role.getItems().addAll(Role.STUDENT, Role.TEACHER);
         role.setValue(Role.STUDENT);
         role.setMaxWidth(Double.MAX_VALUE);
 
-        Label idLabel = new Label("Student number");
-        idLabel.getStyleClass().add("field-label");
+        Label studentCodeLabel = new Label("Student code");
+        studentCodeLabel.getStyleClass().add("field-label");
 
-        TextField idNumber = new TextField();
-        idNumber.setPromptText("e.g. 123456");
+        TextField studentCode = new TextField();
+        studentCode.setPromptText("e.g. 123456");
 
-        // Change label depending on role
-        role.valueProperty().addListener((obs, oldV, newV) -> {
-            if (newV == Role.STUDENT) {
-                idLabel.setText("Student number");
-                idNumber.setPromptText("e.g. 123456");
-            } else {
-                idLabel.setText("Staff number");
-                idNumber.setPromptText("e.g. ST-90812");
-            }
-        });
+        // Only show studentCode for STUDENT
+        studentCodeLabel.visibleProperty().bind(role.valueProperty().isEqualTo(Role.STUDENT));
+        studentCode.visibleProperty().bind(role.valueProperty().isEqualTo(Role.STUDENT));
+        studentCodeLabel.managedProperty().bind(studentCodeLabel.visibleProperty());
+        studentCode.managedProperty().bind(studentCode.visibleProperty());
 
         Label error = new Label();
         error.getStyleClass().add("error");
         error.setVisible(false);
         error.setManaged(false);
+
+        Label info = new Label();
+        info.getStyleClass().add("subtitle");
+        info.setVisible(false);
+        info.setManaged(false);
 
         Button signupBtn = new Button("Sign up");
         signupBtn.getStyleClass().add("primary-btn");
@@ -69,62 +71,64 @@ public class SignupPage extends StackPane {
         goLogin.getStyleClass().add("link-button");
         goLogin.setOnAction(e -> router.go("login"));
 
-        // ===== Action =====
         signupBtn.setOnAction(e -> {
-            error.setVisible(false);
-            error.setManaged(false);
+            hideMsg(error);
+            hideMsg(info);
 
-            String n = name.getText().trim();
+            String fn = firstName.getText().trim();
+            String ln = lastName.getText().trim();
             String em = email.getText().trim();
             String pw = password.getText();
             Role r = role.getValue();
-            String id = idNumber.getText().trim();
+            String sc = studentCode.getText().trim();
 
-            if (n.isBlank() || em.isBlank() || pw.isBlank() || id.isBlank()) {
-                showError(error, "Please fill in all fields.");
+            if (fn.isBlank() || ln.isBlank() || em.isBlank() || pw.isBlank()) {
+                showMsg(error, "Please fill in all required fields.");
                 return;
             }
             if (!em.contains("@")) {
-                showError(error, "Please enter a valid email.");
+                showMsg(error, "Please enter a valid email.");
                 return;
             }
             if (pw.length() < 6) {
-                showError(error, "Password must be at least 6 characters.");
+                showMsg(error, "Password must be at least 6 characters.");
+                return;
+            }
+            if (r == Role.STUDENT && sc.isBlank()) {
+                showMsg(error, "Student code is required for students.");
                 return;
             }
 
             signupBtn.setDisable(true);
 
-            // Run HTTP call off the JavaFX thread
             new Thread(() -> {
                 try {
-                    AuthState state = authService.signup(n, em, pw, r, id);
+                    authService.signup(fn, ln, em, pw, r, (r == Role.STUDENT ? sc : null));
 
-                    javafx.application.Platform.runLater(() -> {
-                        jwtStore.save(state);
-                        router.go(RoleRedirect.routeFor(state.getRole()));
-                    });
-
-                } catch (Exception ex) {
-                    javafx.application.Platform.runLater(() -> {
-                        showError(error, "Signup failed: " + ex.getMessage());
+                    Platform.runLater(() -> {
                         signupBtn.setDisable(false);
+                        showMsg(info, "Account created. Please login.");
+                        router.go("login");
+                    });
+                } catch (Exception ex) {
+                    Platform.runLater(() -> {
+                        signupBtn.setDisable(false);
+                        showMsg(error, "Signup failed: " + ex.getMessage());
                     });
                 }
             }).start();
         });
 
-        // Layout
-        VBox.setMargin(title, new Insets(0, 0, 4, 0));
-
         card.getChildren().addAll(
                 title, sub,
-                field("Full name", name),
+                field("First name", firstName),
+                field("Last name", lastName),
                 field("Email", email),
                 field("Password", password),
                 field("Role", role),
-                idLabel, idNumber,
+                studentCodeLabel, studentCode,
                 error,
+                info,
                 signupBtn,
                 goLogin
         );
@@ -140,13 +144,18 @@ public class SignupPage extends StackPane {
     private static VBox field(String label, Control input) {
         Label l = new Label(label);
         l.getStyleClass().add("field-label");
-        VBox box = new VBox(6, l, input);
-        return box;
+        return new VBox(6, l, input);
     }
 
-    private static void showError(Label error, String msg) {
-        error.setText(msg);
-        error.setVisible(true);
-        error.setManaged(true);
+    private static void showMsg(Label lbl, String msg) {
+        lbl.setText(msg);
+        lbl.setVisible(true);
+        lbl.setManaged(true);
+    }
+
+    private static void hideMsg(Label lbl) {
+        lbl.setVisible(false);
+        lbl.setManaged(false);
+        lbl.setText("");
     }
 }
