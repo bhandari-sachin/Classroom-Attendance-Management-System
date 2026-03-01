@@ -42,13 +42,16 @@ public class LoginHandler implements HttpHandler {
         String email = body.get("email");
         String password = body.get("password");
 
+        // Normalize inputs to avoid mismatch due to whitespace/case
+        if (email != null) email = email.trim().toLowerCase();
+        if (password != null) password = password.trim();
+
         if (email == null || email.isBlank() || password == null || password.isBlank()) {
             HttpUtil.json(ex, 400, Map.of("error", "Email and password are required"));
             return;
         }
 
         User user = users.findByEmail(email).orElse(null);
-
 
         if (user == null || !encoder.matches(password, user.getPasswordHash())) {
             HttpUtil.json(ex, 401, Map.of("error", "Invalid credentials"));
@@ -57,12 +60,14 @@ public class LoginHandler implements HttpHandler {
 
         String role = user.getUserType().name();
         String token = jwtService.issueToken(user.getId(), user.getEmail(), role);
+        String name = (user.getFirstName() + " " + user.getLastName()).trim();
 
         HttpUtil.json(ex, 200, Map.of(
                 "token", token,
                 "userId", user.getId(),
                 "email", user.getEmail(),
-                "role", role
+                "role", role,
+                "name", name
         ));
     }
 }

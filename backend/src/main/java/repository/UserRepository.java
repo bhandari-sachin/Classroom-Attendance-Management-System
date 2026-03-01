@@ -85,5 +85,27 @@ public class UserRepository {
     }
 
     public void insert(String email, String hash, String firstName, String lastName, String role, String studentCode) {
+        String sql = """
+        INSERT INTO users (email, password_hash, first_name, last_name, user_type, student_code)
+        VALUES (?, ?, ?, ?, ?, ?)
+    """;
+
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+
+            ps.setString(1, email);
+            ps.setString(2, hash);
+            ps.setString(3, firstName);
+            ps.setString(4, lastName);
+            ps.setString(5, role);
+            ps.setString(6, studentCode); // must be NULL for non-students
+
+            ps.executeUpdate();
+
+        } catch (SQLException e) {
+            throw new RuntimeException("Error inserting user", e);
+        }
     }
+
+
 }

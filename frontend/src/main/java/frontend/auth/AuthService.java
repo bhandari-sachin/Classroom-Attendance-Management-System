@@ -1,23 +1,34 @@
 package frontend.auth;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import java.io.IOException;
 import java.net.URI;
 import java.net.http.*;
 import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
+import java.util.Map;
 
 public class AuthService {
 
     private final HttpClient client = HttpClient.newHttpClient();
     private final String baseUrl;
+    private final ObjectMapper om = new ObjectMapper();
 
     public AuthService(String baseUrl) {
         this.baseUrl = baseUrl;
     }
 
     public AuthState login(String email, String password) throws IOException, InterruptedException {
-        String jsonBody = """
-        {"email": "%s", "password": "%s"}
-        """.formatted(escape(email), escape(password));
+        // Normalize email to avoid whitespace/case issues
+        email = email == null ? "" : email.trim().toLowerCase();
+        password = password == null ? "" : password; // keep password exact
+
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("email", email);
+        payload.put("password", password);
+
+        String jsonBody = om.writeValueAsString(payload);
 
         HttpRequest req = HttpRequest.newBuilder()
                 .uri(URI.create(baseUrl + "/api/auth/login"))
@@ -37,23 +48,28 @@ public class AuthService {
     public void signup(String firstName, String lastName, String email, String password, Role role, String studentCode)
             throws IOException, InterruptedException {
 
-        String jsonBody = """
-    {
-      "email": "%s",
-      "password": "%s",
-      "firstName": "%s",
-      "lastName": "%s",
-      "role": "%s",
-      "studentCode": "%s"
-    }
-    """.formatted(
-                escape(email),
-                escape(password),
-                escape(firstName),
-                escape(lastName),
-                escape(role == null ? "STUDENT" : role.name()),
-                escape(studentCode == null ? "" : studentCode)
-        );
+        // Normalize inputs
+        firstName = firstName == null ? "" : firstName.trim();
+        lastName = lastName == null ? "" : lastName.trim();
+        email = email == null ? "" : email.trim().toLowerCase();
+        password = password == null ? "" : password; // keep password exact
+        studentCode = studentCode == null ? null : studentCode.trim();
+
+        String roleStr = (role == null ? "STUDENT" : role.name());
+
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("email", email);
+        payload.put("password", password);
+        payload.put("firstName", firstName);
+        payload.put("lastName", lastName);
+        payload.put("role", roleStr);
+
+        // Only include studentCode if it actually exists (cleaner + avoids weird empty-string cases)
+        if (studentCode != null && !studentCode.isBlank()) {
+            payload.put("studentCode", studentCode);
+        }
+
+        String jsonBody = om.writeValueAsString(payload);
 
         HttpRequest req = HttpRequest.newBuilder()
                 .uri(URI.create(baseUrl + "/api/auth/signup"))
@@ -66,30 +82,25 @@ public class AuthService {
         if (res.statusCode() >= 400) {
             throw new RuntimeException("Signup failed: " + res.statusCode() + " " + res.body());
         }
-
     }
 
-    // --- tiny JSON parsing without extra libs ---
-    // Expected keys: token, role, name
+    @SuppressWarnings("unchecked")
     private AuthState parseAuthState(String json) {
-        String token = extract(json, "token");
-        String role  = extract(json, "role");
-        String name  = extract(json, "name");
-        return new AuthState(token, Role.fromString(role), name);
-    }
+        try {
+            Map<String, Object> map = om.readValue(json, Map.class);
 
-    private String extract(String json, String key) {
-        // Very simple extraction for: "key":"value"
-        String needle = "\"" + key + "\":";
-        int i = json.indexOf(needle);
-        if (i < 0) return "";
-        int start = json.indexOf('"', i + needle.length());
-        int end = json.indexOf('"', start + 1);
-        if (start < 0 || end < 0) return "";
-        return json.substring(start + 1, end);
-    }
+            String token = (String) map.get("token");
+            String role  = (String) map.get("role");
+            String name  = (String) map.get("name");
 
-    private String escape(String s) {
-        return s == null ? "" : s.replace("\\", "\\\\").replace("\"", "\\\"");
+            if (token == null || token.isBlank() || role == null || role.isBlank()) {
+                throw new RuntimeException("Invalid login response JSON: " + json);
+            }
+
+            return new AuthState(token, Role.fromString(role), name);
+
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to parse login response: " + json, e);
+        }
     }
 }

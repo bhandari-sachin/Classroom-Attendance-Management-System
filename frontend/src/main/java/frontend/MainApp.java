@@ -22,7 +22,7 @@ public class MainApp extends Application {
         if (css != null) scene.getStylesheets().add(css.toExternalForm());
 
         JwtStore store = new JwtStore();
-        AuthService auth = new AuthService("http://localhost:8080"); // change
+        AuthService auth = new AuthService("http://localhost:8081"); // change
         AppRouter router = new AppRouter(scene);
 
         // ===== Auth routes =====
