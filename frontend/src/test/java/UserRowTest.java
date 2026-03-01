@@ -11,7 +11,7 @@ public class UserRowTest {
     void testConstructorAndGetters() {
         UserRow userRow = new UserRow(
                 "Alice",
-                "alice@school.com",
+                "STUDENT",
                 //UserRole.STUDENT,   // Make sure this exists in your enum
                 "Math 101"
         );
@@ -26,7 +26,7 @@ public class UserRowTest {
     void testPropertiesNotNull() {
         UserRow userRow = new UserRow(
                 "John",
-                "john@school.com",
+                "SCIENCE_TEACHER",
                 //UserRole.TEACHER,
                 "Science"
         );
@@ -41,17 +41,17 @@ public class UserRowTest {
     void testPropertyUpdateReflectsInGetter() {
         UserRow userRow = new UserRow(
                 "Sara",
-                "sara@school.com",
+                "ADMIN",
                 //UserRole.ADMIN,
                 "None"
         );
 
         userRow.userProperty().set("Sarah");
         //userRow.emailProperty().set("sarah@school.com");
-        userRow.enrolledProperty().set("History");
+        userRow.enrolledProperty().set("ADMIN");
 
         assertEquals("Sarah", userRow.getUser());
         //assertEquals("sarah@school.com", userRow.emailProperty().get());
-        assertEquals("History", userRow.enrolledProperty().get());
+        assertEquals("ADMIN", userRow.enrolledProperty().get());
     }
 }
