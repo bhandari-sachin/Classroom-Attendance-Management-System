@@ -1,47 +1,23 @@
 package frontend;
 
-import config.AttendanceSQL;
-import config.ClassSQL;
-import config.SessionSQL;
-import config.UserSQL;
+import frontend.auth.AppRouter;
+import frontend.auth.AuthState;
+import frontend.auth.JwtStore;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
-import model.CourseClass;
-import service.AttendanceService;
-import service.ClassService;
-import service.UserService;
 
 public class AdminManageClassesPage {
 
-    private final ClassService classService;
+    public Parent build(Scene scene, AppRouter router, JwtStore jwtStore, AuthState state) {
 
-    public AdminManageClassesPage(ClassService classService) {
-        this.classService = classService;
-    }
+        String adminName = (state.getName() == null || state.getName().isBlank())
+                ? "Name"
+                : state.getName();
 
-    private void loadClasses(TableView<ClassRow> table) {
-        table.getItems().clear();
-
-        for (CourseClass c : classService.getAllClasses()) {
-            int count = classService.getEnrollmentCount(c.getId());
-            table.getItems().add(
-                    new ClassRow(
-                            c.getName(),
-                            c.getClassCode(),
-                            c.getTeacherName(),
-                            c.getTeacherEmail(),
-                            c.getSemester() + " " + c.getAcademicYear(),
-                            count
-                    )
-            );
-        }
-    }
-
-    public Parent build(Scene scene, String adminName) {
         VBox content = new VBox(14);
         content.getStyleClass().add("content");
         content.setPadding(new Insets(18));
@@ -63,6 +39,7 @@ public class AdminManageClassesPage {
         Button add = new Button("+   Add class");
         add.getStyleClass().add("primary-btn");
 
+
         titleRow.getChildren().addAll(titleCol, spacer, add);
 
         TextField search = new TextField();
@@ -73,7 +50,6 @@ public class AdminManageClassesPage {
         section.getStyleClass().add("section-title");
 
         TableView<ClassRow> table = AdminUI.buildClassesTable();
-        loadClasses(table);
 
         content.getChildren().addAll(titleRow, search, section, table);
 
@@ -89,16 +65,17 @@ public class AdminManageClassesPage {
                 "Manage Users",
                 "Attendance Reports",
                 scroll,
-                "takeAttendance", // active = Manage Classes
+                "second", // ✅ active = Manage Classes
                 new AdminAppLayout.Navigator() {
-                    @Override public void goDashboard() { scene.setRoot(new AdminDashboardApp().build(scene, adminName)); }
-                    @Override public void goTakeAttendance() { scene.setRoot(build(scene, adminName)); }
-                    @Override public void goReports() { scene.setRoot(new AdminManageUsersPage(new UserService(new UserSQL())).build(scene, adminName)); }
-                    @Override public void goEmail() { scene.setRoot(new AdminAttendanceReportsPage(new AttendanceService(new AttendanceSQL(), new SessionSQL()), new ClassService(new ClassSQL())).build(scene, adminName)); }
-                    @Override public void logout() { System.out.println("TODO: Admin Logout"); }
+                    @Override public void goDashboard() { router.go("admin-dashboard"); }
+                    @Override public void goTakeAttendance() { router.go("admin-classes"); }
+                    @Override public void goReports() { router.go("admin-users"); }
+                    @Override public void goEmail() { router.go("admin-reports"); }
+                    @Override public void logout() {
+                        jwtStore.clear();
+                        router.go("login");
+                    }
                 }
         );
-
-
     }
 }

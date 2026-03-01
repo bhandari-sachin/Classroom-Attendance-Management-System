@@ -1,5 +1,8 @@
 package frontend;
 
+import frontend.auth.AppRouter;
+import frontend.auth.AuthState;
+import frontend.auth.JwtStore;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Parent;
@@ -10,18 +13,19 @@ import javafx.scene.text.Font;
 
 public class StudentMarkAttendancePage {
 
-    public Parent build(Scene scene, String studentName) {
+    public Parent build(Scene scene, AppRouter router, JwtStore jwtStore, AuthState state) {
+
+        String studentName = (state.getName() == null || state.getName().isBlank())
+                ? "Name"
+                : state.getName();
 
         VBox page = new VBox(16);
         page.setPadding(new Insets(26));
         page.getStyleClass().add("page");
 
-        // Optional back link (keep if you want)
         Button back = new Button("← Back to Dashboard");
         back.getStyleClass().add("back-link");
-        back.setOnAction(e ->
-                scene.setRoot(new StudentDashboardApp().build(scene, studentName))
-        );
+        back.setOnAction(e -> router.go("student-dashboard"));
 
         Label title = new Label("Scan QR Code");
         title.getStyleClass().add("dash-title");
@@ -114,29 +118,23 @@ public class StudentMarkAttendancePage {
                 howCard
         );
 
-        return AdminAppLayout.wrapWithSidebar(
+        return AppLayout.wrapWithSidebar(
                 studentName,
+                "Student Panel",
+                "Dashboard",
+                "Mark Attendance",
+                "My Attendance",
+                "Email",
                 page,
-                "takeAttendance", // for student: "Mark Attendance" page
-                new AdminAppLayout.Navigator() {
-                    @Override public void goDashboard() {
-                        scene.setRoot(new StudentDashboardApp().build(scene, studentName));
-                    }
-
-                    @Override public void goTakeAttendance() {
-                        scene.setRoot(build(scene, studentName)); // already here
-                    }
-
-                    @Override public void goReports() {
-                        scene.setRoot(new StudentAttendancePage().build(scene, studentName));
-                    }
-
-                    @Override public void goEmail() {
-                        scene.setRoot(new StudentEmailPage().build(scene, studentName));
-                    }
-
+                "second", // ✅ active = Mark Attendance
+                new AppLayout.Navigator() {
+                    @Override public void goDashboard() { router.go("student-dashboard"); }
+                    @Override public void goTakeAttendance() { router.go("student-mark"); }
+                    @Override public void goReports() { router.go("student-attendance"); }
+                    @Override public void goEmail() { router.go("student-email"); }
                     @Override public void logout() {
-                        System.out.println("TODO: Student Logout");
+                        jwtStore.clear();
+                        router.go("login");
                     }
                 }
         );

@@ -1,5 +1,8 @@
 package frontend;
 
+import frontend.auth.AppRouter;
+import frontend.auth.AuthState;
+import frontend.auth.JwtStore;
 import javafx.collections.ObservableList;
 import javafx.geometry.Insets;
 import javafx.scene.Parent;
@@ -13,7 +16,11 @@ public class TeacherEmailPage {
 
     private final ObservableList<StudentRow> rows = DataStore.getStudents();
 
-    public Parent build(Scene scene, String teacherName) {
+    public Parent build(Scene scene, AppRouter router, JwtStore jwtStore, AuthState state) {
+
+        String teacherName = (state.getName() == null || state.getName().isBlank())
+                ? "Name"
+                : state.getName();
 
         VBox page = new VBox(14);
         page.setPadding(new Insets(22));
@@ -41,14 +48,22 @@ public class TeacherEmailPage {
 
         return AppLayout.wrapWithSidebar(
                 teacherName,
+                "Teacher Panel",
+                "Dashboard",
+                "Take Attendance",
+                "Reports",
+                "Email",
                 page,
-                "email",
+                "fourth", // ✅ active = Email
                 new AppLayout.Navigator() {
-                    @Override public void goDashboard() { scene.setRoot(new TeacherDashboardApp().build(scene, teacherName)); }
-                    @Override public void goTakeAttendance() { scene.setRoot(new TeacherTakeAttendancePage().build(scene, teacherName)); }
-                    @Override public void goReports() { scene.setRoot(new TeacherReportsPage().build(scene, teacherName)); }
-                    @Override public void goEmail() { scene.setRoot(build(scene, teacherName)); }
-                    @Override public void logout() { System.out.println("TODO: Logout"); }
+                    @Override public void goDashboard() { router.go("teacher-dashboard"); }
+                    @Override public void goTakeAttendance() { router.go("teacher-take"); }
+                    @Override public void goReports() { router.go("teacher-reports"); }
+                    @Override public void goEmail() { router.go("teacher-email"); }
+                    @Override public void logout() {
+                        jwtStore.clear();
+                        router.go("login");
+                    }
                 }
         );
     }

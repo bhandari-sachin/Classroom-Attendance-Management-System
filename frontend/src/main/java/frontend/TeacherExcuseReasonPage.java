@@ -1,5 +1,8 @@
 package frontend;
 
+import frontend.auth.AppRouter;
+import frontend.auth.AuthState;
+import frontend.auth.JwtStore;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Parent;
@@ -7,14 +10,22 @@ import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextArea;
-import javafx.scene.layout.HBox;
-import javafx.scene.layout.Priority;
-import javafx.scene.layout.Region;
-import javafx.scene.layout.VBox;
+import javafx.scene.layout.*;
 
 public class TeacherExcuseReasonPage {
 
-    public Parent build(Scene scene, String teacherName, StudentRow student, Runnable onDoneBack) {
+    public Parent build(
+            Scene scene,
+            AppRouter router,
+            JwtStore jwtStore,
+            AuthState state,
+            StudentRow student,
+            Runnable onDoneBack
+    ) {
+
+        String teacherName = (state.getName() == null || state.getName().isBlank())
+                ? "Name"
+                : state.getName();
 
         VBox page = new VBox(12);
         page.setPadding(new Insets(22));
@@ -37,7 +48,7 @@ public class TeacherExcuseReasonPage {
         Button save = new Button("Save");
         Button cancel = new Button("Cancel");
 
-        // if you have pill styles, you can keep them. otherwise default buttons are fine.
+        // Keep your pill styles if you have them
         save.getStyleClass().addAll("pill", "pill-green");
         cancel.getStyleClass().addAll("pill");
 
@@ -59,14 +70,22 @@ public class TeacherExcuseReasonPage {
 
         return AppLayout.wrapWithSidebar(
                 teacherName,
+                "Teacher Panel",
+                "Dashboard",
+                "Take Attendance",
+                "Reports",
+                "Email",
                 page,
-                "takeAttendance",
+                "second", // ✅ Take Attendance section
                 new AppLayout.Navigator() {
-                    @Override public void goDashboard() { scene.setRoot(new TeacherDashboardApp().build(scene, teacherName)); }
-                    @Override public void goTakeAttendance() { onDoneBack.run(); }
-                    @Override public void goReports() { scene.setRoot(new TeacherReportsPage().build(scene, teacherName)); }
-                    @Override public void goEmail() { scene.setRoot(new TeacherEmailPage().build(scene, teacherName)); }
-                    @Override public void logout() { System.out.println("TODO: Logout"); }
+                    @Override public void goDashboard() { router.go("teacher-dashboard"); }
+                    @Override public void goTakeAttendance() { onDoneBack.run(); } // stay consistent with flow
+                    @Override public void goReports() { router.go("teacher-reports"); }
+                    @Override public void goEmail() { router.go("teacher-email"); }
+                    @Override public void logout() {
+                        jwtStore.clear();
+                        router.go("login");
+                    }
                 }
         );
     }

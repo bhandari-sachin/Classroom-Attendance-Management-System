@@ -1,5 +1,8 @@
 package frontend;
 
+import frontend.auth.AppRouter;
+import frontend.auth.AuthState;
+import frontend.auth.JwtStore;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Parent;
@@ -18,10 +21,11 @@ public class TeacherDashboardApp {
     private int presentToday = 0;
     private int absentToday = 0;
 
-    public Parent build(Scene scene, String teacherName) {
+    public Parent build(Scene scene, AppRouter router, JwtStore jwtStore, AuthState state) {
 
-        // You can auto-fill totalStudents from DataStore if you want:
-        // totalStudents = DataStore.getStudents().size();
+        String teacherName = (state.getName() == null || state.getName().isBlank())
+                ? "Name"
+                : state.getName();
 
         VBox page = new VBox(16);
         page.setPadding(new Insets(26));
@@ -43,14 +47,14 @@ public class TeacherDashboardApp {
                 "Take Attendance",
                 "Generate QR code for your class",
                 "card-green",
-                () -> scene.setRoot(new TeacherTakeAttendancePage().build(scene, teacherName))
+                () -> router.go("teacher-take")
         );
 
         VBox reportCard = bigActionCard(
                 "View Reports",
                 "Class Attendance Reports",
                 "card-purple",
-                () -> scene.setRoot(new TeacherReportsPage().build(scene, teacherName))
+                () -> router.go("teacher-reports")
         );
 
         HBox.setHgrow(takeCard, Priority.ALWAYS);
@@ -110,19 +114,26 @@ public class TeacherDashboardApp {
 
         return AppLayout.wrapWithSidebar(
                 teacherName,
+                "Teacher Panel",
+                "Dashboard",
+                "Take Attendance",
+                "Reports",
+                "Email",
                 page,
                 "dashboard",
                 new AppLayout.Navigator() {
-                    @Override public void goDashboard() { scene.setRoot(build(scene, teacherName)); }
-                    @Override public void goTakeAttendance() { scene.setRoot(new TeacherTakeAttendancePage().build(scene, teacherName)); }
-                    @Override public void goReports() { scene.setRoot(new TeacherReportsPage().build(scene, teacherName)); }
-                    @Override public void goEmail() { scene.setRoot(new TeacherEmailPage().build(scene, teacherName)); }
-                    @Override public void logout() { System.out.println("TODO: Logout"); }
+                    @Override public void goDashboard() { router.go("teacher-dashboard"); }
+                    @Override public void goTakeAttendance() { router.go("teacher-take"); }
+                    @Override public void goReports() { router.go("teacher-reports"); }
+                    @Override public void goEmail() { router.go("teacher-email"); }
+                    @Override public void logout() {
+                        jwtStore.clear();
+                        router.go("login");
+                    }
                 }
         );
     }
 
-    // ===== Helpers MUST be inside the class =====
 
     private VBox bigActionCard(String title, String subtitle, String styleClass, Runnable action) {
         VBox card = new VBox(4);

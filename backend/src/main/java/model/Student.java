@@ -6,9 +6,9 @@ public class Student {
     private String firstName;
     private String lastName;
     private String email;
-    private String studentNumber;
+    private Long studentNumber;
 
-    public Student(Long studentId, String firstName, String lastName, String email, String studentNumber) {
+    public Student(Long studentId, String firstName, String lastName, String email, Long studentNumber) {
         this.studentId = studentId;
         this.firstName = firstName;
         this.lastName = lastName;
@@ -32,7 +32,7 @@ public class Student {
         return firstName + " " + lastName;
     }
 
-    public String getStudentNumber() {
+    public Long getStudentNumber() {
         return studentNumber;
     }
 
@@ -41,3 +41,4 @@ public class Student {
     }
 
 }
+

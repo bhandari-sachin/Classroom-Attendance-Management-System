@@ -1,0 +1,52 @@
+# IDE (IntelliJ)
+.idea/
+*.iml
+*.ipr
+*.iws
+out/
+
+
+# Maven (all modules)
+**/target/
+dependency-reduced-pom.xml
+
+
+# Java
+*.class
+*.jar
+*.war
+*.ear
+
+
+# Logs
+*.log
+logs/
+
+
+# OS Files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+
+# Environment / Secrets
+.env
+.env.*
+*.env
+
+
+# IntelliJ HTTP Client
+/httpRequests/
+
+
+# IntelliJ Local DB Settings
+/dataSources/
+/dataSources.local.xml
+/shelf/
+
+
+
+
+# Coverage Reports
+/jacoco.exec
+/coverage/

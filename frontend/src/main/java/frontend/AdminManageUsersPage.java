@@ -1,42 +1,23 @@
 package frontend;
 
-import config.AttendanceSQL;
-import config.ClassSQL;
-import config.SessionSQL;
+import frontend.auth.AppRouter;
+import frontend.auth.AuthState;
+import frontend.auth.JwtStore;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
-import model.User;
-import service.AttendanceService;
-import service.ClassService;
-import service.UserService;
 
 public class AdminManageUsersPage {
-    private final UserService userSerice;
 
-    public AdminManageUsersPage(UserService userSerice) {
-        this.userSerice = userSerice;
-    }
+    public Parent build(Scene scene, AppRouter router, JwtStore jwtStore, AuthState state) {
 
-    private void loadUsers(TableView<UserRow> table) {
-        table.getItems().clear();
+        String adminName = (state.getName() == null || state.getName().isBlank())
+                ? "Name"
+                : state.getName();
 
-        for (User u : userSerice.getAllUsers()) {
-            table.getItems().add(
-                    new UserRow(
-                            u.getName(),
-                            u.getEmail(),
-                            u.getRole(),
-                            String.valueOf(userSerice.getEnrolledClasses(u.getId()))
-                    )
-            );
-        }
-    }
-
-    public Parent build(Scene scene, String adminName) {
         VBox content = new VBox(14);
         content.getStyleClass().add("content");
         content.setPadding(new Insets(18));
@@ -71,7 +52,6 @@ public class AdminManageUsersPage {
         filters.getChildren().addAll(search, type);
 
         TableView<UserRow> table = AdminUI.buildUsersTable();
-        loadUsers(table);
 
         content.getChildren().addAll(title, subtitle, summary, filters, table);
 
@@ -87,16 +67,17 @@ public class AdminManageUsersPage {
                 "Manage Users",
                 "Attendance Reports",
                 scroll,
-                "reports", // active = Manage Users
+                "third", // ✅ active = Manage Users
                 new AdminAppLayout.Navigator() {
-                    @Override public void goDashboard() { scene.setRoot(new AdminDashboardApp().build(scene, adminName)); }
-                    @Override public void goTakeAttendance() { scene.setRoot(new AdminManageClassesPage(new ClassService(new ClassSQL())).build(scene, adminName)); }
-                    @Override public void goReports() { scene.setRoot(build(scene, adminName)); }
-                    @Override public void goEmail() { scene.setRoot(new AdminAttendanceReportsPage(new AttendanceService(new AttendanceSQL(), new SessionSQL()),
-                            new ClassService(new ClassSQL())).build(scene, adminName)); }
-                    @Override public void logout() { System.out.println("TODO: Admin Logout"); }
+                    @Override public void goDashboard() { router.go("admin-dashboard"); }
+                    @Override public void goTakeAttendance() { router.go("admin-classes"); }
+                    @Override public void goReports() { router.go("admin-users"); }
+                    @Override public void goEmail() { router.go("admin-reports"); }
+                    @Override public void logout() {
+                        jwtStore.clear();
+                        router.go("login");
+                    }
                 }
         );
-
     }
 }
