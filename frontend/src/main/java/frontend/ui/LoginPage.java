@@ -1,6 +1,7 @@
 package frontend.ui;
 
 import frontend.auth.*;
+import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.*;
@@ -39,6 +40,40 @@ public class LoginPage extends StackPane {
         Button loginBtn = new Button("Log in");
         loginBtn.getStyleClass().add("primary-btn");
         loginBtn.setMaxWidth(Double.MAX_VALUE);
+
+        //  REAL LOGIN (BACKEND)
+        loginBtn.setOnAction(e -> {
+            error.setVisible(false);
+            error.setManaged(false);
+
+            String em = email.getText().trim();
+            String pw = password.getText();
+
+            if (em.isBlank() || pw.isBlank()) {
+                showError(error, "Please enter email and password.");
+                return;
+            }
+
+            loginBtn.setDisable(true);
+
+            new Thread(() -> {
+                try {
+                    AuthState state = authService.login(em, pw);
+
+                    Platform.runLater(() -> {
+                        jwtStore.save(state);
+                        router.go(RoleRedirect.routeFor(state.getRole()));
+                    });
+
+                } catch (Exception ex) {
+                    Platform.runLater(() -> {
+                        showError(error, "Login failed: " + cleanMessage(ex.getMessage()));
+                        loginBtn.setDisable(false);
+                    });
+                }
+            }).start();
+        });
+
         // ===== DEV QUICK LOGIN (NO BACKEND) =====
         Label devLabel = new Label("Dev quick login");
         devLabel.getStyleClass().add("subtitle");
@@ -51,7 +86,7 @@ public class LoginPage extends StackPane {
         devTeacher.setMaxWidth(Double.MAX_VALUE);
         devStudent.setMaxWidth(Double.MAX_VALUE);
 
-// reuse your existing button style
+        // reuse your existing button style
         devAdmin.getStyleClass().add("primary-btn");
         devTeacher.getStyleClass().add("primary-btn");
         devStudent.getStyleClass().add("primary-btn");
@@ -73,13 +108,21 @@ public class LoginPage extends StackPane {
 
         VBox devBox = new VBox(8, devLabel, devAdmin, devTeacher, devStudent);
         devBox.setPadding(new Insets(10, 0, 0, 0));
+
         Button goSignup = new Button("I don't have an account");
         goSignup.getStyleClass().add("link-button");
-
         goSignup.setOnAction(e -> router.go("signup"));
-        // -- //
 
-        card.getChildren().addAll(title, sub, email, password, error, loginBtn, goSignup, devBox);
+        card.getChildren().addAll(
+                title,
+                sub,
+                email,
+                password,
+                error,
+                loginBtn,
+                goSignup,
+                devBox
+        );
 
         StackPane.setAlignment(card, Pos.CENTER);
         getChildren().add(card);
@@ -87,5 +130,16 @@ public class LoginPage extends StackPane {
         // auto redirect if already logged in
         Optional<AuthState> existing = jwtStore.load();
         existing.ifPresent(state -> router.go(RoleRedirect.routeFor(state.getRole())));
+    }
+
+    private static void showError(Label error, String msg) {
+        error.setText(msg);
+        error.setVisible(true);
+        error.setManaged(true);
+    }
+
+    private static String cleanMessage(String msg) {
+        if (msg == null || msg.isBlank()) return "Unknown error";
+        return msg.length() > 200 ? msg.substring(0, 200) + "..." : msg;
     }
 }

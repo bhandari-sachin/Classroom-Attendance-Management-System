@@ -1,11 +1,6 @@
-DROP TABLE IF EXISTS attendance;
-DROP TABLE IF EXISTS sessions;
-DROP TABLE IF EXISTS enrollments;
-DROP TABLE IF EXISTS classes;
-DROP TABLE IF EXISTS users;
 
 -- 1. USERS
-CREATE TABLE users
+CREATE TABLE IF NOT EXISTS users
 (
     id            BIGINT PRIMARY KEY AUTO_INCREMENT,
     email         VARCHAR(100)       NOT NULL UNIQUE,
@@ -26,9 +21,8 @@ CREATE TABLE users
             )
 );
 
-
 -- 2. CLASSES
-CREATE TABLE classes
+CREATE TABLE IF NOT EXISTS classes
 (
     id            BIGINT PRIMARY KEY AUTO_INCREMENT,
     class_code    VARCHAR(50)  NOT NULL UNIQUE,
@@ -43,9 +37,8 @@ CREATE TABLE classes
         ON DELETE RESTRICT
 );
 
-
--- 3. ENROLLMENTS (students join classes)
-CREATE TABLE enrollments
+-- 3. ENROLLMENTS
+CREATE TABLE IF NOT EXISTS enrollments
 (
     id         BIGINT PRIMARY KEY AUTO_INCREMENT,
     student_id BIGINT NOT NULL,
@@ -62,9 +55,8 @@ CREATE TABLE enrollments
         CHECK (status IN ('ACTIVE', 'DROPPED', 'COMPLETED'))
 );
 
-
--- 4. SESSIONS (each class session)
-CREATE TABLE sessions
+-- 4. SESSIONS
+CREATE TABLE IF NOT EXISTS sessions
 (
     id           BIGINT PRIMARY KEY AUTO_INCREMENT,
     class_id     BIGINT NOT NULL,
@@ -79,16 +71,13 @@ CREATE TABLE sessions
     FOREIGN KEY (class_id) REFERENCES classes (id) ON DELETE CASCADE,
 
     CONSTRAINT chk_session_time CHECK (end_time > start_time),
-
-    CONSTRAINT chk_session_status
-        CHECK (status IN ('SCHEDULED', 'CANCELLED', 'COMPLETED')),
+    CONSTRAINT chk_session_status CHECK (status IN ('SCHEDULED', 'CANCELLED', 'COMPLETED')),
 
     UNIQUE (class_id, session_date, start_time)
 );
 
-
 -- 5. ATTENDANCE
-CREATE TABLE attendance
+CREATE TABLE IF NOT EXISTS attendance
 (
     id         BIGINT PRIMARY KEY AUTO_INCREMENT,
     student_id BIGINT NOT NULL,
@@ -104,7 +93,6 @@ CREATE TABLE attendance
 
     CONSTRAINT chk_attendance_status
         CHECK (status IN ('PRESENT', 'ABSENT', 'EXCUSED')),
-
     CONSTRAINT chk_marked_by
         CHECK (marked_by IN ('QR', 'TEACHER'))
 );
