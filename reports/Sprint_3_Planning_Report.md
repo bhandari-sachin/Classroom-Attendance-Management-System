@@ -13,7 +13,6 @@ The goal of Sprint 3 was to extend the functional prototype of the QR-based atte
 integrate a CI/CD pipeline using Jenkins, strengthen automated testing and code coverage with JaCoCo,
 and prepare a working local Docker image.
 
-This sprint focused on transforming the system from a structural prototype into a feature-complete, testable, and continuously integrated application ready for functional review.
 ---
 
 ## During Sprint 3, the team aimed to:
