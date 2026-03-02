@@ -6,7 +6,6 @@ import frontend.auth.JwtStore;
 import config.AttendanceSQL;
 import config.ClassSQL;
 import config.SessionSQL;
-import config.UserSQL;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Parent;
@@ -33,7 +32,7 @@ public class StudentDashboardApp {
 
         ClassService classService = new ClassService(new ClassSQL());
         AttendanceService attendanceService = new AttendanceService(new AttendanceSQL(), new SessionSQL());
-        UserService userService = new UserService(new UserSQL());
+        Long studentId = state.getUserId();
 
         // compute stats for this month
         AttendanceStats s = attendanceService.getStudentOverallThisMonth(studentId);
@@ -41,7 +40,7 @@ public class StudentDashboardApp {
             presentCount = s.getPresentCount();
             absentCount = s.getAbsentCount();
             excusedCount = s.getExcusedCount();
-            attendanceRate = s.getAttendanceRate() / 100.0; // service returns percent, convert to 0..1
+            attendanceRate = s.getAttendanceRate() / 100.0;
         }
 
         String studentName = (state.getName() == null || state.getName().isBlank())

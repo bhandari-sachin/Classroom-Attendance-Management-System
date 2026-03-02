@@ -92,12 +92,17 @@ public class AuthService {
             String token = (String) map.get("token");
             String role  = (String) map.get("role");
             String name  = (String) map.get("name");
+            Long userId = null;
+            Object userIdObj = map.get("userId");
+            if (userIdObj instanceof Number) {
+                userId = ((Number) userIdObj).longValue();
+            }
 
             if (token == null || token.isBlank() || role == null || role.isBlank()) {
                 throw new RuntimeException("Invalid login response JSON: " + json);
             }
 
-            return new AuthState(token, Role.fromString(role), name);
+            return new AuthState(token, Role.fromString(role), name, userId);
 
         } catch (Exception e) {
             throw new RuntimeException("Failed to parse login response: " + json, e);

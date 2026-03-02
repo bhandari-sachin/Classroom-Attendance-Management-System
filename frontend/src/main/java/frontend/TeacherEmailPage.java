@@ -1,8 +1,10 @@
 package frontend;
 
+import config.UserSQL;
 import frontend.auth.AppRouter;
 import frontend.auth.AuthState;
 import frontend.auth.JwtStore;
+import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.geometry.Insets;
 import javafx.scene.Parent;
@@ -11,6 +13,9 @@ import javafx.scene.control.Label;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.layout.VBox;
+import model.User;
+import model.UserRole;
+import service.UserService;
 
 import java.util.List;
 
@@ -20,6 +25,8 @@ public class TeacherEmailPage {
 
     public Parent build(Scene scene, AppRouter router, JwtStore jwtStore, AuthState state) {
 
+        UserSQL userSQL = new UserSQL();
+        UserService userService = new UserService(userSQL);
         String teacherName = (state.getName() == null || state.getName().isBlank())
                 ? "Name"
                 : state.getName();
@@ -28,7 +35,7 @@ public class TeacherEmailPage {
         rows.clear();
         List<User> users = userService.getAllUsers();
         for (User u : users) {
-            if (u.getRole() == UserRole.STUDENT) {
+            if (u.getUserType() == UserRole.STUDENT) {
                 rows.add(new StudentRow(u.getName(), u.getEmail(), ""));
             }
         }

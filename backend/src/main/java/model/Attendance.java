@@ -13,9 +13,6 @@ public class Attendance {
         this.sessionId = sessionId;
         this.status = status;
         this.markedBy = markedBy;
-        if (status == AttendanceStatus.EXCUSED) {
-            // add logic to set remarks
-        }
     }
 
     public Long getStudentId() {
@@ -30,7 +27,14 @@ public class Attendance {
     public MarkedBy getMarkedBy() {
         return markedBy;
     }
+    public String getRemarks() {
+        return remarks;
+    }
+
     public void setStatus(AttendanceStatus status) {
         this.status = status;
+    }
+    public void setRemarks(String remarks) {
+        this.remarks = remarks;
     }
 }

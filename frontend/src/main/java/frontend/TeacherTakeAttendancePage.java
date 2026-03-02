@@ -42,6 +42,7 @@ public class TeacherTakeAttendancePage {
     private final AttendanceService attendanceService = new AttendanceService(new AttendanceSQL(), new SessionSQL());
 
     public Parent build(Scene scene, AppRouter router, JwtStore jwtStore, AuthState state) {
+        Long teacherId = state.getUserId();
         String teacherName = (state.getName() == null || state.getName().isBlank())
                 ? "Name"
                 : state.getName();

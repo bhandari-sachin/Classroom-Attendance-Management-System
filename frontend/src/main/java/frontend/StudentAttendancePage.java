@@ -6,7 +6,6 @@ import frontend.auth.JwtStore;
 import config.AttendanceSQL;
 import config.ClassSQL;
 import config.SessionSQL;
-import config.UserSQL;
 import dto.AttendanceStats;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -43,6 +42,8 @@ public class StudentAttendancePage {
         String studentName = (state.getName() == null || state.getName().isBlank())
                 ? "Name"
                 : state.getName();
+
+        Long studentId = state.getUserId();
 
         VBox page = new VBox(16);
         page.setPadding(new Insets(26));
@@ -165,15 +166,6 @@ public class StudentAttendancePage {
                         jwtStore.clear();
                         router.go("login");
                     }
-                }
-        );
-                "reports",
-                new AdminAppLayout.Navigator() {
-                    @Override public void goDashboard() { scene.setRoot(new StudentDashboardApp().build(scene, studentName, studentId)); }
-                    @Override public void goTakeAttendance() { scene.setRoot(new StudentMarkAttendancePage().build(scene, studentName, studentId)); }
-                    @Override public void goReports() { scene.setRoot(build(scene, studentName, studentId)); }
-                    @Override public void goEmail() { scene.setRoot(new StudentEmailPage().build(scene, studentName, studentId)); }
-                    @Override public void logout() { System.out.println("TODO: Student Logout"); }
                 }
         );
     }

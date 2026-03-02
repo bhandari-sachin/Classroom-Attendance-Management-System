@@ -26,6 +26,7 @@ public class User {
     public String getPasswordHash() { return passwordHash; }
     public String getFirstName() { return firstName; }
     public String getLastName() { return lastName; }
+    public String getName() { return firstName + " " + lastName; }
     public UserRole getUserType() { return userType; }
     public String getStudentCode() { return studentCode; }
 }

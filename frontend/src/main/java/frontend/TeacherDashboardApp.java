@@ -33,7 +33,7 @@ public class TeacherDashboardApp {
 
         ClassService classService = new ClassService(new ClassSQL());
         AttendanceService attendanceService = new AttendanceService(new AttendanceSQL(), new SessionSQL());
-        UserService userService = new UserService(new UserSQL());
+        Long teacherId = state.getUserId();
 
         List<CourseClass> classes = classService.getClassesByTeacher(teacherId);
         if (classes != null) {

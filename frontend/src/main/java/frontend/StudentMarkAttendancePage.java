@@ -1,8 +1,11 @@
 package frontend;
 
+import config.AttendanceSQL;
+import config.SessionSQL;
 import frontend.auth.AppRouter;
 import frontend.auth.AuthState;
 import frontend.auth.JwtStore;
+import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Parent;
@@ -10,6 +13,7 @@ import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
 import javafx.scene.text.Font;
+import service.AttendanceService;
 
 public class StudentMarkAttendancePage {
 
@@ -74,14 +78,71 @@ public class StudentMarkAttendancePage {
         codeField.setPromptText("Enter code");
         codeField.getStyleClass().add("code-field");
 
+        Label messageLabel = new Label();
+        messageLabel.setWrapText(true);
+        messageLabel.setVisible(false);
+        messageLabel.setManaged(false);
+
         Button submit = new Button("Submit");
         submit.getStyleClass().add("submit-button");
         submit.setMaxWidth(Double.MAX_VALUE);
 
         submit.setOnAction(e -> {
             String code = codeField.getText().trim();
-            System.out.println("Submitted code: " + code);
-            // TODO: call backend / validate code / show success toast
+
+            if (code.isEmpty()) {
+                messageLabel.setText("Please enter an attendance code");
+                messageLabel.getStyleClass().removeAll("success-message", "error-message");
+                messageLabel.getStyleClass().add("error-message");
+                messageLabel.setVisible(true);
+                messageLabel.setManaged(true);
+                return;
+            }
+
+            Long studentId = state.getUserId();
+            if (studentId == null) {
+                messageLabel.setText("Error: Student ID not found. Please log in again.");
+                messageLabel.getStyleClass().removeAll("success-message", "error-message");
+                messageLabel.getStyleClass().add("error-message");
+                messageLabel.setVisible(true);
+                messageLabel.setManaged(true);
+                return;
+            }
+
+            submit.setDisable(true);
+            messageLabel.setVisible(false);
+
+            new Thread(() -> {
+                try {
+                    AttendanceService service = new AttendanceService(new AttendanceSQL(), new SessionSQL());
+                    boolean success = service.submitAttendanceByCode(studentId, code);
+
+                    Platform.runLater(() -> {
+                        if (success) {
+                            messageLabel.setText("Attendance marked successfully!");
+                            messageLabel.getStyleClass().removeAll("success-message", "error-message");
+                            messageLabel.getStyleClass().add("success-message");
+                            codeField.clear();
+                        } else {
+                            messageLabel.setText("Invalid code or session not available");
+                            messageLabel.getStyleClass().removeAll("success-message", "error-message");
+                            messageLabel.getStyleClass().add("error-message");
+                        }
+                        messageLabel.setVisible(true);
+                        messageLabel.setManaged(true);
+                        submit.setDisable(false);
+                    });
+                } catch (Exception ex) {
+                    Platform.runLater(() -> {
+                        messageLabel.setText("Error: " + ex.getMessage());
+                        messageLabel.getStyleClass().removeAll("success-message", "error-message");
+                        messageLabel.getStyleClass().add("error-message");
+                        messageLabel.setVisible(true);
+                        messageLabel.setManaged(true);
+                        submit.setDisable(false);
+                    });
+                }
+            }).start();
         });
 
         manualCard.getChildren().addAll(
@@ -89,6 +150,7 @@ public class StudentMarkAttendancePage {
                 manualSub,
                 codeLabel,
                 codeField,
+                messageLabel,
                 submit
         );
 

@@ -1,3 +1,5 @@
+package main;
+
 import config.DatabaseInitializer;
 import http.LoginHandler;
 import http.MarkAttendanceHandler;
