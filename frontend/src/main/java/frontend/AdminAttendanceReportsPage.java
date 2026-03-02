@@ -1,5 +1,6 @@
 package frontend;
 
+import frontend.api.AdminApi;
 import frontend.auth.AppRouter;
 import frontend.auth.AuthState;
 import frontend.auth.JwtStore;
@@ -13,7 +14,9 @@ public class AdminAttendanceReportsPage {
 
     public Parent build(Scene scene, AppRouter router, JwtStore jwtStore, AuthState state) {
 
-        String adminName = (state.getName() == null || state.getName().isBlank()) ? "Name" : state.getName();
+        String adminName = (state.getName() == null || state.getName().isBlank())
+                ? "Name"
+                : state.getName();
 
         VBox content = new VBox(14);
         content.getStyleClass().add("content");
@@ -25,6 +28,7 @@ public class AdminAttendanceReportsPage {
         Label subtitle = new Label("Comprehensive attendance analytics and reports");
         subtitle.getStyleClass().add("subtitle");
 
+        // ================= FILTERS =================
         GridPane filters = new GridPane();
         filters.setHgap(12);
         filters.setVgap(8);
@@ -44,45 +48,66 @@ public class AdminAttendanceReportsPage {
         filters.add(new VBox(new Label("Time Period"), timeFilter), 1, 0);
         filters.add(new VBox(new Label("Search Student"), studentSearch), 2, 0);
 
+        // ================= STATS =================
         GridPane stats = new GridPane();
         stats.setHgap(12);
         stats.setVgap(12);
-
-        stats.add(AdminUI.makeStatCard("Overall Attendance Rate", "0%", "📈", "accent-green"), 0, 0);
-        stats.add(AdminUI.makeStatCard("Present", "0", "🟢", "accent-green"), 1, 0);
-        stats.add(AdminUI.makeStatCard("Absent", "0", "🔴", "accent-orange"), 0, 1);
-        stats.add(AdminUI.makeStatCard("Excused", "0", "🟠", "accent-purple"), 1, 1);
-        stats.add(AdminUI.makeStatCard("Total Records", "0", "📄", "accent-purple"), 0, 2);
 
         ColumnConstraints c = new ColumnConstraints();
         c.setHgrow(Priority.ALWAYS);
         c.setFillWidth(true);
         stats.getColumnConstraints().addAll(c, c);
 
-        Label summaryTitle = new Label("Class summary");
-        summaryTitle.getStyleClass().add("section-title");
+        Label error = new Label();
+        error.getStyleClass().add("error");
+        error.setVisible(false);
+        error.setManaged(false);
 
-        Pane classSummary = AdminUI.makeClassCard(
-                "Mathematics",
-                "TX-09374",
-                "2 present · 1 absent · 1 excused",
-                "50%"
-        );
+        AdminApi api = new AdminApi("http://localhost:8081", jwtStore);
 
-        Label recordsTitle = new Label("All Records");
-        recordsTitle.getStyleClass().add("section-title");
+        Runnable loadStats = () -> {
+            try {
+                error.setVisible(false);
+                error.setManaged(false);
 
-        TableView<UserRow> table = AdminUI.buildUsersTable();
+                // 🔹 For now backend ignores filters (OK)
+                String json = api.getAttendanceStatsJson();
+
+                int present = extractInt(json, "presentCount");
+                int absent  = extractInt(json, "absentCount");
+                int excused = extractInt(json, "excusedCount");
+                int total   = extractInt(json, "totalRecords");
+
+                double rate = total == 0 ? 0.0 : (present * 100.0) / total;
+
+                stats.getChildren().clear();
+                stats.add(AdminUI.makeStatCard("Overall Attendance Rate", String.format("%.1f%%", rate), "📈", "accent-green"), 0, 0);
+                stats.add(AdminUI.makeStatCard("Present", String.valueOf(present), "🟢", "accent-green"), 1, 0);
+                stats.add(AdminUI.makeStatCard("Absent", String.valueOf(absent), "🔴", "accent-orange"), 0, 1);
+                stats.add(AdminUI.makeStatCard("Excused", String.valueOf(excused), "🟠", "accent-purple"), 1, 1);
+                stats.add(AdminUI.makeStatCard("Total Records", String.valueOf(total), "📄", "accent-purple"), 0, 2);
+
+            } catch (Exception e) {
+                e.printStackTrace();
+                error.setText("Failed to load attendance stats.");
+                error.setVisible(true);
+                error.setManaged(true);
+            }
+        };
+
+        // Reload stats when filters change (backend-ready)
+        classFilter.setOnAction(e -> loadStats.run());
+        timeFilter.setOnAction(e -> loadStats.run());
+        studentSearch.textProperty().addListener((obs, o, n) -> loadStats.run());
+
+        loadStats.run();
 
         content.getChildren().addAll(
                 title,
                 subtitle,
                 filters,
-                stats,
-                summaryTitle,
-                classSummary,
-                recordsTitle,
-                table
+                error,
+                stats
         );
 
         ScrollPane scroll = new ScrollPane(content);
@@ -109,5 +134,19 @@ public class AdminAttendanceReportsPage {
                     }
                 }
         );
+    }
+
+    private static int extractInt(String json, String key) {
+        String needle = "\"" + key + "\":";
+        int i = json.indexOf(needle);
+        if (i < 0) return 0;
+        int start = i + needle.length();
+        int end = start;
+        while (end < json.length() && (Character.isDigit(json.charAt(end)) || json.charAt(end) == '-')) end++;
+        try {
+            return Integer.parseInt(json.substring(start, end).trim());
+        } catch (Exception e) {
+            return 0;
+        }
     }
 }

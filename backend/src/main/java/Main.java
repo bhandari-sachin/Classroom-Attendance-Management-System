@@ -6,5 +6,6 @@ public class Main {
         DatabaseInitializer.init();
         System.out.println("Backend started successfully");
     }
+
 }
 

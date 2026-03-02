@@ -153,35 +153,7 @@ public class AdminUI {
         TableColumn<ClassRow, String> cStudents = new TableColumn<>("Students");
         cStudents.setCellValueFactory(d -> d.getValue().studentsProperty());
 
-        TableColumn<ClassRow, Void> cActions = new TableColumn<>("Actions");
-        cActions.setCellFactory(col -> new TableCell<>() {
-            private final HBox box = new HBox(10);
-            private final Button edit = iconBtn("✎");
-            private final Button del = iconBtn("🗑");
-
-            {
-                box.setAlignment(Pos.CENTER_LEFT);
-                edit.getStyleClass().add("action-icon-btn");
-                del.getStyleClass().add("danger-icon-btn");
-                box.getChildren().addAll(edit, del);
-            }
-
-            @Override
-            protected void updateItem(Void item, boolean empty) {
-                super.updateItem(item, empty);
-                setGraphic(empty ? null : box);
-            }
-        });
-
-        table.getColumns().addAll(cName, cCode, cTeacher, cSchedule, cStudents, cActions);
-
-        table.getItems().addAll(
-                new ClassRow("Mathematics", "TX-09374", "teacher1@example.com", "MWF 9:00 AM", "0"),
-                new ClassRow("Physics", "TX-09347", "teacher2@example.com", "MWF 9:00 AM", "0"),
-                new ClassRow("Design Patterns", "SW-27366", "teacher3@example.com", "MWF 9:00 AM", "0"),
-                new ClassRow("Software Project 1", "SW-64544", "teacher4@example.com", "MWF 9:00 AM", "0")
-        );
-
+        table.getColumns().addAll(cName, cCode, cTeacher, cSchedule, cStudents);
         return table;
     }
 

@@ -106,6 +106,41 @@ public class UserRepository {
             throw new RuntimeException("Error inserting user", e);
         }
     }
+    public int countByRole(UserRole role) {
+        String sql = "SELECT COUNT(*) FROM users WHERE user_type = ?";
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            ps.setString(1, role.name());
+            try (ResultSet rs = ps.executeQuery()) {
+                rs.next();
+                return rs.getInt(1);
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Error counting users by role", e);
+        }
+    }
+
+    public java.util.List<User> findAll() {
+        String sql = """
+        SELECT id, email, password_hash, first_name, last_name, user_type, student_code
+        FROM users
+        ORDER BY created_at DESC
+    """;
+
+        java.util.List<User> out = new java.util.ArrayList<>();
+
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+
+            while (rs.next()) out.add(mapRow(rs));
+            return out;
+
+        } catch (SQLException e) {
+            throw new RuntimeException("Error fetching all users", e);
+        }
+    }
 
 
 }

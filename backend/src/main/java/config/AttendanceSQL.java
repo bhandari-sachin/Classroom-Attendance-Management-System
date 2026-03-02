@@ -207,4 +207,30 @@ public class AttendanceSQL {
         }
         return null;
     }
+    public dto.AttendanceStats getOverallStats() {
+        String sql = """
+        SELECT
+          SUM(status = 'PRESENT') AS presentCount,
+          SUM(status = 'ABSENT')  AS absentCount,
+          SUM(status = 'EXCUSED') AS excusedCount,
+          COUNT(*)                AS totalRecords
+        FROM attendance
+    """;
+
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql);
+             ResultSet rs = stmt.executeQuery()) {
+
+            if (rs.next()) {
+                int present = rs.getInt("presentCount");
+                int absent = rs.getInt("absentCount");
+                int excused = rs.getInt("excusedCount");
+                int total = rs.getInt("totalRecords");
+                return new dto.AttendanceStats(present, absent, excused, total);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return new dto.AttendanceStats(0,0,0,0);
+    }
 }

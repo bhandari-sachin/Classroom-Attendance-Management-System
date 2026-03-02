@@ -106,5 +106,8 @@ public class AttendanceService {
     ) {
         return attendanceSQL.filterAttendanceByStudent(classId, searchTerm);
     }
+    public dto.AttendanceStats getOverallStats() {
+        return attendanceSQL.getOverallStats();
+    }
 
 }
