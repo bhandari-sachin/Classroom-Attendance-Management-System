@@ -2,7 +2,7 @@ package dto;
 
 import org.junit.jupiter.api.Test;
 
-class ClassAttendanceSummaryTest {
+class AttendanceServiceTest {
     @Test
     void placeholder() {
         // No tests required
