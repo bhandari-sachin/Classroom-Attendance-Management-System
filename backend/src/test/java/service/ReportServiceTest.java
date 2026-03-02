@@ -8,6 +8,7 @@ import org.junit.jupiter.api.Test;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.lang.reflect.Field;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.List;
@@ -32,12 +33,16 @@ class ReportServiceTest {
         }
     }
 
-    // ---------------------------------------------
-    // exportStudentReport
-    // ---------------------------------------------
+    // Helper to inject stub via reflection
+    private void injectAttendanceSQL(ReportService service, AttendanceSQL stub) throws Exception {
+        Field field = ReportService.class.getDeclaredField("attendanceSQL");
+        field.setAccessible(true);
+        field.set(service, stub);
+    }
 
     @Test
-    void exportStudentReport_writesCorrectCsv() throws IOException {
+    void exportStudentReport_writesCorrectCsv() throws Exception {
+
         StubAttendanceSQL stub = new StubAttendanceSQL();
         stub.studentResult = Arrays.asList(
                 new Attendance(1L, 101L, AttendanceStatus.PRESENT, MarkedBy.TEACHER),
@@ -45,6 +50,9 @@ class ReportServiceTest {
         );
 
         ReportService service = new ReportService();
+
+        // inject stub
+        injectAttendanceSQL(service, stub);
 
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
         service.exportStudentReport(1L, outputStream);
@@ -56,12 +64,9 @@ class ReportServiceTest {
         assertTrue(result.contains("102, ABSENT, QR"));
     }
 
-    // ---------------------------------------------
-    // exportClassReport
-    // ---------------------------------------------
-
     @Test
-    void exportClassReport_writesCorrectCsv() throws IOException {
+    void exportClassReport_writesCorrectCsv() throws Exception {
+
         StubAttendanceSQL stub = new StubAttendanceSQL();
         stub.classResult = Arrays.asList(
                 new Attendance(1L, 201L, AttendanceStatus.PRESENT, MarkedBy.TEACHER),
@@ -69,6 +74,9 @@ class ReportServiceTest {
         );
 
         ReportService service = new ReportService();
+
+        // inject stub
+        injectAttendanceSQL(service, stub);
 
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
         service.exportClassReport(10L, outputStream);
