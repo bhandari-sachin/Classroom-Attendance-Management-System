@@ -1,5 +1,6 @@
 package frontend;
 
+import config.ClassSQL;
 import frontend.auth.AppRouter;
 import frontend.auth.AuthState;
 import frontend.auth.JwtStore;
@@ -9,8 +10,31 @@ import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
+import model.CourseClass;
+import service.ClassService;
 
 public class AdminManageClassesPage {
+
+    ClassSQL classSQL = new ClassSQL();
+    ClassService classService = new ClassService(classSQL);
+
+    private void loadClasses(TableView<ClassRow> table) {
+        table.getItems().clear();
+
+        for (CourseClass c : classService.getAllClasses()) {
+            int count = classService.getEnrollmentCount(c.getId());
+            table.getItems().add(
+                    new ClassRow(
+                            c.getName(),
+                            c.getClassCode(),
+                            c.getTeacherName(),
+                            c.getTeacherEmail(),
+                            c.getSemester() + " " + c.getAcademicYear(),
+                            count
+                    )
+            );
+        }
+    }
 
     public Parent build(Scene scene, AppRouter router, JwtStore jwtStore, AuthState state) {
 
@@ -39,7 +63,6 @@ public class AdminManageClassesPage {
         Button add = new Button("+   Add class");
         add.getStyleClass().add("primary-btn");
 
-
         titleRow.getChildren().addAll(titleCol, spacer, add);
 
         TextField search = new TextField();
@@ -50,6 +73,7 @@ public class AdminManageClassesPage {
         section.getStyleClass().add("section-title");
 
         TableView<ClassRow> table = AdminUI.buildClassesTable();
+        loadClasses(table);
 
         content.getChildren().addAll(titleRow, search, section, table);
 

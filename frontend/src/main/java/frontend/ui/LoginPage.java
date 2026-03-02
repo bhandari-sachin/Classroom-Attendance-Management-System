@@ -102,7 +102,7 @@ public class LoginPage extends StackPane {
         });
 
         devStudent.setOnAction(e -> {
-            jwtStore.save(new AuthState("mock-token-student", Role.STUDENT, "Student User", 3L));
+            jwtStore.save(new AuthState("mock-token-student", Role.STUDENT, "Student User", 4L));
             router.go(RoleRedirect.routeFor(Role.STUDENT));
         });
 

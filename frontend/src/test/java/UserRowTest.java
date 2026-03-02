@@ -13,7 +13,7 @@ public class UserRowTest {
                 "Alice",
                 "STUDENT",
                 //UserRole.STUDENT,   // Make sure this exists in your enum
-                "Math 101"
+                u.getUserType(), "Math 101"
         );
 
         assertEquals("Alice", userRow.getUser());
@@ -28,7 +28,7 @@ public class UserRowTest {
                 "John",
                 "SCIENCE_TEACHER",
                 //UserRole.TEACHER,
-                "Science"
+                u.getUserType(), "Science"
         );
 
         assertNotNull(userRow.userProperty());
@@ -43,7 +43,7 @@ public class UserRowTest {
                 "Sara",
                 "ADMIN",
                 //UserRole.ADMIN,
-                "None"
+                u.getUserType(), "None"
         );
 
         userRow.userProperty().set("Sarah");
