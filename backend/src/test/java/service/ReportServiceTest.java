@@ -44,7 +44,7 @@ class ReportServiceTest {
                 new Attendance(1L, 102L, AttendanceStatus.ABSENT, MarkedBy.QR)
         );
 
-        ReportService service = new ReportService(stub);
+        ReportService service = new ReportService();
 
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
         service.exportStudentReport(1L, outputStream);
@@ -68,7 +68,7 @@ class ReportServiceTest {
                 new Attendance(2L, 201L, AttendanceStatus.EXCUSED, MarkedBy.QR)
         );
 
-        ReportService service = new ReportService(stub);
+        ReportService service = new ReportService();
 
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
         service.exportClassReport(10L, outputStream);
