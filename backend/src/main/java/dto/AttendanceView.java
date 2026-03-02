@@ -23,5 +23,9 @@ public class AttendanceView {
     public String getStatus() {
         return status;
     }
+    public Long getStudentNumber() { return studentNumber; }
+    public String getFirstName() { return firstName; }
+    public String getLastName() { return lastName; }
+    public LocalDate getSessionDate() { return sessionDate; }
 }
 

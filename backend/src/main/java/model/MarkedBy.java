@@ -2,5 +2,6 @@ package model;
 
 public enum MarkedBy {
     QR,
-    TEACHER
+    TEACHER,
+    STUDENT
 }

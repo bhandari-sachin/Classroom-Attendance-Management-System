@@ -233,4 +233,90 @@ public class AttendanceSQL {
         }
         return new dto.AttendanceStats(0,0,0,0);
     }
+    public dto.AttendanceStats getStudentStats(Long studentId) {
+        String sql = """
+        SELECT
+          SUM(status = 'PRESENT') AS presentCount,
+          SUM(status = 'ABSENT')  AS absentCount,
+          SUM(status = 'EXCUSED') AS excusedCount,
+          COUNT(*)                AS totalRecords
+        FROM attendance
+        WHERE student_id = ?
+    """;
+
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setLong(1, studentId);
+
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    int present = rs.getInt("presentCount");
+                    int absent = rs.getInt("absentCount");
+                    int excused = rs.getInt("excusedCount");
+                    int total = rs.getInt("totalRecords");
+                    return new dto.AttendanceStats(present, absent, excused, total);
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return new dto.AttendanceStats(0, 0, 0, 0);
+    }
+    public Long findSessionIdByCode(String code) {
+        String sql = "SELECT id FROM sessions WHERE qr_token = ?";
+
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            ps.setString(1, code);
+            ResultSet rs = ps.executeQuery();
+
+            if (rs.next()) return rs.getLong("id");
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    public List<dto.AttendanceView> getStudentAttendanceViews(Long studentId) {
+        List<dto.AttendanceView> results = new ArrayList<>();
+
+        String sql = """
+        SELECT
+            u.id AS student_id,
+            u.first_name,
+            u.last_name,
+            se.session_date,
+            a.status
+        FROM attendance a
+        JOIN sessions se ON a.session_id = se.id
+        JOIN users u ON a.student_id = u.id
+        WHERE a.student_id = ?
+        ORDER BY se.session_date DESC
+    """;
+
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setLong(1, studentId);
+
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    results.add(new dto.AttendanceView(
+                            rs.getLong("student_id"),
+                            rs.getString("first_name"),
+                            rs.getString("last_name"),
+                            rs.getDate("session_date").toLocalDate(),
+                            rs.getString("status")
+                    ));
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return results;
+    }
 }

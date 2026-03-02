@@ -2,6 +2,7 @@ import config.AttendanceSQL;
 import config.ClassSQL;
 import config.DatabaseInitializer;
 import http.*;
+import http.StudentAttendanceRecordsHandler;
 import repository.UserRepository;
 import security.JwtService;
 
@@ -25,11 +26,17 @@ public class BackendMain {
 
         server.createContext("/api/auth/login", new LoginHandler(users, jwtService));
         server.createContext("/api/auth/signup", new SignupHandler(users));
-        server.createContext("/api/attendance/mark", new MarkAttendanceHandler(jwtService));
+        server.createContext("/api/attendance/mark", new MarkAttendanceHandler(jwtService, attendanceService));
         server.createContext("/api/admin/users", new AdminUsersHandler(users, jwtService));
         server.createContext("/api/admin/attendance/stats",
                 new AdminStatsHandler(jwtService, attendanceService));
         server.createContext("/api/admin/classes", new AdminClassesHandler(jwtService, new ClassSQL()));
+        server.createContext("/api/student/attendance/summary",
+                new StudentAttendanceSummaryHandler(jwtService, attendanceService));
+
+        server.createContext("/api/student/attendance/records",
+                new StudentAttendanceRecordsHandler(jwtService, attendanceService));
+        server.createContext("/api/student/teachers", new StudentTeachersHandler(jwtService, users));
         server.setExecutor(Executors.newFixedThreadPool(16));
         server.start();
 

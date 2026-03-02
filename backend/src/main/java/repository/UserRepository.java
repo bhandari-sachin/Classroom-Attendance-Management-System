@@ -141,6 +141,39 @@ public class UserRepository {
             throw new RuntimeException("Error fetching all users", e);
         }
     }
+    public java.util.List<java.util.Map<String, String>> findAllTeachers() {
+        String sql = """
+        SELECT first_name, last_name, email
+        FROM users
+        WHERE user_type = 'TEACHER'
+        ORDER BY last_name, first_name
+    """;
+
+        java.util.List<java.util.Map<String, String>> out = new java.util.ArrayList<>();
+
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+
+            while (rs.next()) {
+                String first = rs.getString("first_name");
+                String last  = rs.getString("last_name");
+                String email = rs.getString("email");
+
+                String fullName = ((first == null ? "" : first) + " " + (last == null ? "" : last)).trim();
+                out.add(java.util.Map.of(
+                        "teacherName", fullName.isBlank() ? "Teacher" : fullName,
+                        "email", email == null ? "" : email
+                ));
+            }
+
+            return out;
+
+        } catch (SQLException e) {
+            throw new RuntimeException("Error fetching teachers", e);
+        }
+    }
+
 
 
 }

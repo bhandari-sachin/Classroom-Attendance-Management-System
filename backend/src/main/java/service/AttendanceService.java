@@ -1,5 +1,6 @@
 package service;
 
+import dto.AttendanceStats;
 import model.*;
 import config.AttendanceSQL;
 import dto.AttendanceView;
@@ -66,6 +67,26 @@ public class AttendanceService {
             ));
         }
     }
+    public void markByCode(Long studentId, String code) {
+
+        Long sessionId = attendanceSQL.findSessionIdByCode(code);
+        if (sessionId == null) {
+            throw new IllegalArgumentException("Invalid attendance code");
+        }
+
+        if (attendanceSQL.exists(studentId, sessionId)) {
+            throw new IllegalArgumentException("Attendance already marked");
+        }
+
+        Attendance a = new Attendance(
+                studentId,
+                sessionId,
+                AttendanceStatus.PRESENT,
+                MarkedBy.STUDENT
+        );
+
+        attendanceSQL.save(a);
+    }
 
     public boolean submitAttendanceCode(Long studentId, Long sessionId, String code) {
 
@@ -108,6 +129,18 @@ public class AttendanceService {
     }
     public dto.AttendanceStats getOverallStats() {
         return attendanceSQL.getOverallStats();
+    }
+    public AttendanceStats getStudentStats(long studentId) {
+        return attendanceSQL.getStudentStats(studentId);
+    }
+
+
+    public dto.AttendanceStats getStudentStats(Long studentId) {
+        return attendanceSQL.getStudentStats(studentId);
+    }
+
+    public List<dto.AttendanceView> getStudentAttendanceViews(Long studentId) {
+        return attendanceSQL.getStudentAttendanceViews(studentId);
     }
 
 }
