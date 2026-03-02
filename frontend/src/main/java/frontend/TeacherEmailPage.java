@@ -1,8 +1,10 @@
 package frontend;
 
+import config.UserSQL;
 import frontend.auth.AppRouter;
 import frontend.auth.AuthState;
 import frontend.auth.JwtStore;
+import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.geometry.Insets;
 import javafx.scene.Parent;
@@ -11,16 +13,32 @@ import javafx.scene.control.Label;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.layout.VBox;
+import model.User;
+import model.UserRole;
+import service.UserService;
+
+import java.util.List;
 
 public class TeacherEmailPage {
 
-    private final ObservableList<StudentRow> rows = DataStore.getStudents();
+    private final ObservableList<StudentRow> rows = FXCollections.observableArrayList();
 
     public Parent build(Scene scene, AppRouter router, JwtStore jwtStore, AuthState state) {
 
+        UserSQL userSQL = new UserSQL();
+        UserService userService = new UserService(userSQL);
         String teacherName = (state.getName() == null || state.getName().isBlank())
                 ? "Name"
                 : state.getName();
+
+        // Load students from backend
+        rows.clear();
+        List<User> users = userService.getAllUsers();
+        for (User u : users) {
+            if (u.getUserType() == UserRole.STUDENT) {
+                rows.add(new StudentRow(u.getName(), u.getEmail(), ""));
+            }
+        }
 
         VBox page = new VBox(14);
         page.setPadding(new Insets(22));
@@ -29,7 +47,7 @@ public class TeacherEmailPage {
         Label title = new Label("Email");
         title.getStyleClass().add("title");
 
-        Label info = new Label("Student emails (connect real backend later).");
+        Label info = new Label("Student emails");
         info.getStyleClass().add("subtitle");
 
         TableView<StudentRow> table = new TableView<>(rows);

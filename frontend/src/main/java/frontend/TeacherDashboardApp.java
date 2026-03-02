@@ -3,6 +3,9 @@ package frontend;
 import frontend.auth.AppRouter;
 import frontend.auth.AuthState;
 import frontend.auth.JwtStore;
+import config.AttendanceSQL;
+import config.ClassSQL;
+import config.SessionSQL;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Parent;
@@ -10,18 +13,55 @@ import javafx.scene.Scene;
 import javafx.scene.control.Label;
 import javafx.scene.control.Separator;
 import javafx.scene.layout.*;
+import dto.AttendanceStats;
+import model.CourseClass;
+import service.AttendanceService;
+import service.ClassService;
+
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.List;
 
 public class TeacherDashboardApp {
 
-    // Dummy data (replace later from backend)
     private int totalClasses = 0;
     private int totalStudents = 0;
     private int presentToday = 0;
     private int absentToday = 0;
 
     public Parent build(Scene scene, AppRouter router, JwtStore jwtStore, AuthState state) {
+
+        ClassService classService = new ClassService(new ClassSQL());
+        AttendanceService attendanceService = new AttendanceService(new AttendanceSQL(), new SessionSQL());
+        Long teacherId = state.getUserId();
+
+        List<CourseClass> classes = classService.getClassesByTeacher(teacherId);
+        if (classes != null) {
+            totalClasses = classes.size();
+            int total = 0;
+            int present = 0;
+            int absent = 0;
+
+            for (CourseClass c : classes) {
+                try {
+                    int enrolled = classService.getEnrollmentCount(c.getId());
+                    total += enrolled;
+
+                    // add present day stats later
+                    AttendanceStats stats = attendanceService.getStatsForClass(c.getId());
+                    if (stats != null) {
+                        present += stats.getPresentCount();
+                        absent += stats.getAbsentCount();
+                    }
+                } catch (Exception ex) {
+                    System.err.println("Failed loading class data: " + ex.getMessage());
+                }
+            }
+
+            totalStudents = total;
+            presentToday = present;
+            absentToday = absent;
+        }
 
         String teacherName = (state.getName() == null || state.getName().isBlank())
                 ? "Name"
@@ -86,21 +126,29 @@ public class TeacherDashboardApp {
         Label classesTitle = new Label("My classes");
         classesTitle.getStyleClass().add("section-title");
 
-        VBox emptyClasses = new VBox(8);
-        emptyClasses.setAlignment(Pos.CENTER);
-        emptyClasses.setMinHeight(170);
-        emptyClasses.getStyleClass().add("classes-card");
+        VBox classesBox = new VBox(8);
+        classesBox.setAlignment(Pos.TOP_LEFT);
+        classesBox.setMinHeight(170);
+        classesBox.getStyleClass().add("classes-card");
 
-        Label icon = new Label("📅");
-        icon.getStyleClass().add("empty-icon");
+        if (classes == null || classes.isEmpty()) {
+            Label icon = new Label("📅");
+            icon.getStyleClass().add("empty-icon");
 
-        Label t = new Label("No classes Assigned");
-        t.getStyleClass().add("empty-title");
+            Label t = new Label("No classes Assigned");
+            t.getStyleClass().add("empty-title");
 
-        Label s = new Label("You haven’t been assigned any classes yet.");
-        s.getStyleClass().add("empty-subtitle");
+            Label s = new Label("You haven’t been assigned any classes yet.");
+            s.getStyleClass().add("empty-subtitle");
 
-        emptyClasses.getChildren().addAll(icon, t, s);
+            classesBox.getChildren().addAll(icon, t, s);
+        } else {
+            for (CourseClass c : classes) {
+                Label row = new Label(c.getName() + " — " + c.getClassCode());
+                row.getStyleClass().add("class-row");
+                classesBox.getChildren().add(row);
+            }
+        }
 
         page.getChildren().addAll(
                 greeting,
@@ -109,7 +157,7 @@ public class TeacherDashboardApp {
                 stats,
                 new Separator(),
                 classesTitle,
-                emptyClasses
+                classesBox
         );
 
         return AppLayout.wrapWithSidebar(

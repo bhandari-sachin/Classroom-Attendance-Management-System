@@ -3,6 +3,9 @@ package frontend;
 import frontend.auth.AppRouter;
 import frontend.auth.AuthState;
 import frontend.auth.JwtStore;
+import config.AttendanceSQL;
+import config.ClassSQL;
+import config.SessionSQL;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Parent;
@@ -11,16 +14,34 @@ import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.Separator;
 import javafx.scene.layout.*;
+import dto.AttendanceStats;
+import model.CourseClass;
+import service.AttendanceService;
+import service.ClassService;
+
+import java.util.List;
 
 public class StudentDashboardApp {
 
-    // Dummy data (replace later from backend)
     private int presentCount = 0;
     private int absentCount = 0;
     private int excusedCount = 0;
     private double attendanceRate = 0.0; // 0.0 -> 0%
 
     public Parent build(Scene scene, AppRouter router, JwtStore jwtStore, AuthState state) {
+
+        ClassService classService = new ClassService(new ClassSQL());
+        AttendanceService attendanceService = new AttendanceService(new AttendanceSQL(), new SessionSQL());
+        Long studentId = state.getUserId();
+
+        // compute stats for this month
+        AttendanceStats s = attendanceService.getStudentOverallThisMonth(studentId);
+        if (s != null) {
+            presentCount = s.getPresentCount();
+            absentCount = s.getAbsentCount();
+            excusedCount = s.getExcusedCount();
+            attendanceRate = s.getAttendanceRate() / 100.0;
+        }
 
         String studentName = (state.getName() == null || state.getName().isBlank())
                 ? "Name"
@@ -59,7 +80,25 @@ public class StudentDashboardApp {
 
         classesHeader.getChildren().addAll(classesTitle, spacer, viewAll);
 
-        VBox classesCard = emptyClassesCard();
+        VBox classesCard;
+        try {
+            List<CourseClass> classes = classService.getClassesForStudent(studentId);
+            if (classes == null || classes.isEmpty()) {
+                classesCard = emptyClassesCard();
+            } else {
+                VBox list = new VBox(6);
+                list.getStyleClass().add("classes-card");
+                for (CourseClass c : classes) {
+                    Label row = new Label(c.getName() + " — " + c.getClassCode());
+                    row.getStyleClass().add("class-row");
+                    list.getChildren().add(row);
+                }
+                classesCard = list;
+            }
+        } catch (Exception ex) {
+            classesCard = emptyClassesCard();
+            System.err.println("Failed loading student classes: " + ex.getMessage());
+        }
 
         page.getChildren().addAll(
                 title,

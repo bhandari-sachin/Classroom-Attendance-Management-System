@@ -1,8 +1,10 @@
 package frontend;
 
+import config.UserSQL;
 import frontend.auth.AppRouter;
 import frontend.auth.AuthState;
 import frontend.auth.JwtStore;
+import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.geometry.Insets;
 import javafx.scene.Parent;
@@ -11,17 +13,32 @@ import javafx.scene.control.Label;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.layout.VBox;
+import model.User;
+import model.UserRole;
+import service.UserService;
+
+import java.util.List;
 
 public class StudentEmailPage {
 
-    // For now: show teacher contacts (replace later from backend)
-    private final ObservableList<TeacherRow> rows = DataStore.getTeachers();
+    // show teacher contacts from backend
+    private final ObservableList<TeacherRow> rows = FXCollections.observableArrayList();
 
     public Parent build(Scene scene, AppRouter router, JwtStore jwtStore, AuthState state) {
 
+        UserSQL userSQL = new UserSQL();
+        UserService userService = new UserService(userSQL);
         String studentName = (state.getName() == null || state.getName().isBlank())
                 ? "Name"
                 : state.getName();
+
+        rows.clear();
+        List<User> users = userService.getAllUsers();
+        for (User u : users) {
+            if (u.getUserType() == UserRole.TEACHER) {
+                rows.add(new TeacherRow(u.getName(), u.getEmail()));
+            }
+        }
 
         VBox page = new VBox(14);
         page.setPadding(new Insets(22));

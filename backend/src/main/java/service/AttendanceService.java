@@ -1,26 +1,32 @@
 package service;
 
+import dto.AttendanceStats;
 import model.*;
+import config.SessionSQL;
 import config.AttendanceSQL;
 import dto.AttendanceView;
 
+import java.sql.SQLException;
+import java.time.LocalDate;
 import java.util.List;
 
 public class AttendanceService {
     private final AttendanceSQL attendanceSQL;
+    private final SessionSQL sessionSQL;
 
-    public AttendanceService(AttendanceSQL attendanceSQL) {
+    public AttendanceService(AttendanceSQL attendanceSQL, SessionSQL sessionSQL) {
         this.attendanceSQL = attendanceSQL;
+        this.sessionSQL = sessionSQL;
     }
 
     public void markPresent(Long studentId, Long sessionId) {
         if (attendanceSQL.exists(studentId, sessionId)) {
             attendanceSQL.updateStatus(
-                studentId,
-                sessionId,
-                AttendanceStatus.PRESENT,
-                MarkedBy.TEACHER
-           );
+                    studentId,
+                    sessionId,
+                    AttendanceStatus.PRESENT,
+                    MarkedBy.TEACHER,
+                    null);
         } else {
             attendanceSQL.save(new Attendance(
                     studentId,
@@ -37,8 +43,8 @@ public class AttendanceService {
                     studentId,
                     sessionId,
                     AttendanceStatus.ABSENT,
-                    MarkedBy.TEACHER
-            );
+                    MarkedBy.TEACHER,
+                    null);
         } else {
             attendanceSQL.save(new Attendance(
                     studentId,
@@ -49,27 +55,40 @@ public class AttendanceService {
         }
     }
 
-    public void markExcused(Long studentId, Long sessionId) {
+    public void markExcused(Long studentId, Long sessionId, String reason) {
         if (attendanceSQL.exists(studentId, sessionId)) {
             attendanceSQL.updateStatus(
                     studentId,
                     sessionId,
                     AttendanceStatus.EXCUSED,
-                    MarkedBy.TEACHER
+                    MarkedBy.TEACHER,
+                    reason
             );
         } else {
-            attendanceSQL.save(new Attendance(
+            Attendance a = new Attendance(
                     studentId,
                     sessionId,
                     AttendanceStatus.EXCUSED,
                     MarkedBy.TEACHER
-            ));
+            );
+            a.setRemarks(reason);
+            attendanceSQL.save(a);
+
         }
     }
 
-    public boolean submitAttendanceCode(Long studentId, Long sessionId, String code) {
+    public boolean submitAttendanceCode(Long studentId, Long sessionId, String code) throws SQLException {
 
+        Session session = sessionSQL.findById(sessionId);
         String correctCode = attendanceSQL.getSessionCode(sessionId);
+        if (session == null) {
+            return false;
+        }
+
+        if (!"ACTIVE".equals(session.getStatus())) {
+            return false;
+        }
+
         if (!code.equals(correctCode)) {
             return false;
         }
@@ -79,8 +98,8 @@ public class AttendanceService {
                     studentId,
                     sessionId,
                     AttendanceStatus.PRESENT,
-                    MarkedBy.QR
-            );
+                    MarkedBy.QR,
+                    null);
         } else {
             attendanceSQL.save(new Attendance(
                     studentId,
@@ -107,4 +126,131 @@ public class AttendanceService {
         return attendanceSQL.filterAttendanceByStudent(classId, searchTerm);
     }
 
+    public AttendanceStats getOverallStats() {
+        return attendanceSQL.getOverallStats();
+    }
+
+    public AttendanceStats getStatsForClass(Long classId) {
+        return attendanceSQL.getStatsForClass(classId);
+    }
+
+    public AttendanceStats getStatsForStudent(Long studentId) {
+        return attendanceSQL.getStatsForStudent(studentId);
+    }
+
+    public AttendanceStats getStudentOverallThisMonth(Long studentId) {
+        LocalDate now = LocalDate.now();
+        return attendanceSQL.getStatsForStudentByDate(
+                studentId,
+                now.withDayOfMonth(1),
+                now.withDayOfMonth(now.lengthOfMonth())
+        );
+    }
+
+    public AttendanceStats getStudentOverallLastMonth(Long studentId) {
+        LocalDate now = LocalDate.now().minusMonths(1);
+        return attendanceSQL.getStatsForStudentByDate(
+                studentId,
+                now.withDayOfMonth(1),
+                now.withDayOfMonth(now.lengthOfMonth())
+        );
+    }
+
+    public AttendanceStats getStudentOverallThisYear(Long studentId) {
+        LocalDate now = LocalDate.now();
+        return attendanceSQL.getStatsForStudentByDate(
+                studentId,
+                now.withDayOfYear(1),
+                now.withDayOfYear(now.lengthOfYear())
+        );
+    }
+
+    public AttendanceStats getStatsThisMonth() {
+        LocalDate now = LocalDate.now();
+        LocalDate start = now.withDayOfMonth(1);
+        LocalDate end = now.withDayOfMonth(now.lengthOfMonth());
+
+        return attendanceSQL.getStatsByDateRange(start, end);
+    }
+
+    public AttendanceStats getStatsLastMonth() {
+        LocalDate now = LocalDate.now().minusMonths(1);
+        LocalDate start = now.withDayOfMonth(1);
+        LocalDate end = now.withDayOfMonth(now.lengthOfMonth());
+
+        return attendanceSQL.getStatsByDateRange(start, end);
+    }
+
+    public AttendanceStats getStatsThisYear() {
+        LocalDate now = LocalDate.now();
+        LocalDate start = now.withDayOfYear(1);
+        LocalDate end = now.withDayOfYear(now.lengthOfYear());
+
+        return attendanceSQL.getStatsByDateRange(start, end);
+    }
+
+    public AttendanceStats getClassStatsThisMonth(Long classId) {
+        LocalDate now = LocalDate.now();
+        LocalDate start = now.withDayOfMonth(1);
+        LocalDate end = now.withDayOfMonth(now.lengthOfMonth());
+
+        return attendanceSQL.getStatsForClassByDateRange(classId, start, end);
+    }
+
+    public AttendanceStats getClassStatsLastMonth(Long classId) {
+        LocalDate now = LocalDate.now().minusMonths(1);
+        LocalDate start = now.withDayOfMonth(1);
+        LocalDate end = now.withDayOfMonth(now.lengthOfMonth());
+
+        return attendanceSQL.getStatsForClassByDateRange(classId, start, end);
+    }
+
+    public AttendanceStats getClassStatsThisYear(Long classId) {
+        LocalDate now = LocalDate.now();
+        LocalDate start = now.withDayOfYear(1);
+        LocalDate end = now.withDayOfYear(now.lengthOfYear());
+
+        return attendanceSQL.getStatsForClassByDateRange(classId, start, end);
+    }
+    public AttendanceStats getStudentStatsThisMonth(Long studentId, Long classId) {
+        LocalDate now = LocalDate.now();
+        LocalDate start = now.withDayOfMonth(1);
+        LocalDate end = now.withDayOfMonth(now.lengthOfMonth());
+
+        return attendanceSQL.getStatsForStudentInClassByDate(studentId, classId, start, end);
+    }
+
+    public AttendanceStats getStudentStatsLastMonth(Long studentId, Long classId) {
+        LocalDate now = LocalDate.now().minusMonths(1);
+        LocalDate start = now.withDayOfMonth(1);
+        LocalDate end = now.withDayOfMonth(now.lengthOfMonth());
+
+        return attendanceSQL.getStatsForStudentInClassByDate(studentId, classId, start, end);
+    }
+
+    public AttendanceStats getStudentStatsThisYear(Long studentId, Long classId) {
+        LocalDate now = LocalDate.now();
+        LocalDate start = now.withDayOfYear(1);
+        LocalDate end = now.withDayOfYear(now.lengthOfYear());
+
+        return attendanceSQL.getStatsForStudentInClassByDate(studentId, classId, start, end);
+    }
+
+    public boolean submitAttendanceByCode(Long studentId, String code) {
+        try {
+            Session session = sessionSQL.findByQRCode(code);
+            if (session == null) {
+                return false;
+            }
+
+            if (attendanceSQL.exists(studentId, session.getId())) {
+                attendanceSQL.updateStatus(studentId, session.getId(), AttendanceStatus.PRESENT, MarkedBy.QR, null);
+            } else {
+                attendanceSQL.save(new Attendance(studentId, session.getId(), AttendanceStatus.PRESENT, MarkedBy.QR));
+            }
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+    }
 }

@@ -25,7 +25,7 @@ public class StudentSQL {
                         rs.getString("first_name"),
                         rs.getString("last_name"),
                         rs.getString("email"),
-                        rs.getLong("student_code")
+                        rs.getString("student_code")
                 );
             }
         } catch (Exception e) {
@@ -57,7 +57,7 @@ public class StudentSQL {
                         rs.getString("first_name"),
                         rs.getString("last_name"),
                         rs.getString("email"),
-                        rs.getLong("student_code")
+                        rs.getString("student_code")
                 ));
             }
         } catch (Exception e) {

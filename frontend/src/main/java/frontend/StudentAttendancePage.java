@@ -3,6 +3,10 @@ package frontend;
 import frontend.auth.AppRouter;
 import frontend.auth.AuthState;
 import frontend.auth.JwtStore;
+import config.AttendanceSQL;
+import config.ClassSQL;
+import config.SessionSQL;
+import dto.AttendanceStats;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Group;
@@ -16,21 +20,30 @@ import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.*;
 import javafx.scene.text.Font;
+import model.CourseClass;
+import service.AttendanceService;
+import service.ClassService;
+
+import java.util.List;
 
 public class StudentAttendancePage {
 
-    // Dummy data (replace later)
-    private int presentCount = 0;
-    private int absentCount = 0;
-    private int excusedCount = 0;
-    private int totalDays = 0;
-    private double attendanceRate = 0.0; // 0.0 -> 0%
+    private final Label presentValueLabel = new Label("0");
+    private final Label absentValueLabel = new Label("0");
+    private final Label excusedValueLabel = new Label("0");
+    private final Label totalDaysValueLabel = new Label("0");
+    private final Label rateValueLabel = new Label("0%");
+
+    private final ClassService classService = new ClassService(new ClassSQL());
+    private final AttendanceService attendanceService = new AttendanceService(new AttendanceSQL(), new SessionSQL());
 
     public Parent build(Scene scene, AppRouter router, JwtStore jwtStore, AuthState state) {
 
         String studentName = (state.getName() == null || state.getName().isBlank())
                 ? "Name"
                 : state.getName();
+
+        Long studentId = state.getUserId();
 
         VBox page = new VBox(16);
         page.setPadding(new Insets(26));
@@ -49,10 +62,19 @@ public class StudentAttendancePage {
         Label filterIcon = new Label("⏷");
         filterIcon.getStyleClass().add("filter-icon");
 
-        ComboBox<String> classFilter = new ComboBox<>();
-        classFilter.getItems().addAll("All Classes", "OOP1", "Databases", "Web Dev");
+        ComboBox<Object> classFilter = new ComboBox<>();
+        classFilter.getItems().add("All Classes");
         classFilter.setValue("All Classes");
         classFilter.getStyleClass().add("filter-combo");
+
+        try {
+            List<CourseClass> classes = classService.getClassesForStudent(studentId);
+            if (classes != null) {
+                for (CourseClass c : classes) classFilter.getItems().add(c);
+            }
+        } catch (Exception ex) {
+            System.err.println("Failed loading student classes: " + ex.getMessage());
+        }
 
         ComboBox<String> timeFilter = new ComboBox<>();
         timeFilter.getItems().addAll("This Month", "Last Month", "This Year");
@@ -77,12 +99,12 @@ public class StudentAttendancePage {
 
         stats.getColumnConstraints().addAll(c1, c2);
 
-        VBox rateCard = rateCard("Attendance Rate", (int) (attendanceRate * 100) + "%");
+        VBox rateCard = rateCard("Attendance Rate", rateValueLabel);
 
-        VBox presentCard = smallStatCard("Present", String.valueOf(presentCount), "#3BAA66", "check");
-        VBox absentCard  = smallStatCard("Absent",  String.valueOf(absentCount), "#E05A5A", "x");
-        VBox excusedCard = smallStatCard("Excused", String.valueOf(excusedCount), "#E09A3B", "clock");
-        VBox totalDaysCard = smallStatCard("Total Days", String.valueOf(totalDays), "#BFC5CC", "calendar");
+        VBox presentCard = smallStatCard("Present", presentValueLabel, "#3BAA66", "check");
+        VBox absentCard  = smallStatCard("Absent",  absentValueLabel,  "#E05A5A", "x");
+        VBox excusedCard = smallStatCard("Excused", excusedValueLabel, "#E09A3B", "clock");
+        VBox totalDaysCard = smallStatCard("Total Days", totalDaysValueLabel, "#BFC5CC", "calendar");
 
         stats.add(rateCard, 0, 0);
         stats.add(presentCard, 1, 0);
@@ -121,6 +143,11 @@ public class StudentAttendancePage {
                 recordsCard
         );
 
+        updateStatsForSelection(classFilter.getValue(), timeFilter.getValue(), studentId);
+
+        classFilter.setOnAction(e -> updateStatsForSelection(classFilter.getValue(), timeFilter.getValue(), studentId));
+        timeFilter.setOnAction(e -> updateStatsForSelection(classFilter.getValue(), timeFilter.getValue(), studentId));
+
         return AppLayout.wrapWithSidebar(
                 studentName,
                 "Student Panel",
@@ -143,9 +170,41 @@ public class StudentAttendancePage {
         );
     }
 
+    private void updateStatsForSelection(Object selectedClassObj, String timeFilterValue, Long studentId) {
+        Long classId = null;
+        if (selectedClassObj instanceof CourseClass) classId = ((CourseClass) selectedClassObj).getId();
+
+        AttendanceStats stats = null;
+        try {
+            if (classId == null) {
+                switch (timeFilterValue) {
+                    case "Last Month" -> stats = attendanceService.getStudentOverallLastMonth(studentId);
+                    case "This Year" -> stats = attendanceService.getStudentOverallThisYear(studentId);
+                    default -> stats = attendanceService.getStudentOverallThisMonth(studentId);
+                }
+            } else {
+                switch (timeFilterValue) {
+                    case "Last Month" -> stats = attendanceService.getStudentStatsLastMonth(studentId, classId);
+                    case "This Year" -> stats = attendanceService.getStudentStatsThisYear(studentId, classId);
+                    default -> stats = attendanceService.getStudentStatsThisMonth(studentId, classId);
+                }
+            }
+        } catch (Exception ex) {
+            System.err.println("Failed to load attendance stats: " + ex.getMessage());
+        }
+
+        if (stats == null) stats = new AttendanceStats(0,0,0,0);
+
+        presentValueLabel.setText(String.valueOf(stats.getPresentCount()));
+        absentValueLabel.setText(String.valueOf(stats.getAbsentCount()));
+        excusedValueLabel.setText(String.valueOf(stats.getExcusedCount()));
+        totalDaysValueLabel.setText(String.valueOf(stats.getTotalRecords()));
+        rateValueLabel.setText(String.format("%.0f%%", stats.getAttendanceRate()));
+    }
+
     /* ================= COMPONENTS ================= */
 
-    private VBox rateCard(String label, String value) {
+    private VBox rateCard(String label, Label valueLabel) {
         VBox card = new VBox(8);
         card.getStyleClass().add("rate-card");
 
@@ -163,14 +222,13 @@ public class StudentAttendancePage {
 
         top.getChildren().addAll(lbl, spacer, trend);
 
-        Label big = new Label(value);
-        big.getStyleClass().add("rate-value");
+        valueLabel.getStyleClass().add("rate-value");
 
-        card.getChildren().addAll(top, big);
+        card.getChildren().addAll(top, valueLabel);
         return card;
     }
 
-    private VBox smallStatCard(String label, String value, String colorHex, String iconKey) {
+    private VBox smallStatCard(String label, Label valueLabel, String colorHex, String iconKey) {
         VBox card = new VBox(6);
         card.getStyleClass().add("mini-stat-card");
 
@@ -195,10 +253,9 @@ public class StudentAttendancePage {
 
         row1.getChildren().addAll(badge, lbl);
 
-        Label big = new Label(value);
-        big.getStyleClass().add("mini-value");
+        valueLabel.getStyleClass().add("mini-value");
 
-        HBox row2 = new HBox(big);
+        HBox row2 = new HBox(valueLabel);
         row2.setPadding(new Insets(0, 0, 0, 36));
 
         card.getChildren().addAll(row1, row2);

@@ -92,17 +92,17 @@ public class LoginPage extends StackPane {
         devStudent.getStyleClass().add("primary-btn");
 
         devAdmin.setOnAction(e -> {
-            jwtStore.save(new AuthState("mock-token-admin", Role.ADMIN, "Admin User"));
+            jwtStore.save(new AuthState("mock-token-admin", Role.ADMIN, "Admin User", 1L));
             router.go(RoleRedirect.routeFor(Role.ADMIN));
         });
 
         devTeacher.setOnAction(e -> {
-            jwtStore.save(new AuthState("mock-token-teacher", Role.TEACHER, "Teacher User"));
+            jwtStore.save(new AuthState("mock-token-teacher", Role.TEACHER, "Teacher User", 2L));
             router.go(RoleRedirect.routeFor(Role.TEACHER));
         });
 
         devStudent.setOnAction(e -> {
-            jwtStore.save(new AuthState("mock-token-student", Role.STUDENT, "Student User"));
+            jwtStore.save(new AuthState("mock-token-student", Role.STUDENT, "Student User", 4L));
             router.go(RoleRedirect.routeFor(Role.STUDENT));
         });
 
