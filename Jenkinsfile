@@ -3,7 +3,7 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
-                git branch: 'Sprint3',
+                git branch: 'admin-api',
                         url: 'https://github.com/bhandari-sachin/Classroom-Attendance-Management-System.git'
             }
         }
