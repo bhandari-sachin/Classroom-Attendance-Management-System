@@ -13,11 +13,13 @@
     </parent>
 
     <artifactId>frontend</artifactId>
+    <packaging>jar</packaging>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.compiler.release>21</maven.compiler.release>
         <javafx.version>21.0.2</javafx.version>
+        <junit.jupiter.version>5.11.0</junit.jupiter.version>
     </properties>
 
     <dependencies>
@@ -39,12 +41,11 @@
             <version>${javafx.version}</version>
         </dependency>
 
-        <!-- Backend dependency (compile) -->
+        <!-- Backend dependency -->
         <dependency>
             <groupId>org.example</groupId>
             <artifactId>backend</artifactId>
             <version>1.0-SNAPSHOT</version>
-            <scope>compile</scope>
         </dependency>
 
         <!-- JSON -->
@@ -54,24 +55,41 @@
             <version>2.17.2</version>
         </dependency>
 
-        <!-- Tests -->
+        <!-- Tests (JUnit 5) -->
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <version>${junit.jupiter.version}</version>
+            <scope>test</scope>
+        </dependency>
+
+
         <dependency>
             <groupId>org.testng</groupId>
             <artifactId>testng</artifactId>
             <version>7.11.0</version>
             <scope>test</scope>
         </dependency>
-        <dependency>
-            <groupId>org.junit.jupiter</groupId>
-            <artifactId>junit-jupiter-api</artifactId>
-            <version>6.1.0-M1</version>
-            <scope>test</scope>
-        </dependency>
+
 
     </dependencies>
 
     <build>
+        <!-- Produces: frontend/target/frontend.jar -->
+        <finalName>frontend</finalName>
+
         <plugins>
+
+            <!-- Surefire (JUnit 5) -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>3.3.1</version>
+                <configuration>
+                    <!-- Helps on some JavaFX/module setups -->
+                    <useModulePath>false</useModulePath>
+                </configuration>
+            </plugin>
 
             <!-- JaCoCo -->
             <plugin>
@@ -94,7 +112,7 @@
                 </executions>
             </plugin>
 
-            <!-- JavaFX -->
+            <!-- JavaFX plugin (handy for: mvn javafx:run) -->
             <plugin>
                 <groupId>org.openjfx</groupId>
                 <artifactId>javafx-maven-plugin</artifactId>
@@ -102,6 +120,29 @@
                 <configuration>
                     <mainClass>frontend.MainApp</mainClass>
                 </configuration>
+            </plugin>
+
+            <!-- Shade: makes a runnable fat jar with Main-Class in MANIFEST -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-shade-plugin</artifactId>
+                <version>3.6.0</version>
+                <executions>
+                    <execution>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>shade</goal>
+                        </goals>
+                        <configuration>
+                            <createDependencyReducedPom>false</createDependencyReducedPom>
+                            <transformers>
+                                <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+                                    <mainClass>frontend.MainApp</mainClass>
+                                </transformer>
+                            </transformers>
+                        </configuration>
+                    </execution>
+                </executions>
             </plugin>
 
         </plugins>
