@@ -16,9 +16,7 @@ pipeline {
         DOCKER_IMAGE_TAG_BUILD  = "${env.BUILD_NUMBER}"
     }
 
-    tools {
-        maven 'Maven3'
-    }
+
 
     stages {
         stage('Check Docker') {
