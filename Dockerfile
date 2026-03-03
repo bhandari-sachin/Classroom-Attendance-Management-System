@@ -19,6 +19,6 @@ FROM eclipse-temurin:21-jre
 WORKDIR /app
 
 # Run the JavaFX module jar (frontend)
-COPY --from=builder /app/frontend/target/frontend-1.0-SNAPSHOT.jar app.jar
+COPY --from=builder /app/frontend/target/frontend.jar app.jar
 
 CMD ["java", "-jar", "app.jar"]
