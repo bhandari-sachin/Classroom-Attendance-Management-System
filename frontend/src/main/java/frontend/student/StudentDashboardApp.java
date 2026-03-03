@@ -1,8 +1,12 @@
-package frontend;
+package frontend.student;
 
+import frontend.AppLayout;
+import frontend.api.StudentAttendanceApi;
 import frontend.auth.AppRouter;
 import frontend.auth.AuthState;
 import frontend.auth.JwtStore;
+import javafx.application.Platform;
+import javafx.concurrent.Task;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Parent;
@@ -12,13 +16,11 @@ import javafx.scene.control.Label;
 import javafx.scene.control.Separator;
 import javafx.scene.layout.*;
 
+import java.util.Map;
+
 public class StudentDashboardApp {
 
-    // Dummy data (replace later from backend)
-    private int presentCount = 0;
-    private int absentCount = 0;
-    private int excusedCount = 0;
-    private double attendanceRate = 0.0; // 0.0 -> 0%
+    private static final String BASE_URL = "http://localhost:8081";
 
     public Parent build(Scene scene, AppRouter router, JwtStore jwtStore, AuthState state) {
 
@@ -40,8 +42,13 @@ public class StudentDashboardApp {
         // Action card (Mark attendance)
         Button markAttendance = attendanceCard(router);
 
-        // Stats grid (2x2)
-        GridPane stats = statsGrid();
+        // ======= STATS (updatable labels) =======
+        Label presentValue = new Label("0");
+        Label absentValue = new Label("0");
+        Label excusedValue = new Label("0");
+        Label rateValue = new Label("0%");
+
+        GridPane stats = statsGrid(presentValue, absentValue, excusedValue, rateValue);
 
         // Classes header row
         HBox classesHeader = new HBox(10);
@@ -71,6 +78,9 @@ public class StudentDashboardApp {
                 classesCard
         );
 
+        // ✅ Load real stats from backend
+        loadStudentSummary(jwtStore, state, presentValue, absentValue, excusedValue, rateValue);
+
         return AppLayout.wrapWithSidebar(
                 studentName,
                 "Student Panel",
@@ -82,33 +92,74 @@ public class StudentDashboardApp {
                 "dashboard",
                 new AppLayout.Navigator() {
 
-                    @Override
-                    public void goDashboard() {
-                        router.go("student-dashboard");
-                    }
-
-                    @Override
-                    public void goTakeAttendance() {
-                        router.go("student-mark");
-                    }
-
-                    @Override
-                    public void goReports() {
-                        router.go("student-attendance");
-                    }
-
-                    @Override
-                    public void goEmail() {
-                        router.go("student-email");
-                    }
-
-                    @Override
-                    public void logout() {
+                    @Override public void goDashboard() { router.go("student-dashboard"); }
+                    @Override public void goTakeAttendance() { router.go("student-mark"); }
+                    @Override public void goReports() { router.go("student-attendance"); }
+                    @Override public void goEmail() { router.go("student-email"); }
+                    @Override public void logout() {
                         jwtStore.clear();
                         router.go("login");
                     }
                 }
         );
+    }
+
+    // ===== backend loading =====
+
+    private void loadStudentSummary(JwtStore jwtStore,
+                                    AuthState state,
+                                    Label presentValue,
+                                    Label absentValue,
+                                    Label excusedValue,
+                                    Label rateValue) {
+
+        StudentAttendanceApi api = new StudentAttendanceApi(BASE_URL);
+
+        Task<Map<String, Object>> task = new Task<>() {
+            @Override
+            protected Map<String, Object> call() throws Exception {
+                return api.getSummary(jwtStore, state);
+            }
+
+            @Override
+            protected void succeeded() {
+                Map<String, Object> s = getValue();
+                int present = num(s.get("presentCount"));
+                int absent  = num(s.get("absentCount"));
+                int excused = num(s.get("excusedCount"));
+                double rate = dbl(s.get("attendanceRate")); // backend returns percent already
+
+                Platform.runLater(() -> {
+                    presentValue.setText(String.valueOf(present));
+                    absentValue.setText(String.valueOf(absent));
+                    excusedValue.setText(String.valueOf(excused));
+                    rateValue.setText(((int) Math.round(rate)) + "%");
+                });
+            }
+
+            @Override
+            protected void failed() {
+                Throwable e = getException();
+                Platform.runLater(() -> rateValue.setText("—"));
+                if (e != null) e.printStackTrace();
+            }
+        };
+
+        Thread t = new Thread(task);
+        t.setDaemon(true);
+        t.start();
+    }
+
+    private static int num(Object v) {
+        if (v == null) return 0;
+        if (v instanceof Number n) return n.intValue();
+        try { return Integer.parseInt(String.valueOf(v)); } catch (Exception e) { return 0; }
+    }
+
+    private static double dbl(Object v) {
+        if (v == null) return 0;
+        if (v instanceof Number n) return n.doubleValue();
+        try { return Double.parseDouble(String.valueOf(v)); } catch (Exception e) { return 0; }
     }
 
     // ===== UI blocks / helpers =====
@@ -146,7 +197,7 @@ public class StudentDashboardApp {
         return btn;
     }
 
-    private GridPane statsGrid() {
+    private GridPane statsGrid(Label presentValue, Label absentValue, Label excusedValue, Label rateValue) {
         GridPane grid = new GridPane();
         grid.setHgap(14);
         grid.setVgap(14);
@@ -162,15 +213,15 @@ public class StudentDashboardApp {
 
         grid.getColumnConstraints().addAll(c1, c2);
 
-        grid.add(statCardWithBadge("Present", String.valueOf(presentCount), "This month", "#3BAA66", "✓"), 0, 0);
-        grid.add(statCardWithBadge("Absent", String.valueOf(absentCount), "This month", "#E05A5A", "✕"), 1, 0);
-        grid.add(statCardWithBadge("Excused", String.valueOf(excusedCount), "This month", "#E09A3B", "⏱"), 0, 1);
-        grid.add(statCardWithBadge("Rate", (int) (attendanceRate * 100) + "%", "This month", "#5AA6E0", "%"), 1, 1);
+        grid.add(statCardWithBadge("Present", presentValue, "This month", "#3BAA66", "✓"), 0, 0);
+        grid.add(statCardWithBadge("Absent",  absentValue,  "This month", "#E05A5A", "✕"), 1, 0);
+        grid.add(statCardWithBadge("Excused", excusedValue, "This month", "#E09A3B", "⏱"), 0, 1);
+        grid.add(statCardWithBadge("Rate",    rateValue,    "This month", "#5AA6E0", "%"), 1, 1);
 
         return grid;
     }
 
-    private VBox statCardWithBadge(String label, String value, String hint, String colorHex, String iconChar) {
+    private VBox statCardWithBadge(String label, Label valueLabel, String hint, String colorHex, String iconChar) {
         VBox card = new VBox(6);
         card.setPadding(new Insets(14));
         card.setStyle(
@@ -203,13 +254,12 @@ public class StudentDashboardApp {
 
         top.getChildren().addAll(lbl, spacer, badge);
 
-        Label big = new Label(value);
-        big.setStyle("-fx-font-size: 28px; -fx-font-weight: 900;");
+        valueLabel.setStyle("-fx-font-size: 28px; -fx-font-weight: 900;");
 
         Label small = new Label(hint);
         small.setStyle("-fx-font-size: 11px; -fx-text-fill: #9CA3AF;");
 
-        card.getChildren().addAll(top, big, small);
+        card.getChildren().addAll(top, valueLabel, small);
         return card;
     }
 

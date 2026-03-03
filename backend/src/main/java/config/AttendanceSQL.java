@@ -10,6 +10,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 public class AttendanceSQL {
 
@@ -318,5 +319,150 @@ public class AttendanceSQL {
         }
 
         return results;
+    }
+    public List<Map<String, Object>> reportByClass(long classId) {
+        String sql = """
+        SELECT
+          s.id AS session_id,
+          s.session_date,
+          s.qr_token,
+          SUM(a.status = 'PRESENT') AS present,
+          SUM(a.status = 'ABSENT')  AS absent,
+          SUM(a.status = 'EXCUSED') AS excused,
+          COUNT(a.student_id)       AS total_marked
+        FROM sessions s
+        LEFT JOIN attendance a ON a.session_id = s.id
+        WHERE s.class_id = ?
+        GROUP BY s.id, s.session_date, s.qr_token
+        ORDER BY s.session_date DESC
+    """;
+
+        List<Map<String, Object>> out = new ArrayList<>();
+
+        try (var conn = DatabaseConnection.getConnection();
+             var ps = conn.prepareStatement(sql)) {
+
+            ps.setLong(1, classId);
+            try (var rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    out.add(Map.of(
+                            "sessionId", rs.getLong("session_id"),
+                            "date", rs.getDate("session_date").toLocalDate().toString(),
+                            "code", rs.getString("qr_token"),
+                            "present", rs.getInt("present"),
+                            "absent", rs.getInt("absent"),
+                            "excused", rs.getInt("excused"),
+                            "totalMarked", rs.getInt("total_marked")
+                    ));
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return out;
+    }
+    public java.util.Map<String, Object> getSessionReport(long sessionId) {
+
+        String statsSql = """
+        SELECT
+            SUM(CASE WHEN status = 'PRESENT' THEN 1 ELSE 0 END) AS presentCount,
+            SUM(CASE WHEN status = 'ABSENT'  THEN 1 ELSE 0 END) AS absentCount,
+            SUM(CASE WHEN status = 'EXCUSED' THEN 1 ELSE 0 END) AS excusedCount,
+            COUNT(*) AS totalRecords
+        FROM attendance
+        WHERE session_id = ?
+    """;
+
+        String rowsSql = """
+        SELECT
+            u.id AS studentId,
+            u.first_name,
+            u.last_name,
+            u.email,
+            a.status
+        FROM attendance a
+        JOIN users u ON u.id = a.student_id
+        WHERE a.session_id = ?
+        ORDER BY u.last_name, u.first_name
+    """;
+
+        java.util.Map<String, Object> result = new java.util.HashMap<>();
+        java.util.List<java.util.Map<String, Object>> rows = new java.util.ArrayList<>();
+
+        int present = 0, absent = 0, excused = 0, total = 0;
+
+        try (Connection conn = DatabaseConnection.getConnection()) {
+
+            try (PreparedStatement ps = conn.prepareStatement(statsSql)) {
+                ps.setLong(1, sessionId);
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (rs.next()) {
+                        present = rs.getInt("presentCount");
+                        absent  = rs.getInt("absentCount");
+                        excused = rs.getInt("excusedCount");
+                        total   = rs.getInt("totalRecords");
+                    }
+                }
+            }
+
+            try (PreparedStatement ps = conn.prepareStatement(rowsSql)) {
+                ps.setLong(1, sessionId);
+                try (ResultSet rs = ps.executeQuery()) {
+                    while (rs.next()) {
+                        rows.add(java.util.Map.of(
+                                "studentId", rs.getLong("studentId"),
+                                "firstName", rs.getString("first_name"),
+                                "lastName", rs.getString("last_name"),
+                                "email", rs.getString("email"),
+                                "status", rs.getString("status")
+                        ));
+                    }
+                }
+            }
+
+        } catch (Exception e) {
+            throw new RuntimeException("getSessionReport failed: " + e.getMessage(), e);
+        }
+
+        double rate = (total == 0) ? 0.0 : (present * 100.0) / total;
+
+        result.put("stats", java.util.Map.of(
+                "present", present,
+                "absent", absent,
+                "excused", excused,
+                "total", total,
+                "rate", rate
+        ));
+        result.put("rows", rows);
+
+        return result;
+    }
+    public int countTodayForTeacher(long teacherId, String status) {
+
+        String sql = """
+        SELECT COUNT(*)
+        FROM attendance a
+        JOIN sessions s ON s.id = a.session_id
+        JOIN classes  c ON c.id = s.class_id
+        WHERE c.teacher_id = ?
+          AND s.session_date = CURRENT_DATE
+          AND a.status = ?
+    """;
+
+        try (var conn = DatabaseConnection.getConnection();
+             var ps = conn.prepareStatement(sql)) {
+
+            ps.setLong(1, teacherId);
+            ps.setString(2, status);
+
+            try (var rs = ps.executeQuery()) {
+                rs.next();
+                return rs.getInt(1);
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            return 0;
+        }
     }
 }

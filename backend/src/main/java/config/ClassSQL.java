@@ -136,4 +136,126 @@ public class ClassSQL {
 
         throw new RuntimeException("Failed to create class: no id returned");
     }
+    // ===== TEACHER: list my classes =====
+    public List<java.util.Map<String, Object>> listForTeacher(long teacherId) {
+        String sql = """
+        SELECT c.id, c.class_code, c.name
+        FROM classes c
+        WHERE c.teacher_id = ?
+        ORDER BY c.created_at DESC
+    """;
+
+        List<java.util.Map<String, Object>> out = new ArrayList<>();
+
+        try (var conn = DatabaseConnection.getConnection();
+             var ps = conn.prepareStatement(sql)) {
+
+            ps.setLong(1, teacherId);
+            try (var rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    out.add(java.util.Map.of(
+                            "id", rs.getLong("id"),
+                            "classCode", rs.getString("class_code"),
+                            "name", rs.getString("name")
+                    ));
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return out;
+    }
+
+    // ===== TEACHER: verify ownership =====
+    public boolean isClassOwnedByTeacher(long classId, long teacherId) {
+        String sql = "SELECT COUNT(*) FROM classes WHERE id = ? AND teacher_id = ?";
+        try (var conn = DatabaseConnection.getConnection();
+             var ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, classId);
+            ps.setLong(2, teacherId);
+            try (var rs = ps.executeQuery()) {
+                rs.next();
+                return rs.getInt(1) > 0;
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+    public java.util.List<java.util.Map<String, Object>> listStudentsForClass(long classId) {
+        String sql = """
+        SELECT
+            u.id,
+            u.first_name,
+            u.last_name,
+            u.email,
+            u.student_code
+        FROM enrollments e
+        JOIN users u ON u.id = e.student_id
+        WHERE e.class_id = ?
+          AND u.user_type = 'STUDENT'
+        ORDER BY u.last_name, u.first_name
+    """;
+
+        java.util.List<java.util.Map<String, Object>> out = new java.util.ArrayList<>();
+
+        try (java.sql.Connection conn = DatabaseConnection.getConnection();
+             java.sql.PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            ps.setLong(1, classId);
+
+            try (java.sql.ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    out.add(java.util.Map.of(
+                            "id", rs.getLong("id"),
+                            "firstName", rs.getString("first_name"),
+                            "lastName", rs.getString("last_name"),
+                            "email", rs.getString("email"),
+                            "studentCode", rs.getString("student_code")
+                    ));
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return out;
+    }
+    public int countForTeacher(long teacherId) {
+        String sql = "SELECT COUNT(*) FROM classes WHERE teacher_id = ?";
+        try (var conn = DatabaseConnection.getConnection();
+             var ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, teacherId);
+            try (var rs = ps.executeQuery()) {
+                rs.next();
+                return rs.getInt(1);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            return 0;
+        }
+    }
+
+    public int countStudentsForTeacher(long teacherId) {
+        // counts distinct enrolled students across teacher's classes
+        String sql = """
+        SELECT COUNT(DISTINCT e.student_id)
+        FROM enrollments e
+        JOIN classes c ON c.id = e.class_id
+        WHERE c.teacher_id = ?
+    """;
+        try (var conn = DatabaseConnection.getConnection();
+             var ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, teacherId);
+            try (var rs = ps.executeQuery()) {
+                rs.next();
+                return rs.getInt(1);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            return 0;
+        }
+    }
+
+
 }

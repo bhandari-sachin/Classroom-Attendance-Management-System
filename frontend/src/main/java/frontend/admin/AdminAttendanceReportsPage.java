@@ -1,4 +1,4 @@
-package frontend;
+package frontend.admin;
 
 import frontend.api.AdminApi;
 import frontend.auth.AppRouter;

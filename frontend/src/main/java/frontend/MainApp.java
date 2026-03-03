@@ -1,6 +1,18 @@
 package frontend;
 
+import frontend.admin.AdminAttendanceReportsPage;
+import frontend.admin.AdminDashboardApp;
+import frontend.admin.AdminManageClassesPage;
+import frontend.admin.AdminManageUsersPage;
 import frontend.auth.*;
+import frontend.student.StudentAttendancePage;
+import frontend.student.StudentDashboardApp;
+import frontend.student.StudentEmailPage;
+import frontend.student.StudentMarkAttendancePage;
+import frontend.teacher.TeacherDashboardApp;
+import frontend.teacher.TeacherEmailPage;
+import frontend.teacher.TeacherReportsPage;
+import frontend.teacher.TeacherTakeAttendancePage;
 import frontend.ui.LoginPage;
 import frontend.ui.SignupPage;
 import javafx.application.Application;

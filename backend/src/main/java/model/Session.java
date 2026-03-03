@@ -1,28 +1,36 @@
 package model;
 
-import java.sql.Date;
 import java.time.LocalDate;
 
 public class Session {
 
-    private Long sessionId;
-    private Long classId;
-    private LocalDate date;
+    private final long id;
+    private final long classId;
+    private final LocalDate sessionDate;
     private String QRCode;
 
-    public Session(Long sessionId, Long classId, LocalDate date, String qrToken) {
-        this.sessionId = sessionId;
+    public Session(long id, long classId, LocalDate sessionDate, String QRCode) {
+        this.id = id;
         this.classId = classId;
-        this.date = date;
+        this.sessionDate = sessionDate;
+        this.QRCode = QRCode;
     }
 
-    public Session(Long id, Long classId, Date sessionDate, String qrCode) {
+    public long getId() {
+        return id;
     }
 
-    public Long getSessionId() {
-        return sessionId;
+    public long getClassId() {
+        return classId;
     }
 
+    public LocalDate getSessionDate() {
+        return sessionDate;
+    }
+
+    public String getQrCode() {
+        return QRCode;
+    }
     public void setQRCode(String QRCode) {
         this.QRCode = QRCode;
     }

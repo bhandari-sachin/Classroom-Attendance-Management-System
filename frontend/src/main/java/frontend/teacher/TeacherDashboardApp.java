@@ -1,21 +1,28 @@
-package frontend;
+package frontend.teacher;
 
+import frontend.AppLayout;
+import frontend.api.TeacherApi;
 import frontend.auth.AppRouter;
 import frontend.auth.AuthState;
 import frontend.auth.JwtStore;
+import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
+import javafx.scene.control.Alert;
+import javafx.scene.control.ButtonType;
 import javafx.scene.control.Label;
 import javafx.scene.control.Separator;
 import javafx.scene.layout.*;
+
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.Map;
 
 public class TeacherDashboardApp {
 
-    // Dummy data (replace later from backend)
+    // values shown in UI (defaults until backend loads)
     private int totalClasses = 0;
     private int totalStudents = 0;
     private int presentToday = 0;
@@ -26,6 +33,8 @@ public class TeacherDashboardApp {
         String teacherName = (state.getName() == null || state.getName().isBlank())
                 ? "Name"
                 : state.getName();
+
+        TeacherApi api = new TeacherApi("http://localhost:8081");
 
         VBox page = new VBox(16);
         page.setPadding(new Insets(26));
@@ -67,10 +76,15 @@ public class TeacherDashboardApp {
         stats.setVgap(14);
         stats.getStyleClass().add("dash-stats");
 
-        stats.add(statCard("My Classes", totalClasses), 0, 0);
-        stats.add(statCard("Total Students", totalStudents), 1, 0);
-        stats.add(statCard("Present Today", presentToday), 0, 1);
-        stats.add(statCard("Absent Today", absentToday), 1, 1);
+        VBox myClassesCard = statCard("My Classes", totalClasses);
+        VBox totalStudentsCard = statCard("Total Students", totalStudents);
+        VBox presentTodayCard = statCard("Present Today", presentToday);
+        VBox absentTodayCard = statCard("Absent Today", absentToday);
+
+        stats.add(myClassesCard, 0, 0);
+        stats.add(totalStudentsCard, 1, 0);
+        stats.add(presentTodayCard, 0, 1);
+        stats.add(absentTodayCard, 1, 1);
 
         ColumnConstraints c1 = new ColumnConstraints();
         c1.setHgrow(Priority.ALWAYS);
@@ -82,7 +96,7 @@ public class TeacherDashboardApp {
 
         stats.getColumnConstraints().addAll(c1, c2);
 
-        // My classes section
+        // My classes section (empty state)
         Label classesTitle = new Label("My classes");
         classesTitle.getStyleClass().add("section-title");
 
@@ -112,6 +126,34 @@ public class TeacherDashboardApp {
                 emptyClasses
         );
 
+        // ✅ Load stats from backend (async)
+        new Thread(() -> {
+            try {
+                Map<String, Object> res = api.getDashboardStats(jwtStore, state);
+
+                int tc = ((Number) res.getOrDefault("totalClasses", 0)).intValue();
+                int ts = ((Number) res.getOrDefault("totalStudents", 0)).intValue();
+                int pt = ((Number) res.getOrDefault("presentToday", 0)).intValue();
+                int at = ((Number) res.getOrDefault("absentToday", 0)).intValue();
+
+                Platform.runLater(() -> {
+                    setStatValue(myClassesCard, tc);
+                    setStatValue(totalStudentsCard, ts);
+                    setStatValue(presentTodayCard, pt);
+                    setStatValue(absentTodayCard, at);
+                });
+
+            } catch (Exception ex) {
+                ex.printStackTrace();
+                Platform.runLater(() ->
+                        new Alert(Alert.AlertType.ERROR,
+                                "Failed to load dashboard stats: " + ex.getMessage(),
+                                ButtonType.OK
+                        ).showAndWait()
+                );
+            }
+        }).start();
+
         return AppLayout.wrapWithSidebar(
                 teacherName,
                 "Teacher Panel",
@@ -134,6 +176,12 @@ public class TeacherDashboardApp {
         );
     }
 
+    private void setStatValue(VBox statCard, int value) {
+        // statCard children: [topRow, valueLabel]
+        if (statCard.getChildren().size() >= 2 && statCard.getChildren().get(1) instanceof Label v) {
+            v.setText(String.valueOf(value));
+        }
+    }
 
     private VBox bigActionCard(String title, String subtitle, String styleClass, Runnable action) {
         VBox card = new VBox(4);
@@ -151,16 +199,35 @@ public class TeacherDashboardApp {
     }
 
     private VBox statCard(String label, int value) {
-        VBox card = new VBox(6);
+        VBox card = new VBox(10);
         card.getStyleClass().add("stat-card");
+        card.setPadding(new Insets(16));
+
+        HBox top = new HBox(8);
+        top.setAlignment(Pos.CENTER_LEFT);
+
+        Label icon = new Label(resolveIcon(label));
+        icon.setStyle("-fx-font-size: 18px;");
 
         Label l = new Label(label);
         l.getStyleClass().add("stat-label");
 
+        top.getChildren().addAll(icon, l);
+
         Label v = new Label(String.valueOf(value));
         v.getStyleClass().add("stat-value");
 
-        card.getChildren().addAll(l, v);
+        card.getChildren().addAll(top, v);
         return card;
+    }
+
+    private String resolveIcon(String label) {
+        return switch (label) {
+            case "My Classes" -> "📚";
+            case "Total Students" -> "👥";
+            case "Present Today" -> "✅";
+            case "Absent Today" -> "❌";
+            default -> "📊";
+        };
     }
 }

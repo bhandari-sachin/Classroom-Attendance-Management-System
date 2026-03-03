@@ -1,9 +1,14 @@
-package frontend;
+package frontend.teacher;
 
+import frontend.AppLayout;
+import frontend.StudentRow;
+import frontend.api.TeacherApi;
 import frontend.auth.AppRouter;
 import frontend.auth.AuthState;
 import frontend.auth.JwtStore;
+import javafx.application.Platform;
 import javafx.beans.binding.Bindings;
+import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -12,16 +17,24 @@ import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
 
+import java.util.List;
+import java.util.Map;
+
 public class TeacherTakeAttendancePage {
 
-    // Use shared store so email + status persist
-    private final ObservableList<StudentRow> rows = DataStore.getStudents();
+    private final ObservableList<StudentRow> rows = FXCollections.observableArrayList();
+
+    private static class ClassItem {
+        final long id;
+        final String label;
+        ClassItem(long id, String label) { this.id = id; this.label = label; }
+        @Override public String toString() { return label; }
+    }
 
     public Parent build(Scene scene, AppRouter router, JwtStore jwtStore, AuthState state) {
 
-        String teacherName = (state.getName() == null || state.getName().isBlank())
-                ? "Name"
-                : state.getName();
+        String teacherName = (state.getName() == null || state.getName().isBlank()) ? "Name" : state.getName();
+        TeacherApi api = new TeacherApi("http://localhost:8081");
 
         VBox page = new VBox(16);
         page.setPadding(new Insets(22));
@@ -33,16 +46,14 @@ public class TeacherTakeAttendancePage {
         Label subtitle = new Label("Select class and generate QR code");
         subtitle.getStyleClass().add("subtitle");
 
-        // ---- CLASS SELECT ----
         Label selectClass = new Label("Select class");
         selectClass.getStyleClass().add("section-title");
 
-        ComboBox<String> classBox = new ComboBox<>();
-        classBox.getItems().addAll("Class A", "Class B", "Class C");
+        ComboBox<ClassItem> classBox = new ComboBox<>();
         classBox.setPromptText("Choose a class");
-        classBox.setMaxWidth(200);
+        classBox.setMaxWidth(320);
 
-        // ---- QR PLACEHOLDER ----
+        // ---- QR / code card ----
         VBox qrCard = new VBox(12);
         qrCard.getStyleClass().add("card");
         qrCard.setPadding(new Insets(16));
@@ -57,40 +68,54 @@ public class TeacherTakeAttendancePage {
         Label manualTitle = new Label("Manual Code");
         manualTitle.getStyleClass().add("small-title");
 
-        Label manualCode = new Label("code-4948-838-01");
+        Label manualCode = new Label("—");
         manualCode.getStyleClass().add("small-subtitle");
 
         VBox manualBox = new VBox(4, manualTitle, manualCode);
         manualBox.setAlignment(Pos.CENTER);
         manualBox.getStyleClass().add("manual-box");
 
-        qrCard.getChildren().addAll(qrTitle, qrArea, manualBox);
+        Button generate = new Button("Generate Code");
+        generate.getStyleClass().addAll("pill", "pill-green");
+        generate.setMaxWidth(Double.MAX_VALUE);
 
-        // ================= STUDENTS SECTION =================
+        generate.setOnAction(e -> {
+            ClassItem selected = classBox.getValue();
+            if (selected == null) {
+                new Alert(Alert.AlertType.WARNING, "Please select a class first.", ButtonType.OK).showAndWait();
+                return;
+            }
+
+            generate.setDisable(true);
+            manualCode.setText("Generating...");
+
+            new Thread(() -> {
+                try {
+                    Map<String, Object> res = api.createSession(jwtStore, state, selected.id);
+                    String code = api.extractCode(res);
+
+                    Platform.runLater(() -> {
+                        manualCode.setText(code == null || code.isBlank() ? "—" : code);
+                        generate.setDisable(false);
+                    });
+
+                } catch (Exception ex) {
+                    ex.printStackTrace();
+                    Platform.runLater(() -> {
+                        manualCode.setText("—");
+                        generate.setDisable(false);
+                        new Alert(Alert.AlertType.ERROR, "Generate failed: " + ex.getMessage(), ButtonType.OK).showAndWait();
+                    });
+                }
+            }).start();
+        });
+
+        qrCard.getChildren().addAll(qrTitle, qrArea, manualBox, generate);
+
+        // ---- Students table ----
         Label studentsTitle = new Label();
         studentsTitle.getStyleClass().add("section-title");
         studentsTitle.textProperty().bind(Bindings.size(rows).asString("Students (%d)"));
-
-        Button btnPresent = new Button("Present");
-        btnPresent.getStyleClass().addAll("pill", "pill-green");
-
-        Button btnAbsent = new Button("Absent");
-        btnAbsent.getStyleClass().addAll("pill", "pill-red");
-
-        Button btnExcused = new Button("Excused");
-        btnExcused.getStyleClass().addAll("pill", "pill-orange");
-
-        Button markAllPresent = new Button("Mark All Present");
-        markAllPresent.getStyleClass().addAll("pill", "pill-green");
-
-        HBox buttons = new HBox(10, btnPresent, btnAbsent, btnExcused, markAllPresent);
-        buttons.setAlignment(Pos.CENTER_RIGHT);
-
-        Region spacer = new Region();
-        HBox.setHgrow(spacer, Priority.ALWAYS);
-
-        HBox studentsHeader = new HBox(12, studentsTitle, spacer, buttons);
-        studentsHeader.setAlignment(Pos.CENTER_LEFT);
 
         TableView<StudentRow> table = new TableView<>(rows);
         table.getStyleClass().add("students-table");
@@ -99,82 +124,75 @@ public class TeacherTakeAttendancePage {
         table.setPrefHeight(260);
 
         TableColumn<StudentRow, String> colName = new TableColumn<>("Student");
-        colName.setCellValueFactory(data -> data.getValue().studentNameProperty());
+        colName.setCellValueFactory(d -> d.getValue().studentNameProperty());
 
         TableColumn<StudentRow, String> colEmail = new TableColumn<>("Email");
-        colEmail.setCellValueFactory(data -> data.getValue().emailProperty());
+        colEmail.setCellValueFactory(d -> d.getValue().emailProperty());
 
         TableColumn<StudentRow, String> colStatus = new TableColumn<>("Status");
-        colStatus.setCellValueFactory(data -> data.getValue().statusProperty());
+        colStatus.setCellValueFactory(d -> d.getValue().statusProperty());
 
         table.getColumns().addAll(colName, colEmail, colStatus);
 
-        // Disable buttons until row selected
-        btnPresent.disableProperty().bind(table.getSelectionModel().selectedItemProperty().isNull());
-        btnAbsent.disableProperty().bind(table.getSelectionModel().selectedItemProperty().isNull());
-        btnExcused.disableProperty().bind(table.getSelectionModel().selectedItemProperty().isNull());
+        page.getChildren().addAll(title, subtitle, selectClass, classBox, qrCard, studentsTitle, table);
 
-        // Visible only when selection exists
-        btnPresent.visibleProperty().bind(table.getSelectionModel().selectedItemProperty().isNotNull());
-        btnAbsent.visibleProperty().bind(table.getSelectionModel().selectedItemProperty().isNotNull());
-        btnExcused.visibleProperty().bind(table.getSelectionModel().selectedItemProperty().isNotNull());
+        // ✅ Load classes on open
+        new Thread(() -> {
+            try {
+                List<Map<String, Object>> list = api.getMyClasses(jwtStore, state);
 
-        btnPresent.managedProperty().bind(btnPresent.visibleProperty());
-        btnAbsent.managedProperty().bind(btnAbsent.visibleProperty());
-        btnExcused.managedProperty().bind(btnExcused.visibleProperty());
+                var items = list.stream().map(m -> {
+                    long id = Long.parseLong(String.valueOf(m.get("id")));
+                    String classCode = String.valueOf(m.get("classCode"));
+                    String name2 = String.valueOf(m.get("name"));
+                    return new ClassItem(id, classCode + " — " + name2);
+                }).toList();
 
-        // Actions
-        btnPresent.setOnAction(e -> {
-            StudentRow s = table.getSelectionModel().getSelectedItem();
-            if (s != null) {
-                s.setStatus("Present");
-                s.setExcuseReason("");
-                table.refresh();
+                Platform.runLater(() -> classBox.getItems().setAll(items));
+
+            } catch (Exception ex) {
+                ex.printStackTrace();
+                Platform.runLater(() ->
+                        new Alert(Alert.AlertType.ERROR, "Failed to load classes: " + ex.getMessage(), ButtonType.OK).showAndWait()
+                );
             }
+        }).start();
+
+        // ✅ When a class is selected -> load students
+        classBox.setOnAction(e -> {
+            ClassItem selected = classBox.getValue();
+            if (selected == null) return;
+
+            rows.clear();
+            rows.add(new StudentRow("Loading...", "-", "—"));
+
+            new Thread(() -> {
+                try {
+                    List<Map<String, Object>> students = api.getStudentsForClass(jwtStore, state, selected.id);
+
+                    Platform.runLater(() -> {
+                        rows.clear();
+                        for (var s : students) {
+                            String fn = String.valueOf(s.get("firstName"));
+                            String ln = String.valueOf(s.get("lastName"));
+                            String email = String.valueOf(s.get("email"));
+
+                            // ✅ FIX: your constructor requires (name, email, status)
+                            StudentRow row = new StudentRow(fn + " " + ln, email, "—");
+                            row.setExcuseReason(""); // optional
+                            rows.add(row);
+                        }
+                    });
+
+                } catch (Exception ex) {
+                    ex.printStackTrace();
+                    Platform.runLater(() -> {
+                        rows.clear();
+                        new Alert(Alert.AlertType.ERROR, "Failed to load students: " + ex.getMessage(), ButtonType.OK).showAndWait();
+                    });
+                }
+            }).start();
         });
-
-        btnAbsent.setOnAction(e -> {
-            StudentRow s = table.getSelectionModel().getSelectedItem();
-            if (s != null) {
-                s.setStatus("Absent");
-                s.setExcuseReason("");
-                table.refresh();
-            }
-        });
-
-        btnExcused.setOnAction(e -> {
-            StudentRow s = table.getSelectionModel().getSelectedItem();
-            if (s == null) return;
-
-            scene.setRoot(
-                    new TeacherExcuseReasonPage().build(
-                            scene,
-                            router,
-                            jwtStore,
-                            state,
-                            s,
-                            () -> router.go("teacher-take") // ✅ go back cleanly
-                    )
-            );
-        });
-
-        markAllPresent.setOnAction(e -> {
-            for (StudentRow s : rows) {
-                s.setStatus("Present");
-                s.setExcuseReason("");
-            }
-            table.refresh();
-        });
-
-        page.getChildren().addAll(
-                title,
-                subtitle,
-                selectClass,
-                classBox,
-                qrCard,
-                studentsHeader,
-                table
-        );
 
         return AppLayout.wrapWithSidebar(
                 teacherName,
@@ -184,16 +202,13 @@ public class TeacherTakeAttendancePage {
                 "Reports",
                 "Email",
                 page,
-                "second", // ✅ active = Take Attendance
+                "second",
                 new AppLayout.Navigator() {
                     @Override public void goDashboard() { router.go("teacher-dashboard"); }
                     @Override public void goTakeAttendance() { router.go("teacher-take"); }
                     @Override public void goReports() { router.go("teacher-reports"); }
                     @Override public void goEmail() { router.go("teacher-email"); }
-                    @Override public void logout() {
-                        jwtStore.clear();
-                        router.go("login");
-                    }
+                    @Override public void logout() { jwtStore.clear(); router.go("login"); }
                 }
         );
     }

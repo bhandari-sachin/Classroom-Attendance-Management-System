@@ -1,5 +1,7 @@
-package frontend;
+package frontend.student;
 
+import frontend.AppLayout;
+import frontend.api.StudentAttendanceApi;
 import frontend.auth.AppRouter;
 import frontend.auth.AuthState;
 import frontend.auth.JwtStore;
@@ -80,8 +82,28 @@ public class StudentMarkAttendancePage {
 
         submit.setOnAction(e -> {
             String code = codeField.getText().trim();
-            System.out.println("Submitted code: " + code);
-            // TODO: call backend / validate code / show success toast
+            if (code.isBlank()) {
+                new Alert(Alert.AlertType.WARNING, "Enter attendance code first.").show();
+                return;
+            }
+
+            StudentAttendanceApi api = new StudentAttendanceApi("http://localhost:8081");
+
+            new Thread(() -> {
+                try {
+                    api.submitCode(code, jwtStore, state);
+
+                    javafx.application.Platform.runLater(() -> {
+                        codeField.clear();
+                        new Alert(Alert.AlertType.INFORMATION, "Attendance marked!").show();
+                    });
+
+                } catch (Exception exx) {
+                    javafx.application.Platform.runLater(() ->
+                            new Alert(Alert.AlertType.ERROR, exx.getMessage()).show()
+                    );
+                }
+            }).start();
         });
 
         manualCard.getChildren().addAll(

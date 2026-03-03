@@ -1,5 +1,7 @@
-package frontend;
+package frontend.teacher;
 
+import frontend.AppLayout;
+import frontend.StudentRow;
 import frontend.auth.AppRouter;
 import frontend.auth.AuthState;
 import frontend.auth.JwtStore;
