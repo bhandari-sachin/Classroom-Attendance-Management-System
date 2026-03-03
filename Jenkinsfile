@@ -13,10 +13,17 @@ pipeline {
         stage('Check Java') {
           steps { bat 'java -version && echo %JAVA_HOME%' }
         }
+
         stage('Build') {
-            steps {
-                bat 'mvn clean install'
-            }
+          steps {
+            bat '''
+              set "JAVA_HOME=C:\\Program Files\\Eclipse Adoptium\\jdk-21.0.10.7-hotspot"
+              set "PATH=%JAVA_HOME%\\bin;%PATH%"
+              java -version
+              mvn -version
+              mvn clean test
+            '''
+          }
         }
         stage('Test') {
             steps {
