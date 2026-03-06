@@ -1,3 +1,4 @@
+import com.sun.net.httpserver.HttpServer;
 import config.AttendanceSQL;
 import config.ClassSQL;
 import config.DatabaseInitializer;
@@ -5,9 +6,8 @@ import config.SessionSQL;
 import http.*;
 import repository.UserRepository;
 import security.JwtService;
-
-import com.sun.net.httpserver.HttpServer;
 import service.AttendanceService;
+import service.SessionService;
 
 import java.net.InetSocketAddress;
 import java.util.concurrent.Executors;
@@ -20,13 +20,16 @@ public class BackendMain {
         int port = 8081;
 
         UserRepository users = new UserRepository();
-        JwtService jwtService = new JwtService(System.getenv().getOrDefault("JWT_SECRET", "SECRET"));
+        JwtService jwtService = new JwtService(
+                System.getenv().getOrDefault("JWT_SECRET", "SECRET")
+        );
 
         AttendanceSQL attendanceSQL = new AttendanceSQL();
         AttendanceService attendanceService = new AttendanceService(attendanceSQL);
 
         ClassSQL classSQL = new ClassSQL();
         SessionSQL sessionSQL = new SessionSQL();
+        SessionService sessionService = new SessionService(sessionSQL);
 
         HttpServer server = HttpServer.create(new InetSocketAddress(port), 0);
 
@@ -48,10 +51,13 @@ public class BackendMain {
         // ===== TEACHER =====
         server.createContext("/api/teacher/classes", new TeacherClassesHandler(jwtService, classSQL));
         server.createContext("/api/teacher/students", new TeacherStudentsHandler(jwtService, classSQL));
-        server.createContext("/api/teacher/sessions", new TeacherSessionsHandler(jwtService, classSQL, sessionSQL)); // <-- handle GET + POST inside
+        server.createContext("/api/teacher/sessions", new TeacherSessionsHandler(jwtService, classSQL, sessionSQL));
         server.createContext("/api/teacher/reports/session", new TeacherSessionReportHandler(jwtService, classSQL, sessionSQL, attendanceSQL));
-        server.createContext("/api/teacher/dashboard/stats",
-                new TeacherDashboardStatsHandler(jwtService, classSQL, attendanceSQL));
+        server.createContext("/api/teacher/dashboard/stats", new TeacherDashboardStatsHandler(jwtService, classSQL, attendanceSQL));
+
+        // ===== QR / ATTENDANCE CODE =====
+        server.createContext("/api/teacher/session/start", new StartSessionHandler(jwtService, sessionService));
+
         server.setExecutor(Executors.newFixedThreadPool(16));
         server.start();
 

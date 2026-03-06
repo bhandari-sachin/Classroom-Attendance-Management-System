@@ -16,6 +16,10 @@ import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
+import javafx.scene.image.ImageView;
+import java.awt.image.BufferedImage;
+import javafx.embed.swing.SwingFXUtils;
+import org.example.util.QRCodeImageUtil;
 
 import java.util.List;
 import java.util.Map;
@@ -61,8 +65,15 @@ public class TeacherTakeAttendancePage {
         Label qrTitle = new Label("Attendance QR Code");
         qrTitle.getStyleClass().add("section-title");
 
-        Region qrArea = new Region();
+        ImageView qrImageView = new ImageView();
+        qrImageView.setFitWidth(180);
+        qrImageView.setFitHeight(180);
+        qrImageView.setPreserveRatio(true);
+
+        StackPane qrArea = new StackPane(qrImageView);
+        qrArea.setAlignment(Pos.CENTER);
         qrArea.setPrefHeight(180);
+        qrArea.setPrefWidth(180);
         qrArea.getStyleClass().add("qr-area");
 
         Label manualTitle = new Label("Manual Code");
@@ -96,6 +107,18 @@ public class TeacherTakeAttendancePage {
 
                     Platform.runLater(() -> {
                         manualCode.setText(code == null || code.isBlank() ? "—" : code);
+
+                        if (code != null && !code.isBlank()) {
+                            try {
+                                BufferedImage bufferedImage =
+                                        QRCodeImageUtil.generateQRCodeImage(code, 180, 180);
+
+                                qrImageView.setImage(SwingFXUtils.toFXImage(bufferedImage, null));
+                            } catch (Exception qrEx) {
+                                qrEx.printStackTrace();
+                            }
+                        }
+
                         generate.setDisable(false);
                     });
 

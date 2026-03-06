@@ -82,7 +82,7 @@ public class AttendanceService {
                 studentId,
                 sessionId,
                 AttendanceStatus.PRESENT,
-                MarkedBy.STUDENT
+                MarkedBy.QR
         );
 
         attendanceSQL.save(a);

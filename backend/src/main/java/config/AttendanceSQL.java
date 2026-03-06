@@ -15,11 +15,7 @@ import java.util.Map;
 public class AttendanceSQL {
 
     public boolean exists(Long studentId, Long sessionId) {
-
-        String sql = """
-        SELECT COUNT(*) FROM attendance
-        WHERE student_id = ? AND session_id = ?
-    """;
+        String sql = "SELECT COUNT(*) FROM attendance WHERE student_id = ? AND session_id = ?";
 
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
@@ -28,20 +24,19 @@ public class AttendanceSQL {
             stmt.setLong(2, sessionId);
 
             ResultSet rs = stmt.executeQuery();
-
             if (rs.next()) {
                 return rs.getInt(1) > 0;
             }
+            return false;
 
         } catch (Exception e) {
-            e.printStackTrace();
+            throw new RuntimeException("Failed to check attendance", e);
         }
-
-        return false;
     }
 
     public void save(Attendance attendance) {
         String sql = "INSERT INTO attendance (student_id, session_id, status, marked_by) VALUES (?, ?, ?, ?)";
+
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
 
@@ -51,23 +46,14 @@ public class AttendanceSQL {
             stmt.setString(4, attendance.getMarkedBy().name());
 
             stmt.executeUpdate();
+
         } catch (Exception e) {
-            e.printStackTrace();
+            throw new RuntimeException("Failed to save attendance", e);
         }
     }
 
-    public void updateStatus(
-            Long studentId,
-            Long sessionId,
-            AttendanceStatus status,
-            MarkedBy markedBy
-    ) {
-
-        String sql = """
-        UPDATE attendance
-        SET status = ?, marked_by = ?
-        WHERE student_id = ? AND session_id = ?
-    """;
+    public void updateStatus(Long studentId, Long sessionId, AttendanceStatus status, MarkedBy markedBy) {
+        String sql = "UPDATE attendance SET status = ?, marked_by = ?, marked_at = CURRENT_TIMESTAMP WHERE student_id = ? AND session_id = ?";
 
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
@@ -80,7 +66,7 @@ public class AttendanceSQL {
             stmt.executeUpdate();
 
         } catch (Exception e) {
-            e.printStackTrace();
+            throw new RuntimeException("Failed to update attendance status", e);
         }
     }
 
@@ -194,6 +180,7 @@ public class AttendanceSQL {
 
     public String getSessionCode(Long sessionId) {
         String sql = "SELECT qr_token FROM sessions WHERE id = ?";
+
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
 
@@ -203,10 +190,11 @@ public class AttendanceSQL {
             if (rs.next()) {
                 return rs.getString("qr_token");
             }
+            return null;
+
         } catch (Exception e) {
-            e.printStackTrace();
+            throw new RuntimeException("Failed to get session code", e);
         }
-        return null;
     }
     public dto.AttendanceStats getOverallStats() {
         String sql = """
@@ -268,17 +256,19 @@ public class AttendanceSQL {
         String sql = "SELECT id FROM sessions WHERE qr_token = ?";
 
         try (Connection conn = DatabaseConnection.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
 
-            ps.setString(1, code);
-            ResultSet rs = ps.executeQuery();
+            stmt.setString(1, code);
+            ResultSet rs = stmt.executeQuery();
 
-            if (rs.next()) return rs.getLong("id");
+            if (rs.next()) {
+                return rs.getLong("id");
+            }
+            return null;
 
         } catch (Exception e) {
-            e.printStackTrace();
+            throw new RuntimeException("Failed to find session by code", e);
         }
-        return null;
     }
 
     public List<dto.AttendanceView> getStudentAttendanceViews(Long studentId) {
@@ -465,4 +455,5 @@ public class AttendanceSQL {
             return 0;
         }
     }
+
 }

@@ -100,11 +100,7 @@ public class SessionSQL {
         return null;
     }
     public void updateQRCode(Long sessionId, String code) {
-        String sql = """
-        UPDATE sessions
-        SET qr_token = ?
-        WHERE id = ?
-    """;
+        String sql = "UPDATE sessions SET qr_token = ? WHERE id = ?";
 
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
@@ -114,7 +110,26 @@ public class SessionSQL {
             stmt.executeUpdate();
 
         } catch (Exception e) {
-            e.printStackTrace();
+            throw new RuntimeException("Failed to update session QR code", e);
+        }
+    }
+
+    public String getQRCode(Long sessionId) {
+        String sql = "SELECT qr_token FROM sessions WHERE id = ?";
+
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setLong(1, sessionId);
+            ResultSet rs = stmt.executeQuery();
+
+            if (rs.next()) {
+                return rs.getString("qr_token");
+            }
+            return null;
+
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to get session QR code", e);
         }
     }
 }
