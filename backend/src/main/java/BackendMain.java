@@ -56,6 +56,8 @@ public class BackendMain {
         server.createContext("/api/teacher/sessions", new TeacherSessionsHandler(jwtService, classSQL, sessionSQL));
         server.createContext("/api/teacher/reports/session", new TeacherSessionReportHandler(jwtService, classSQL, sessionSQL, attendanceSQL));
         server.createContext("/api/teacher/dashboard/stats", new TeacherDashboardStatsHandler(jwtService, classSQL, attendanceSQL));
+        server.createContext("/api/teacher/attendance/mark",
+                new TeacherMarkAttendanceHandler(jwtService, attendanceService));
 
         // ===== QR / ATTENDANCE CODE =====
         server.createContext("/api/teacher/session/start", new StartSessionHandler(jwtService, sessionService));

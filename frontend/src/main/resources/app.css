@@ -541,3 +541,62 @@
     -fx-cursor: hand;
     -fx-padding: 6 0 0 0;
 }
+
+/* Attendance action buttons */
+
+.action-btn {
+    -fx-background-insets: 0;
+    -fx-background-radius: 20;
+    -fx-border-radius: 20;
+    -fx-min-width: 30;
+    -fx-min-height: 30;
+    -fx-max-width: 30;
+    -fx-max-height: 30;
+    -fx-pref-width: 30;
+    -fx-pref-height: 30;
+    -fx-font-weight: bold;
+    -fx-font-size: 12px;
+    -fx-cursor: hand;
+    -fx-alignment: center;
+}
+
+.present-btn {
+    -fx-background-color: #4CAF50;
+    -fx-text-fill: white;
+    -fx-border-color: transparent;
+}
+
+.absent-btn {
+    -fx-background-color: #E53935;
+    -fx-text-fill: white;
+    -fx-border-color: transparent;
+}
+
+.excused-btn {
+    -fx-background-color: #E67E22;
+    -fx-text-fill: white;
+    -fx-border-color: transparent;
+}
+
+.action-btn-outline {
+    -fx-background-color: white;
+    -fx-text-fill: #222222;
+    -fx-border-color: #d0d0d0;
+    -fx-border-width: 1;
+    -fx-border-radius: 20;
+    -fx-background-radius: 20;
+}
+
+.students-table {
+    -fx-background-radius: 10;
+    -fx-border-radius: 10;
+    -fx-border-color: #e5e5e5;
+}
+
+.students-table .column-header-background {
+    -fx-background-color: #f8f8f8;
+}
+
+.students-table .table-row-cell {
+    -fx-border-color: transparent transparent #eeeeee transparent;
+}

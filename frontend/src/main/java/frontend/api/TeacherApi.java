@@ -139,5 +139,27 @@ public class TeacherApi {
 
         return om.readValue(res.body(), new TypeReference<>() {});
     }
+    public void markAttendance(JwtStore jwtStore, AuthState state, long studentId, long sessionId, String status) throws Exception {
+        Map<String, Object> body = Map.of(
+                "studentId", studentId,
+                "sessionId", sessionId,
+                "status", status
+        );
+
+        String json = om.writeValueAsString(body);
+
+        HttpRequest req = HttpRequest.newBuilder()
+                .uri(URI.create(baseUrl + "/api/teacher/attendance/mark"))
+                .header("Authorization", "Bearer " + token(jwtStore, state))
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(json, StandardCharsets.UTF_8))
+                .build();
+
+        HttpResponse<String> res = client.send(req, HttpResponse.BodyHandlers.ofString());
+
+        if (res.statusCode() >= 400) {
+            throw new RuntimeException(res.statusCode() + " " + res.body());
+        }
+    }
 
 }
