@@ -1,16 +1,37 @@
 package frontend.admin;
 
+import frontend.ReportRow;
 import frontend.api.AdminApi;
 import frontend.auth.AppRouter;
 import frontend.auth.AuthState;
 import frontend.auth.JwtStore;
+import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+
 public class AdminAttendanceReportsPage {
+
+    private static class ClassItem {
+        final Long id;
+        final String label;
+
+        ClassItem(Long id, String label) {
+            this.id = id;
+            this.label = label;
+        }
+
+        @Override
+        public String toString() {
+            return label;
+        }
+    }
 
     public Parent build(Scene scene, AppRouter router, JwtStore jwtStore, AuthState state) {
 
@@ -28,18 +49,16 @@ public class AdminAttendanceReportsPage {
         Label subtitle = new Label("Comprehensive attendance analytics and reports");
         subtitle.getStyleClass().add("subtitle");
 
-        // ================= FILTERS =================
         GridPane filters = new GridPane();
         filters.setHgap(12);
         filters.setVgap(8);
 
-        ComboBox<String> classFilter = new ComboBox<>();
-        classFilter.getItems().addAll("All Classes", "Mathematics", "Physics");
-        classFilter.setValue("All Classes");
+        ComboBox<ClassItem> classFilter = new ComboBox<>();
+        classFilter.setPromptText("Loading classes...");
 
         ComboBox<String> timeFilter = new ComboBox<>();
-        timeFilter.getItems().addAll("This Month", "Last Month", "This Year");
-        timeFilter.setValue("This Month");
+        timeFilter.getItems().addAll("ALL", "THIS_MONTH", "LAST_MONTH", "THIS_YEAR");
+        timeFilter.setValue("THIS_MONTH");
 
         TextField studentSearch = new TextField();
         studentSearch.setPromptText("Search by name...");
@@ -48,66 +67,159 @@ public class AdminAttendanceReportsPage {
         filters.add(new VBox(new Label("Time Period"), timeFilter), 1, 0);
         filters.add(new VBox(new Label("Search Student"), studentSearch), 2, 0);
 
-        // ================= STATS =================
         GridPane stats = new GridPane();
         stats.setHgap(12);
         stats.setVgap(12);
 
-        ColumnConstraints c = new ColumnConstraints();
-        c.setHgrow(Priority.ALWAYS);
-        c.setFillWidth(true);
-        stats.getColumnConstraints().addAll(c, c);
+        ColumnConstraints c1 = new ColumnConstraints();
+        c1.setHgrow(Priority.ALWAYS);
+        c1.setFillWidth(true);
+
+        ColumnConstraints c2 = new ColumnConstraints();
+        c2.setHgrow(Priority.ALWAYS);
+        c2.setFillWidth(true);
+
+        stats.getColumnConstraints().addAll(c1, c2);
 
         Label error = new Label();
         error.getStyleClass().add("error");
         error.setVisible(false);
         error.setManaged(false);
 
+        Label tableTitle = new Label("Filtered Records");
+        tableTitle.getStyleClass().add("section-title");
+
+        TableView<ReportRow> table = new TableView<>();
+        table.getStyleClass().add("table");
+        table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
+
+        TableColumn<ReportRow, String> cStudent = new TableColumn<>("Student");
+        cStudent.setCellValueFactory(d -> d.getValue().studentProperty());
+
+        TableColumn<ReportRow, String> cDate = new TableColumn<>("Session Date");
+        cDate.setCellValueFactory(d -> d.getValue().dateProperty());
+
+        TableColumn<ReportRow, String> cStatus = new TableColumn<>("Status");
+        cStatus.setCellValueFactory(d -> d.getValue().statusProperty());
+
+        table.getColumns().addAll(cStudent, cDate, cStatus);
+
         AdminApi api = new AdminApi("http://localhost:8081", jwtStore);
 
-        Runnable loadStats = () -> {
-            try {
-                error.setVisible(false);
-                error.setManaged(false);
-
-                // 🔹 For now backend ignores filters (OK)
-                String json = api.getAttendanceStatsJson();
-
-                int present = extractInt(json, "presentCount");
-                int absent  = extractInt(json, "absentCount");
-                int excused = extractInt(json, "excusedCount");
-                int total   = extractInt(json, "totalRecords");
-
-                double rate = total == 0 ? 0.0 : (present * 100.0) / total;
-
+        Runnable loadReport = () -> {
+            ClassItem selectedClass = classFilter.getValue();
+            if (selectedClass == null || selectedClass.id == null) {
                 stats.getChildren().clear();
-                stats.add(AdminUI.makeStatCard("Overall Attendance Rate", String.format("%.1f%%", rate), "📈", "accent-green"), 0, 0);
-                stats.add(AdminUI.makeStatCard("Present", String.valueOf(present), "🟢", "accent-green"), 1, 0);
-                stats.add(AdminUI.makeStatCard("Absent", String.valueOf(absent), "🔴", "accent-orange"), 0, 1);
-                stats.add(AdminUI.makeStatCard("Excused", String.valueOf(excused), "🟠", "accent-purple"), 1, 1);
-                stats.add(AdminUI.makeStatCard("Total Records", String.valueOf(total), "📄", "accent-purple"), 0, 2);
+                table.getItems().clear();
+                return;
+            }
+
+            String period = timeFilter.getValue();
+            String search = studentSearch.getText();
+
+            new Thread(() -> {
+                try {
+                    error.setVisible(false);
+                    error.setManaged(false);
+
+                    List<Map<String, Object>> rows = api.getAttendanceReport(selectedClass.id, period, search);
+
+                    int present = 0;
+                    int absent = 0;
+                    int excused = 0;
+
+                    List<ReportRow> mappedRows = new ArrayList<>();
+
+                    for (Map<String, Object> r : rows) {
+                        String firstName = String.valueOf(r.getOrDefault("firstName", ""));
+                        String lastName = String.valueOf(r.getOrDefault("lastName", ""));
+                        String studentName = (firstName + " " + lastName).trim();
+
+                        String date = String.valueOf(r.getOrDefault("sessionDate", "—"));
+                        String status = String.valueOf(r.getOrDefault("status", "—"));
+
+                        mappedRows.add(new ReportRow(studentName, date, status));
+
+                        switch (status.toUpperCase()) {
+                            case "PRESENT" -> present++;
+                            case "ABSENT" -> absent++;
+                            case "EXCUSED" -> excused++;
+                        }
+                    }
+
+                    int total = rows.size();
+                    double rate = total == 0 ? 0.0 : (present * 100.0) / total;
+
+                    final int finalPresent = present;
+                    final int finalAbsent = absent;
+                    final int finalExcused = excused;
+                    final int finalTotal = total;
+                    final double finalRate = rate;
+                    final List<ReportRow> finalMappedRows = new ArrayList<>(mappedRows);
+
+                    Platform.runLater(() -> {
+                        stats.getChildren().clear();
+                        stats.add(AdminUI.makeStatCard("Overall Attendance Rate", String.format("%.1f%%", finalRate), "📈", "accent-green"), 0, 0);
+                        stats.add(AdminUI.makeStatCard("Present", String.valueOf(finalPresent), "🟢", "accent-green"), 1, 0);
+                        stats.add(AdminUI.makeStatCard("Absent", String.valueOf(finalAbsent), "🔴", "accent-orange"), 0, 1);
+                        stats.add(AdminUI.makeStatCard("Excused", String.valueOf(finalExcused), "🟠", "accent-purple"), 1, 1);
+                        stats.add(AdminUI.makeStatCard("Total Records", String.valueOf(finalTotal), "📄", "accent-purple"), 0, 2);
+
+                        table.getItems().setAll(finalMappedRows);
+                    });
+
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    Platform.runLater(() -> {
+                        error.setText("Failed to load attendance report.");
+                        error.setVisible(true);
+                        error.setManaged(true);
+                    });
+                }
+            }).start();
+        };
+
+        classFilter.setOnAction(e -> loadReport.run());
+        timeFilter.setOnAction(e -> loadReport.run());
+        studentSearch.textProperty().addListener((obs, oldV, newV) -> loadReport.run());
+
+        new Thread(() -> {
+            try {
+                List<Map<String, Object>> classes = api.getAdminClassesRaw();
+
+                List<ClassItem> items = new ArrayList<>();
+                for (Map<String, Object> c : classes) {
+                    Long id = ((Number) c.get("id")).longValue();
+                    String label = c.getOrDefault("classCode", "—") + " — " + c.getOrDefault("name", "Unnamed");
+                    items.add(new ClassItem(id, label));
+                }
+
+                Platform.runLater(() -> {
+                    classFilter.getItems().setAll(items);
+                    if (!items.isEmpty()) {
+                        classFilter.setValue(items.get(0));
+                        loadReport.run();
+                    }
+                });
 
             } catch (Exception e) {
                 e.printStackTrace();
-                error.setText("Failed to load attendance stats.");
-                error.setVisible(true);
-                error.setManaged(true);
+                Platform.runLater(() -> {
+                    error.setText("Failed to load classes.");
+                    error.setVisible(true);
+                    error.setManaged(true);
+                });
             }
-        };
-
-        // Reload stats when filters change (backend-ready)
-        classFilter.setOnAction(e -> loadStats.run());
-        timeFilter.setOnAction(e -> loadStats.run());
-        studentSearch.textProperty().addListener((obs, o, n) -> loadStats.run());
-
-        loadStats.run();
+        }).start();
 
         content.getChildren().addAll(
                 title,
                 subtitle,
                 filters,
                 error,
-                stats
+                stats,
+                tableTitle,
+                table
         );
 
         ScrollPane scroll = new ScrollPane(content);
@@ -134,19 +246,5 @@ public class AdminAttendanceReportsPage {
                     }
                 }
         );
-    }
-
-    private static int extractInt(String json, String key) {
-        String needle = "\"" + key + "\":";
-        int i = json.indexOf(needle);
-        if (i < 0) return 0;
-        int start = i + needle.length();
-        int end = start;
-        while (end < json.length() && (Character.isDigit(json.charAt(end)) || json.charAt(end) == '-')) end++;
-        try {
-            return Integer.parseInt(json.substring(start, end).trim());
-        } catch (Exception e) {
-            return 0;
-        }
     }
 }

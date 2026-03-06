@@ -1,8 +1,10 @@
 package frontend.admin;
 
+import frontend.api.AdminApi;
 import frontend.auth.AppRouter;
 import frontend.auth.AuthState;
 import frontend.auth.JwtStore;
+import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
@@ -10,14 +12,13 @@ import javafx.scene.control.Label;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.layout.*;
 
+import java.util.List;
+import java.util.Map;
+
 public class AdminPages {
 
     // ===== Dashboard content =====
     public static Parent dashboardPage(Scene scene, AppRouter router, JwtStore jwtStore, AuthState state) {
-
-        String adminName = (state.getName() == null || state.getName().isBlank())
-                ? "Name"
-                : state.getName();
 
         VBox content = new VBox(18);
         content.getStyleClass().add("content");
@@ -34,10 +35,15 @@ public class AdminPages {
         statsGrid.setHgap(14);
         statsGrid.setVgap(14);
 
-        statsGrid.add(AdminUI.makeStatCard("Total Classes", "4", "📘", "accent-purple"), 0, 0);
-        statsGrid.add(AdminUI.makeStatCard("Students", "0", "🎓", "accent-green"), 1, 0);
-        statsGrid.add(AdminUI.makeStatCard("Teachers", "1", "👥", "accent-orange"), 0, 1);
-        statsGrid.add(AdminUI.makeStatCard("Monthly Rate", "0%", "📈", "accent-green"), 1, 1);
+        Pane totalClassesCard = AdminUI.makeStatCard("Total Classes", "Loading...", "📘", "accent-purple");
+        Pane studentsCard = AdminUI.makeStatCard("Students", "Loading...", "🎓", "accent-green");
+        Pane teachersCard = AdminUI.makeStatCard("Teachers", "Loading...", "👥", "accent-orange");
+        Pane rateCard = AdminUI.makeStatCard("Monthly Rate", "Loading...", "📈", "accent-green");
+
+        statsGrid.add(totalClassesCard, 0, 0);
+        statsGrid.add(studentsCard, 1, 0);
+        statsGrid.add(teachersCard, 0, 1);
+        statsGrid.add(rateCard, 1, 1);
 
         ColumnConstraints c1 = new ColumnConstraints();
         c1.setHgrow(Priority.ALWAYS);
@@ -73,11 +79,6 @@ public class AdminPages {
         recentGrid.setHgap(14);
         recentGrid.setVgap(14);
 
-        recentGrid.add(AdminUI.makeClassCard("Mathematics", "TX-09374", "teacher@example.com", "MWF 9:00 AM"), 0, 0);
-        recentGrid.add(AdminUI.makeClassCard("Physics", "TX-09374", "teacher@example.com", "MWF 9:00 AM"), 1, 0);
-        recentGrid.add(AdminUI.makeClassCard("Design Patterns", "SW-27366", "teacher@example.com", "MWF 9:00 AM"), 0, 1);
-        recentGrid.add(AdminUI.makeClassCard("Software Project 1", "SW-64544", "teacher@example.com", "MWF 9:00 AM"), 1, 1);
-
         ColumnConstraints r1 = new ColumnConstraints();
         r1.setHgrow(Priority.ALWAYS);
         r1.setFillWidth(true);
@@ -88,12 +89,107 @@ public class AdminPages {
 
         recentGrid.getColumnConstraints().addAll(r1, r2);
 
+        Label loadingClasses = new Label("Loading classes...");
+        loadingClasses.getStyleClass().add("subtitle");
+        recentGrid.add(loadingClasses, 0, 0);
+
         content.getChildren().addAll(title, subtitle, statsGrid, qaTitle, quickActions, rcTitle, recentGrid);
 
         ScrollPane scroll = new ScrollPane(content);
         scroll.setFitToWidth(true);
         scroll.getStyleClass().add("scroll");
 
+        AdminApi api = new AdminApi("http://localhost:8081", jwtStore);
+
+        new Thread(() -> {
+            try {
+                Map<String, Object> stats = api.getAttendanceStats();
+                Map<String, Object> users = api.getAdminUsersRaw();
+                List<Map<String, Object>> classes = api.getAdminClassesRaw();
+
+                int totalClasses = classes == null ? 0 : classes.size();
+                int students = ((Number) users.getOrDefault("students", 0)).intValue();
+                int teachers = ((Number) users.getOrDefault("teachers", 0)).intValue();
+
+                double attendanceRate = 0.0;
+                Object rateObj = stats.get("attendanceRate");
+                if (rateObj instanceof Number n) {
+                    attendanceRate = n.doubleValue();
+                } else if (rateObj != null) {
+                    try {
+                        attendanceRate = Double.parseDouble(String.valueOf(rateObj));
+                    } catch (Exception ignored) {
+                    }
+                }
+
+                double finalAttendanceRate = attendanceRate;
+
+                Platform.runLater(() -> {
+                    setStatCardValue(totalClassesCard, String.valueOf(totalClasses));
+                    setStatCardValue(studentsCard, String.valueOf(students));
+                    setStatCardValue(teachersCard, String.valueOf(teachers));
+                    setStatCardValue(rateCard, Math.round(finalAttendanceRate) + "%");
+
+                    recentGrid.getChildren().clear();
+
+                    if (classes == null || classes.isEmpty()) {
+                        Label empty = new Label("No classes found");
+                        empty.getStyleClass().add("subtitle");
+                        recentGrid.add(empty, 0, 0);
+                        return;
+                    }
+
+                    int max = Math.min(classes.size(), 4);
+                    for (int i = 0; i < max; i++) {
+                        Map<String, Object> c = classes.get(i);
+
+                        String className = String.valueOf(c.getOrDefault("name", "Unnamed class"));
+                        String code = String.valueOf(c.getOrDefault("classCode", "—"));
+                        String teacherEmail = String.valueOf(c.getOrDefault("teacherEmail", "—"));
+
+                        String semester = String.valueOf(c.getOrDefault("semester", ""));
+                        String academicYear = String.valueOf(c.getOrDefault("academicYear", ""));
+                        String schedule = (semester + " " + academicYear).trim();
+                        if (schedule.isBlank()) {
+                            schedule = "No schedule";
+                        }
+
+                        Pane card = AdminUI.makeClassCard(className, code, teacherEmail, schedule);
+                        recentGrid.add(card, i % 2, i / 2);
+                    }
+                });
+
+            } catch (Exception e) {
+                e.printStackTrace();
+
+                Platform.runLater(() -> {
+                    setStatCardValue(totalClassesCard, "Error");
+                    setStatCardValue(studentsCard, "Error");
+                    setStatCardValue(teachersCard, "Error");
+                    setStatCardValue(rateCard, "Error");
+
+                    recentGrid.getChildren().clear();
+                    Label err = new Label("Failed to load dashboard data: " + e.getMessage());
+                    err.getStyleClass().add("subtitle");
+                    recentGrid.add(err, 0, 0);
+                });
+            }
+        }).start();
+
         return scroll;
+    }
+    private static void setStatCardValue(Pane card, String value) {
+        if (card instanceof VBox vbox && !vbox.getChildren().isEmpty()) {
+            var top = vbox.getChildren().get(0);
+            if (top instanceof HBox topBox && !topBox.getChildren().isEmpty()) {
+                var left = topBox.getChildren().get(0);
+                if (left instanceof VBox leftBox && leftBox.getChildren().size() >= 2) {
+                    var valueNode = leftBox.getChildren().get(1);
+                    if (valueNode instanceof Label label) {
+                        label.setText(value);
+                    }
+                }
+            }
+        }
     }
 }

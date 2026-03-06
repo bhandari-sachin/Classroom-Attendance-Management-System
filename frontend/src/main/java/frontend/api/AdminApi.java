@@ -98,4 +98,73 @@ public class AdminApi {
         HttpResponse<String> res = client.send(req, HttpResponse.BodyHandlers.ofString());
         if (res.statusCode() >= 400) throw new RuntimeException("HTTP " + res.statusCode() + ": " + res.body());
     }
+    public Map<String, Object> getAttendanceStats() throws Exception {
+        HttpRequest req = HttpRequest.newBuilder()
+                .uri(URI.create(baseUrl + "/api/admin/attendance/stats"))
+                .header("Authorization", "Bearer " + tokenOrThrow())
+                .GET()
+                .build();
+
+        HttpResponse<String> res = client.send(req, HttpResponse.BodyHandlers.ofString());
+
+        if (res.statusCode() >= 400) {
+            throw new RuntimeException("HTTP " + res.statusCode() + ": " + res.body());
+        }
+
+        return om.readValue(res.body(), new TypeReference<>() {});
+    }
+
+    public List<Map<String, Object>> getAdminClassesRaw() throws Exception {
+        HttpRequest req = HttpRequest.newBuilder()
+                .uri(URI.create(baseUrl + "/api/admin/classes"))
+                .header("Authorization", "Bearer " + tokenOrThrow())
+                .GET()
+                .build();
+
+        HttpResponse<String> res = client.send(req, HttpResponse.BodyHandlers.ofString());
+        if (res.statusCode() >= 400) {
+            throw new RuntimeException("HTTP " + res.statusCode() + ": " + res.body());
+        }
+
+        return om.readValue(res.body(), new TypeReference<>() {});
+    }
+
+    public Map<String, Object> getAdminUsersRaw() throws Exception {
+        HttpRequest req = HttpRequest.newBuilder()
+                .uri(URI.create(baseUrl + "/api/admin/users"))
+                .header("Authorization", "Bearer " + tokenOrThrow())
+                .GET()
+                .build();
+
+        HttpResponse<String> res = client.send(req, HttpResponse.BodyHandlers.ofString());
+        if (res.statusCode() >= 400) {
+            throw new RuntimeException("HTTP " + res.statusCode() + ": " + res.body());
+        }
+
+        return om.readValue(res.body(), new TypeReference<>() {});
+    }
+    public List<Map<String, Object>> getAttendanceReport(Long classId, String period, String search) throws Exception {
+        StringBuilder url = new StringBuilder(baseUrl + "/api/admin/attendance/report?classId=" + classId);
+
+        if (period != null && !period.isBlank()) {
+            url.append("&period=").append(java.net.URLEncoder.encode(period, StandardCharsets.UTF_8));
+        }
+
+        if (search != null && !search.isBlank()) {
+            url.append("&search=").append(java.net.URLEncoder.encode(search, StandardCharsets.UTF_8));
+        }
+
+        HttpRequest req = HttpRequest.newBuilder()
+                .uri(URI.create(url.toString()))
+                .header("Authorization", "Bearer " + tokenOrThrow())
+                .GET()
+                .build();
+
+        HttpResponse<String> res = client.send(req, HttpResponse.BodyHandlers.ofString());
+        if (res.statusCode() >= 400) {
+            throw new RuntimeException("HTTP " + res.statusCode() + ": " + res.body());
+        }
+
+        return om.readValue(res.body(), new TypeReference<>() {});
+    }
 }

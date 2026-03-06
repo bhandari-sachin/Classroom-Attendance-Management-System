@@ -47,6 +47,8 @@ public class BackendMain {
         server.createContext("/api/admin/users", new AdminUsersHandler(users, jwtService));
         server.createContext("/api/admin/attendance/stats", new AdminStatsHandler(jwtService, attendanceService));
         server.createContext("/api/admin/classes", new AdminClassesHandler(jwtService, classSQL));
+        server.createContext("/api/admin/attendance/report",
+                new AdminAttendanceReportsHandler(jwtService, attendanceSQL));
 
         // ===== TEACHER =====
         server.createContext("/api/teacher/classes", new TeacherClassesHandler(jwtService, classSQL));

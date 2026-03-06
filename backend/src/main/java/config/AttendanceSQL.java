@@ -558,5 +558,79 @@ public class AttendanceSQL {
             throw new RuntimeException("Failed to get filtered attendance records", e);
         }
     }
+    public List<dto.AttendanceView> getAdminAttendanceReport(Long classId, String period, String searchTerm) {
+        List<dto.AttendanceView> results = new ArrayList<>();
+
+        StringBuilder sql = new StringBuilder("""
+        SELECT
+            u.id AS student_id,
+            u.first_name,
+            u.last_name,
+            se.session_date,
+            a.status
+        FROM attendance a
+        JOIN sessions se ON a.session_id = se.id
+        JOIN users u ON a.student_id = u.id
+        WHERE se.class_id = ?
+        """);
+
+        sql.append(buildPeriodConditionForSessionAlias(period, "se"));
+
+        sql.append("""
+          AND (
+                CAST(u.id AS CHAR) LIKE ?
+             OR LOWER(u.first_name) LIKE ?
+             OR LOWER(u.last_name) LIKE ?
+             OR LOWER(CONCAT(u.first_name, ' ', u.last_name)) LIKE ?
+          )
+        ORDER BY u.last_name, u.first_name, se.session_date DESC
+        """);
+
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql.toString())) {
+
+            String safeSearch = searchTerm == null ? "" : searchTerm.trim().toLowerCase();
+            String likeText = "%" + safeSearch + "%";
+
+            stmt.setLong(1, classId);
+            stmt.setString(2, "%" + safeSearch + "%");
+            stmt.setString(3, likeText);
+            stmt.setString(4, likeText);
+            stmt.setString(5, likeText);
+
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    results.add(new dto.AttendanceView(
+                            rs.getLong("student_id"),
+                            rs.getString("first_name"),
+                            rs.getString("last_name"),
+                            rs.getDate("session_date").toLocalDate(),
+                            rs.getString("status")
+                    ));
+                }
+            }
+
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to get admin attendance report", e);
+        }
+
+        return results;
+    }
+    private String buildPeriodConditionForSessionAlias(String period, String alias) {
+        if (period == null || period.equalsIgnoreCase("ALL")) {
+            return "";
+        }
+
+        return switch (period) {
+            case "THIS_MONTH" ->
+                    " AND YEAR(" + alias + ".session_date) = YEAR(CURDATE()) AND MONTH(" + alias + ".session_date) = MONTH(CURDATE()) ";
+            case "LAST_MONTH" ->
+                    " AND YEAR(" + alias + ".session_date) = YEAR(DATE_SUB(CURDATE(), INTERVAL 1 MONTH)) " +
+                            " AND MONTH(" + alias + ".session_date) = MONTH(DATE_SUB(CURDATE(), INTERVAL 1 MONTH)) ";
+            case "THIS_YEAR" ->
+                    " AND YEAR(" + alias + ".session_date) = YEAR(CURDATE()) ";
+            default -> "";
+        };
+    }
 
 }

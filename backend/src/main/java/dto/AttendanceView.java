@@ -13,8 +13,7 @@ public class AttendanceView {
     public AttendanceView() {
     }
 
-    public AttendanceView(Long studentNumber, String firstName, String lastName,
-                          LocalDate sessionDate, String status) {
+    public AttendanceView(Long studentNumber, String firstName, String lastName, LocalDate sessionDate, String status) {
         this.studentNumber = studentNumber;
         this.firstName = firstName;
         this.lastName = lastName;
@@ -22,15 +21,43 @@ public class AttendanceView {
         this.status = status;
     }
 
-    public Long getStudentNumber() { return studentNumber; }
-    public String getFirstName() { return firstName; }
-    public String getLastName() { return lastName; }
-    public LocalDate getSessionDate() { return sessionDate; }
-    public String getStatus() { return status; }
+    public Long getStudentNumber() {
+        return studentNumber;
+    }
 
-    public void setStudentNumber(Long studentNumber) { this.studentNumber = studentNumber; }
-    public void setFirstName(String firstName) { this.firstName = firstName; }
-    public void setLastName(String lastName) { this.lastName = lastName; }
-    public void setSessionDate(LocalDate sessionDate) { this.sessionDate = sessionDate; }
-    public void setStatus(String status) { this.status = status; }
+    public void setStudentNumber(Long studentNumber) {
+        this.studentNumber = studentNumber;
+    }
+
+    public String getFirstName() {
+        return firstName;
+    }
+
+    public void setFirstName(String firstName) {
+        this.firstName = firstName;
+    }
+
+    public String getLastName() {
+        return lastName;
+    }
+
+    public void setLastName(String lastName) {
+        this.lastName = lastName;
+    }
+
+    public LocalDate getSessionDate() {
+        return sessionDate;
+    }
+
+    public void setSessionDate(LocalDate sessionDate) {
+        this.sessionDate = sessionDate;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
+    }
 }
