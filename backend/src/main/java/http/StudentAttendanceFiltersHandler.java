@@ -3,23 +3,22 @@ package http;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
-import dto.AttendanceView;
+import config.ClassSQL;
 import security.Auth;
 import security.JwtService;
-import service.AttendanceService;
 
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 
-public class StudentAttendanceRecordsHandler implements HttpHandler {
+public class StudentAttendanceFiltersHandler implements HttpHandler {
 
     private final JwtService jwtService;
-    private final AttendanceService attendanceService;
+    private final ClassSQL classSQL;
 
-    public StudentAttendanceRecordsHandler(JwtService jwtService, AttendanceService attendanceService) {
+    public StudentAttendanceFiltersHandler(JwtService jwtService, ClassSQL classSQL) {
         this.jwtService = jwtService;
-        this.attendanceService = attendanceService;
+        this.classSQL = classSQL;
     }
 
     @Override
@@ -34,11 +33,20 @@ public class StudentAttendanceRecordsHandler implements HttpHandler {
             }
 
             Long studentId = HttpUtil.jwtUserId(jwt);
-            Long classId = HttpUtil.queryLong(ex.getRequestURI().getQuery(), "classId");
-            String period = HttpUtil.queryString(ex.getRequestURI().getQuery(), "period");
 
-            List<AttendanceView> records = attendanceService.getStudentAttendanceViews(studentId, classId, period);
-            HttpUtil.json(ex, 200, records);
+            List<Map<String, Object>> classes = classSQL.listClassesForStudent(studentId);
+
+            List<Map<String, String>> periods = List.of(
+                    Map.of("value", "ALL", "label", "All Time"),
+                    Map.of("value", "THIS_MONTH", "label", "This Month"),
+                    Map.of("value", "LAST_MONTH", "label", "Last Month"),
+                    Map.of("value", "THIS_YEAR", "label", "This Year")
+            );
+
+            HttpUtil.json(ex, 200, Map.of(
+                    "classes", classes,
+                    "periods", periods
+            ));
 
         } catch (SecurityException se) {
             HttpUtil.json(ex, 403, Map.of("error", se.getMessage()));

@@ -6,6 +6,7 @@ import java.sql.ResultSet;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 public class ClassSQL {
 
@@ -254,6 +255,38 @@ public class ClassSQL {
         } catch (Exception e) {
             e.printStackTrace();
             return 0;
+        }
+    }
+    public List<Map<String, Object>> listClassesForStudent(Long studentId) {
+        String sql = """
+        SELECT c.id, c.class_code, c.name
+        FROM classes c
+        JOIN enrollments e ON e.class_id = c.id
+        WHERE e.student_id = ? AND e.status = 'ACTIVE'
+        ORDER BY c.name
+        """;
+
+        List<Map<String, Object>> result = new java.util.ArrayList<>();
+
+        try (java.sql.Connection conn = DatabaseConnection.getConnection();
+             java.sql.PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setLong(1, studentId);
+
+            try (java.sql.ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    result.add(Map.of(
+                            "id", rs.getLong("id"),
+                            "classCode", rs.getString("class_code"),
+                            "name", rs.getString("name")
+                    ));
+                }
+            }
+
+            return result;
+
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to load classes for student", e);
         }
     }
 

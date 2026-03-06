@@ -135,12 +135,16 @@ public class AttendanceService {
     }
 
 
-    public dto.AttendanceStats getStudentStats(Long studentId) {
-        return attendanceSQL.getStudentStats(studentId);
-    }
 
     public List<dto.AttendanceView> getStudentAttendanceViews(Long studentId) {
         return attendanceSQL.getStudentAttendanceViews(studentId);
+    }
+    public AttendanceStats getStudentStats(Long studentId, Long classId, String period) {
+        return attendanceSQL.getStudentStats(studentId, classId, period);
+    }
+
+    public List<dto.AttendanceView> getStudentAttendanceViews(Long studentId, Long classId, String period) {
+        return attendanceSQL.getStudentAttendanceViews(studentId, classId, period);
     }
 
 }

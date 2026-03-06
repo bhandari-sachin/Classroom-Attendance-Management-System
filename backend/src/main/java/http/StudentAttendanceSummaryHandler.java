@@ -27,20 +27,27 @@ public class StudentAttendanceSummaryHandler implements HttpHandler {
             DecodedJWT jwt = Auth.requireJwt(ex, jwtService);
             Auth.requireRole(jwt, "STUDENT");
 
-            Long studentId = Long.parseLong(jwt.getSubject());
+            if (!"GET".equalsIgnoreCase(ex.getRequestMethod())) {
+                HttpUtil.json(ex, 405, Map.of("error", "Method Not Allowed"));
+                return;
+            }
 
-            AttendanceStats s = attendanceService.getStudentStats(studentId);
+            Long studentId = HttpUtil.jwtUserId(jwt);
+            Long classId = HttpUtil.queryLong(ex.getRequestURI().getQuery(), "classId");
+            String period = HttpUtil.queryString(ex.getRequestURI().getQuery(), "period");
+
+            AttendanceStats s = attendanceService.getStudentStats(studentId, classId, period);
 
             HttpUtil.json(ex, 200, Map.of(
                     "presentCount", s.getPresentCount(),
                     "absentCount", s.getAbsentCount(),
                     "excusedCount", s.getExcusedCount(),
-                    "totalDays", s.getTotalRecords(),
+                    "totalDays", s.getTotalDays(),
                     "attendanceRate", s.getAttendanceRate()
             ));
 
         } catch (SecurityException se) {
-            HttpUtil.json(ex, 401, Map.of("error", se.getMessage()));
+            HttpUtil.json(ex, 403, Map.of("error", se.getMessage()));
         } catch (Exception e) {
             e.printStackTrace();
             HttpUtil.json(ex, 500, Map.of("error", "Server error"));

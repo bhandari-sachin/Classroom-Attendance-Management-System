@@ -49,4 +49,16 @@ public class HttpUtil {
         }
         return null;
     }
+    public static String queryString(String query, String key) {
+        if (query == null || query.isBlank()) return null;
+
+        for (String part : query.split("&")) {
+            String[] kv = part.split("=", 2);
+            if (kv.length == 2 && kv[0].equals(key)) {
+                String val = java.net.URLDecoder.decode(kv[1], java.nio.charset.StandardCharsets.UTF_8);
+                return val.isBlank() ? null : val;
+            }
+        }
+        return null;
+    }
 }
