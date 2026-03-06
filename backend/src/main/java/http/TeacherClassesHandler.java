@@ -36,7 +36,7 @@ public class TeacherClassesHandler implements HttpHandler {
 
             var list = classSQL.listForTeacher(teacherId);
 
-            HttpUtil.json(ex, 200, Map.of("data", list));
+            HttpUtil.json(ex, 200, list);
 
         } catch (SecurityException se) {
             HttpUtil.json(ex, 401, Map.of("error", se.getMessage()));

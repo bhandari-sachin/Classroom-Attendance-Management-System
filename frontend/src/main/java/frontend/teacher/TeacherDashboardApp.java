@@ -18,11 +18,11 @@ import javafx.scene.layout.*;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.List;
 import java.util.Map;
 
 public class TeacherDashboardApp {
 
-    // values shown in UI (defaults until backend loads)
     private int totalClasses = 0;
     private int totalStudents = 0;
     private int presentToday = 0;
@@ -40,7 +40,6 @@ public class TeacherDashboardApp {
         page.setPadding(new Insets(26));
         page.getStyleClass().add("page");
 
-        // Header
         Label greeting = new Label("Good afternoon, " + teacherName + "!");
         greeting.getStyleClass().add("dash-title");
 
@@ -48,7 +47,6 @@ public class TeacherDashboardApp {
         Label dateLabel = new Label(date);
         dateLabel.getStyleClass().add("dash-subtitle");
 
-        // Action cards row
         HBox actionsRow = new HBox(14);
         actionsRow.getStyleClass().add("dash-actions");
 
@@ -70,7 +68,6 @@ public class TeacherDashboardApp {
         HBox.setHgrow(reportCard, Priority.ALWAYS);
         actionsRow.getChildren().addAll(takeCard, reportCard);
 
-        // Stats grid (2x2)
         GridPane stats = new GridPane();
         stats.setHgap(14);
         stats.setVgap(14);
@@ -96,25 +93,18 @@ public class TeacherDashboardApp {
 
         stats.getColumnConstraints().addAll(c1, c2);
 
-        // My classes section (empty state)
         Label classesTitle = new Label("My classes");
         classesTitle.getStyleClass().add("section-title");
 
-        VBox emptyClasses = new VBox(8);
-        emptyClasses.setAlignment(Pos.CENTER);
-        emptyClasses.setMinHeight(170);
-        emptyClasses.getStyleClass().add("classes-card");
+        VBox classesContainer = new VBox(10);
+        classesContainer.getStyleClass().add("classes-card");
+        classesContainer.setPadding(new Insets(16));
+        classesContainer.setMinHeight(170);
 
-        Label icon = new Label("📅");
-        icon.getStyleClass().add("empty-icon");
-
-        Label t = new Label("No classes Assigned");
-        t.getStyleClass().add("empty-title");
-
-        Label s = new Label("You haven’t been assigned any classes yet.");
-        s.getStyleClass().add("empty-subtitle");
-
-        emptyClasses.getChildren().addAll(icon, t, s);
+        Label loading = new Label("Loading classes...");
+        loading.getStyleClass().add("empty-subtitle");
+        classesContainer.setAlignment(Pos.CENTER);
+        classesContainer.getChildren().add(loading);
 
         page.getChildren().addAll(
                 greeting,
@@ -123,10 +113,9 @@ public class TeacherDashboardApp {
                 stats,
                 new Separator(),
                 classesTitle,
-                emptyClasses
+                classesContainer
         );
 
-        // ✅ Load stats from backend (async)
         new Thread(() -> {
             try {
                 Map<String, Object> res = api.getDashboardStats(jwtStore, state);
@@ -154,6 +143,61 @@ public class TeacherDashboardApp {
             }
         }).start();
 
+        new Thread(() -> {
+            try {
+                List<Map<String, Object>> classes = api.getMyClasses(jwtStore, state);
+
+                Platform.runLater(() -> {
+                    classesContainer.getChildren().clear();
+
+                    if (classes == null || classes.isEmpty()) {
+                        classesContainer.setAlignment(Pos.CENTER);
+
+                        Label icon = new Label("📅");
+                        icon.getStyleClass().add("empty-icon");
+
+                        Label t = new Label("No classes Assigned");
+                        t.getStyleClass().add("empty-title");
+
+                        Label s = new Label("You haven’t been assigned any classes yet.");
+                        s.getStyleClass().add("empty-subtitle");
+
+                        classesContainer.getChildren().addAll(icon, t, s);
+                        return;
+                    }
+
+                    classesContainer.setAlignment(Pos.TOP_LEFT);
+
+                    for (Map<String, Object> c : classes) {
+                        String classCode = String.valueOf(c.getOrDefault("classCode", "—"));
+                        String name = String.valueOf(c.getOrDefault("name", "Unnamed Class"));
+                        String semester = String.valueOf(c.getOrDefault("semester", "—"));
+                        String academicYear = String.valueOf(c.getOrDefault("academicYear", "—"));
+                        String studentsCount = String.valueOf(c.getOrDefault("studentsCount", "0"));
+
+                        classesContainer.getChildren().add(classRow(
+                                classCode,
+                                name,
+                                semester,
+                                academicYear,
+                                studentsCount
+                        ));
+                    }
+                });
+
+            } catch (Exception ex) {
+                ex.printStackTrace();
+                Platform.runLater(() -> {
+                    classesContainer.getChildren().clear();
+                    classesContainer.setAlignment(Pos.CENTER);
+
+                    Label err = new Label("Failed to load classes: " + ex.getMessage());
+                    err.getStyleClass().add("empty-subtitle");
+                    classesContainer.getChildren().add(err);
+                });
+            }
+        }).start();
+
         return AppLayout.wrapWithSidebar(
                 teacherName,
                 "Teacher Panel",
@@ -177,7 +221,6 @@ public class TeacherDashboardApp {
     }
 
     private void setStatValue(VBox statCard, int value) {
-        // statCard children: [topRow, valueLabel]
         if (statCard.getChildren().size() >= 2 && statCard.getChildren().get(1) instanceof Label v) {
             v.setText(String.valueOf(value));
         }
@@ -219,6 +262,21 @@ public class TeacherDashboardApp {
 
         card.getChildren().addAll(top, v);
         return card;
+    }
+
+    private VBox classRow(String classCode, String name, String semester, String academicYear, String studentsCount) {
+        VBox box = new VBox(4);
+        box.getStyleClass().add("class-item");
+        box.setPadding(new Insets(12));
+
+        Label title = new Label(classCode + " — " + name);
+        title.getStyleClass().add("class-title");
+
+        Label meta = new Label("Semester: " + semester + " | Year: " + academicYear + " | Students: " + studentsCount);
+        meta.getStyleClass().add("class-meta");
+
+        box.getChildren().addAll(title, meta);
+        return box;
     }
 
     private String resolveIcon(String label) {
