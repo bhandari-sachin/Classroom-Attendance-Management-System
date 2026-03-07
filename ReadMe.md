@@ -39,13 +39,6 @@ The system follows a **layered architecture** consisting of:
 
 ![navigate to diagrams/Architecture.png](diagrams/Architecture.png)
 
-Relationships:
-
-- One teacher can teach multiple classes
-- One class can have multiple sessions
-- One session can have multiple attendance records
-- Students enroll in classes through enrollments
-
 ---
 
 ## Tools and Technologies Used
