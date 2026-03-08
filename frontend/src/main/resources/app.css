@@ -31,6 +31,10 @@
     -fx-background-color: transparent;
 }
 
+.scroll > .viewport {
+    -fx-background-color: transparent;
+}
+
 /* ===== Sidebar ===== */
 .sidebar {
     -fx-background-color: white;
@@ -110,6 +114,7 @@
     -fx-padding: 14;
     -fx-border-color: #ececec;
     -fx-border-radius: 12;
+    -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.08), 18, 0, 0, 6);
 }
 
 .muted {
@@ -225,37 +230,123 @@
     -fx-text-fill: white;
     -fx-font-weight: 800;
     -fx-background-radius: 10;
-    -fx-padding: 8 12 8 12;
+    -fx-padding: 10 14 10 14;
     -fx-cursor: hand;
 }
 
-.combo-box, .text-field {
-    -fx-background-radius: 10;
-    -fx-border-radius: 10;
+.primary-btn:hover {
+    -fx-background-color: #57b28f;
 }
 
-/* Tables */
-.table {
+.secondary-btn {
+    -fx-background-color: white;
+    -fx-text-fill: #1f2937;
+    -fx-background-radius: 12;
+    -fx-border-radius: 12;
+    -fx-border-color: #d1d5db;
+    -fx-padding: 10 18 10 18;
+    -fx-font-weight: 600;
+    -fx-cursor: hand;
+}
+
+.secondary-btn:hover {
+    -fx-background-color: #f9fafb;
+}
+
+.combo-box,
+.text-field,
+.password-field {
+    -fx-background-radius: 10;
+    -fx-border-radius: 10;
+    -fx-border-color: #e5e7eb;
+    -fx-background-color: #ffffff;
+    -fx-padding: 10 12 10 12;
+}
+
+/* ===== Tables ===== */
+.table-view {
     -fx-background-color: white;
     -fx-background-radius: 12;
     -fx-border-color: #ECEFF2;
     -fx-border-radius: 12;
+    -fx-padding: 0;
 }
 
-.table .column-header-background {
+.table-view .virtual-flow {
     -fx-background-color: transparent;
 }
 
-.table .column-header {
+.table-view .corner {
     -fx-background-color: transparent;
-    -fx-font-size: 11px;
+}
+
+.table-view .column-header-background {
+    -fx-background-color: transparent;
+    -fx-background-radius: 12 12 0 0;
+}
+
+.table-view .column-header {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent transparent #ECEFF2 transparent;
+    -fx-padding: 12 10 12 10;
+}
+
+.table-view .column-header .label {
     -fx-text-fill: #6b7280;
+    -fx-font-size: 11px;
     -fx-font-weight: 700;
+    -fx-alignment: CENTER_LEFT;
 }
 
-.table .table-row-cell {
+.table-view .filler {
+    -fx-background-color: transparent;
+}
+
+.table-row-cell {
     -fx-background-color: white;
     -fx-border-color: transparent transparent #F3F4F6 transparent;
+    -fx-table-cell-border-color: transparent;
+    -fx-cell-size: 38px;
+}
+
+.table-row-cell:hover {
+    -fx-background-color: #f8fafc;
+}
+
+.table-row-cell:selected {
+    -fx-background-color: #4f8cff;
+}
+
+.table-row-cell:selected:focused {
+    -fx-background-color: #4f8cff;
+}
+
+.table-view:focused .table-row-cell:selected {
+    -fx-background-color: #4f8cff;
+}
+
+.table-cell {
+    -fx-text-fill: #111827;
+    -fx-alignment: CENTER_LEFT;
+    -fx-padding: 10 12 10 12;
+    -fx-border-color: transparent;
+    -fx-background-color: transparent;
+}
+
+.table-row-cell:selected .table-cell {
+    -fx-text-fill: white;
+}
+
+.table-row-cell:selected .text {
+    -fx-fill: white;
+}
+
+.table-view:focused .table-row-cell:selected .table-cell {
+    -fx-text-fill: white;
+}
+
+.table-view:focused .table-row-cell:selected .text {
+    -fx-fill: white;
 }
 
 .action-icon-btn {
@@ -271,7 +362,7 @@
 }
 
 /* =========================================================
-   STUDENT/TEACHER DASHBOARD COMPONENTS (from dashboard.css)
+   STUDENT/TEACHER DASHBOARD COMPONENTS
    ========================================================= */
 
 .dash-title {
@@ -316,22 +407,28 @@
     -fx-cursor: hand;
     -fx-border-color: transparent;
 }
-.attendance-card:hover { -fx-opacity: 0.95; }
+
+.attendance-card:hover {
+    -fx-opacity: 0.95;
+}
 
 .attendance-icon {
     -fx-text-fill: white;
     -fx-font-size: 20px;
     -fx-font-weight: 800;
 }
+
 .attendance-title {
     -fx-text-fill: white;
     -fx-font-size: 16px;
     -fx-font-weight: 800;
 }
+
 .attendance-subtitle {
     -fx-text-fill: rgba(255,255,255,0.85);
     -fx-font-size: 11.5px;
 }
+
 .attendance-arrow {
     -fx-text-fill: white;
     -fx-font-size: 18px;
@@ -346,10 +443,12 @@
     -fx-border-radius: 12;
     -fx-padding: 14;
 }
+
 .stat-value {
     -fx-font-size: 28px;
     -fx-font-weight: 900;
 }
+
 .stat-hint {
     -fx-font-size: 11px;
     -fx-text-fill: #9CA3AF;
@@ -363,6 +462,7 @@
     -fx-border-radius: 12;
     -fx-padding: 18;
 }
+
 .empty-icon { -fx-font-size: 20px; }
 .empty-title { -fx-font-size: 13px; -fx-font-weight: 900; }
 .empty-subtitle { -fx-font-size: 11.5px; -fx-text-fill: #6B7280; }
@@ -372,6 +472,7 @@
     -fx-text-fill: #6B7280;
     -fx-font-size: 14px;
 }
+
 .filter-combo {
     -fx-background-radius: 10;
     -fx-border-radius: 10;
@@ -388,16 +489,19 @@
     -fx-padding: 14;
     -fx-min-height: 78;
 }
+
 .rate-label {
     -fx-text-fill: white;
     -fx-font-size: 12px;
     -fx-font-weight: 800;
 }
+
 .rate-value {
     -fx-text-fill: white;
     -fx-font-size: 22px;
     -fx-font-weight: 900;
 }
+
 .rate-trend {
     -fx-text-fill: rgba(255,255,255,0.9);
     -fx-font-size: 14px;
@@ -413,11 +517,13 @@
     -fx-padding: 12;
     -fx-min-height: 78;
 }
+
 .mini-label {
     -fx-font-size: 12px;
     -fx-font-weight: 800;
     -fx-text-fill: #374151;
 }
+
 .mini-value {
     -fx-font-size: 22px;
     -fx-font-weight: 900;
@@ -471,7 +577,11 @@
 .manual-title { -fx-font-size: 14px; -fx-font-weight: 800; }
 .manual-subtitle { -fx-font-size: 11px; -fx-text-fill: #6B7280; }
 
-.field-label { -fx-font-size: 12px; -fx-font-weight: 800; }
+.field-label {
+    -fx-font-size: 12px;
+    -fx-font-weight: 800;
+    -fx-text-fill: #111827;
+}
 
 .code-field {
     -fx-background-radius: 10;
@@ -501,37 +611,12 @@
 .how-step { -fx-font-size: 11px; -fx-text-fill: #6B7280; }
 
 /* =========================================================
-   LOGIN / SIGNUP (from your old app.css)
+   LOGIN / SIGNUP
    ========================================================= */
 
-.card {
-    -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.08), 18, 0, 0, 6);
-    -fx-background-radius: 16;
-    -fx-border-radius: 16;
-}
-
-.text-field, .password-field {
-    -fx-background-radius: 10;
-    -fx-border-radius: 10;
-    -fx-border-color: #e5e7eb;
-    -fx-background-color: #ffffff;
-    -fx-padding: 10 12 10 12;
-}
-
-.primary-btn {
-    -fx-font-weight: 700;
-    -fx-padding: 10 14 10 14;
-}
-
-/* Error text for forms */
 .error {
     -fx-text-fill: #b91c1c;
     -fx-font-size: 12px;
-}
-.field-label {
-    -fx-font-size: 12px;
-    -fx-font-weight: 800;
-    -fx-text-fill: #111827;
 }
 
 .link-button {
@@ -543,7 +628,6 @@
 }
 
 /* Attendance action buttons */
-
 .action-btn {
     -fx-background-insets: 0;
     -fx-background-radius: 20;

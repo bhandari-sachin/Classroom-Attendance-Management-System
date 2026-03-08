@@ -6,6 +6,7 @@ import frontend.auth.AppRouter;
 import frontend.auth.AuthState;
 import frontend.auth.JwtStore;
 import frontend.dto.AdminClassDto;
+import frontend.dto.AdminStudentDto;
 import javafx.application.Platform;
 import javafx.beans.binding.Bindings;
 import javafx.collections.FXCollections;
@@ -19,7 +20,9 @@ import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class AdminManageClassesPage {
 
@@ -31,7 +34,6 @@ public class AdminManageClassesPage {
         content.getStyleClass().add("content");
         content.setPadding(new Insets(18));
 
-        // ===== Title row =====
         HBox titleRow = new HBox(12);
         titleRow.setAlignment(Pos.CENTER_LEFT);
 
@@ -39,7 +41,7 @@ public class AdminManageClassesPage {
         Label title = new Label("Manage Classes");
         title.getStyleClass().add("title");
 
-        Label subtitle = new Label("Create and manage classes");
+        Label subtitle = new Label("Create, manage classes, and enroll students");
         subtitle.getStyleClass().add("subtitle");
 
         titleCol.getChildren().addAll(title, subtitle);
@@ -47,12 +49,14 @@ public class AdminManageClassesPage {
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
+        Button enrollBtn = new Button("Enroll students");
+        enrollBtn.getStyleClass().add("secondary-btn");
+
         Button add = new Button("+   Add class");
         add.getStyleClass().add("primary-btn");
 
-        titleRow.getChildren().addAll(titleCol, spacer, add);
+        titleRow.getChildren().addAll(titleCol, spacer, enrollBtn, add);
 
-        // ===== Search =====
         TextField search = new TextField();
         search.setPromptText("Search classes...");
         search.getStyleClass().add("search-field");
@@ -60,13 +64,14 @@ public class AdminManageClassesPage {
         Label section = new Label("Detailed Records");
         section.getStyleClass().add("section-title");
 
-        // ===== Table =====
         TableView<ClassRow> table = AdminUI.buildClassesTable();
-        table.getItems().clear(); // remove demo rows
+        table.getItems().clear();
 
         ObservableList<ClassRow> rows = FXCollections.observableArrayList();
         FilteredList<ClassRow> filtered = new FilteredList<>(rows, r -> true);
         table.setItems(filtered);
+
+        enrollBtn.disableProperty().bind(table.getSelectionModel().selectedItemProperty().isNull());
 
         search.textProperty().addListener((obs, oldV, q) -> {
             String s = q == null ? "" : q.trim().toLowerCase();
@@ -79,7 +84,6 @@ public class AdminManageClassesPage {
             });
         });
 
-        // ===== Backend load =====
         AdminApi api = new AdminApi("http://localhost:8081", jwtStore);
 
         Label loadError = new Label();
@@ -98,7 +102,6 @@ public class AdminManageClassesPage {
                     Platform.runLater(() -> {
                         rows.clear();
                         for (AdminClassDto c : list) {
-                            // You don't currently store schedule in backend payload -> use semester/year as "schedule" column
                             String schedule = joinNonEmpty(c.semester, c.academicYear);
                             rows.add(new ClassRow(
                                     nullToEmpty(c.name),
@@ -123,7 +126,13 @@ public class AdminManageClassesPage {
 
         reload.run();
 
-        // ===== Add class button =====
+        enrollBtn.setOnAction(e -> {
+            ClassRow selectedClass = table.getSelectionModel().getSelectedItem();
+            if (selectedClass == null) return;
+
+            openEnrollStudentsDialog(api, selectedClass, reload);
+        });
+
         add.setOnAction(e -> {
             Dialog<ButtonType> dialog = new Dialog<>();
             dialog.setTitle("Add class");
@@ -185,7 +194,8 @@ public class AdminManageClassesPage {
                 try {
                     String capRaw = maxCapacity.getText().trim();
                     if (!capRaw.isBlank()) cap = Integer.parseInt(capRaw);
-                } catch (Exception ignore) {}
+                } catch (Exception ignore) {
+                }
 
                 Integer finalCap = cap;
                 new Thread(() -> {
@@ -195,7 +205,11 @@ public class AdminManageClassesPage {
                     } catch (Exception ex2) {
                         ex2.printStackTrace();
                         Platform.runLater(() -> {
-                            Alert a = new Alert(Alert.AlertType.ERROR, "Create class failed:\n" + ex2.getMessage(), ButtonType.OK);
+                            Alert a = new Alert(
+                                    Alert.AlertType.ERROR,
+                                    "Create class failed:\n" + ex2.getMessage(),
+                                    ButtonType.OK
+                            );
                             a.showAndWait();
                         });
                     }
@@ -219,11 +233,28 @@ public class AdminManageClassesPage {
                 scroll,
                 "second",
                 new AdminAppLayout.Navigator() {
-                    @Override public void goDashboard() { router.go("admin-dashboard"); }
-                    @Override public void goTakeAttendance() { router.go("admin-classes"); }
-                    @Override public void goReports() { router.go("admin-users"); }
-                    @Override public void goEmail() { router.go("admin-reports"); }
-                    @Override public void logout() {
+                    @Override
+                    public void goDashboard() {
+                        router.go("admin-dashboard");
+                    }
+
+                    @Override
+                    public void goTakeAttendance() {
+                        router.go("admin-classes");
+                    }
+
+                    @Override
+                    public void goReports() {
+                        router.go("admin-users");
+                    }
+
+                    @Override
+                    public void goEmail() {
+                        router.go("admin-reports");
+                    }
+
+                    @Override
+                    public void logout() {
                         jwtStore.clear();
                         router.go("login");
                     }
@@ -231,8 +262,150 @@ public class AdminManageClassesPage {
         );
     }
 
-    private static String safe(String s) { return s == null ? "" : s.toLowerCase(); }
-    private static String nullToEmpty(String s) { return s == null ? "" : s; }
+    private void openEnrollStudentsDialog(AdminApi api, ClassRow selectedClass, Runnable reload) {
+        Dialog<ButtonType> dialog = new Dialog<>();
+        dialog.setTitle("Enroll Students");
+        dialog.getDialogPane().setPrefWidth(560);
+
+        ButtonType enrollType = new ButtonType("Enroll", ButtonBar.ButtonData.OK_DONE);
+        dialog.getDialogPane().getButtonTypes().addAll(enrollType, ButtonType.CANCEL);
+
+        VBox root = new VBox(12);
+        root.setPadding(new Insets(12));
+
+        Label classInfo = new Label(
+                "Class: " + nullToEmpty(selectedClass.getClassName()) +
+                        " (" + nullToEmpty(selectedClass.codeProperty().get()) + ")"
+        );
+        classInfo.getStyleClass().add("section-title");
+
+        TextField searchStudents = new TextField();
+        searchStudents.setPromptText("Search students by name, email, or code...");
+
+        Label status = new Label("Loading students...");
+        status.getStyleClass().add("subtitle");
+
+        ListView<AdminStudentDto> listView = new ListView<>();
+        listView.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
+        listView.setPrefHeight(320);
+
+        listView.setCellFactory(lv -> new ListCell<>() {
+            @Override
+            protected void updateItem(AdminStudentDto item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                } else {
+                    String fullName = (nullToEmpty(item.firstName) + " " + nullToEmpty(item.lastName)).trim();
+                    setText(fullName + "  |  " + nullToEmpty(item.email) + "  |  " + nullToEmpty(item.studentCode));
+                }
+            }
+        });
+
+        Label selectedCount = new Label("Selected: 0");
+        selectedCount.getStyleClass().add("subtitle");
+
+        ObservableList<AdminStudentDto> studentRows = FXCollections.observableArrayList();
+        FilteredList<AdminStudentDto> filteredStudents = new FilteredList<>(studentRows, s -> true);
+        listView.setItems(filteredStudents);
+
+        listView.getSelectionModel().getSelectedItems().addListener((javafx.collections.ListChangeListener<AdminStudentDto>) c ->
+                selectedCount.setText("Selected: " + listView.getSelectionModel().getSelectedItems().size())
+        );
+
+        searchStudents.textProperty().addListener((obs, oldV, q) -> {
+            String s = q == null ? "" : q.trim().toLowerCase();
+            filteredStudents.setPredicate(student -> {
+                if (student == null) return false;
+                if (s.isBlank()) return true;
+
+                String fullName = (nullToEmpty(student.firstName) + " " + nullToEmpty(student.lastName)).toLowerCase();
+                return fullName.contains(s)
+                        || safe(student.email).contains(s)
+                        || safe(student.studentCode).contains(s);
+            });
+        });
+
+        root.getChildren().addAll(classInfo, searchStudents, status, listView, selectedCount);
+        dialog.getDialogPane().setContent(root);
+
+        Node enrollNode = dialog.getDialogPane().lookupButton(enrollType);
+        enrollNode.disableProperty().bind(
+                Bindings.size(listView.getSelectionModel().getSelectedItems()).isEqualTo(0)
+        );
+
+        new Thread(() -> {
+            try {
+                List<AdminStudentDto> students = api.getAllStudentsNotInClass(selectedClass.codeProperty().get());
+
+                Platform.runLater(() -> {
+                    studentRows.setAll(students);
+                    status.setText(students.isEmpty()
+                            ? "No available students found."
+                            : "Select one or more students to enroll.");
+                });
+            } catch (Exception ex) {
+                ex.printStackTrace();
+                Platform.runLater(() -> status.setText("Failed to load students: " + ex.getMessage()));
+            }
+        }).start();
+
+        dialog.showAndWait().ifPresent(bt -> {
+            if (bt != enrollType) return;
+
+            List<AdminStudentDto> selectedStudents = new ArrayList<>(listView.getSelectionModel().getSelectedItems());
+            List<String> studentEmails = selectedStudents.stream()
+                    .map(s -> s.email)
+                    .filter(v -> v != null && !v.isBlank())
+                    .collect(Collectors.toList());
+
+            if (studentEmails.isEmpty()) {
+                Alert a = new Alert(Alert.AlertType.WARNING, "No students selected.", ButtonType.OK);
+                a.showAndWait();
+                return;
+            }
+
+            status.setText("Enrolling students...");
+
+            new Thread(() -> {
+                try {
+                    api.enrollStudentsToClass(selectedClass.codeProperty().get(), studentEmails);
+
+                    Platform.runLater(() -> {
+                        dialog.close();
+
+                        Alert ok = new Alert(
+                                Alert.AlertType.INFORMATION,
+                                "Students enrolled successfully.",
+                                ButtonType.OK
+                        );
+                        ok.showAndWait();
+                        reload.run();
+                    });
+
+                } catch (Exception ex) {
+                    ex.printStackTrace();
+                    Platform.runLater(() -> {
+                        status.setText("Failed to enroll students.");
+                        Alert err = new Alert(
+                                Alert.AlertType.ERROR,
+                                "Failed to enroll students:\n" + ex.getMessage(),
+                                ButtonType.OK
+                        );
+                        err.showAndWait();
+                    });
+                }
+            }).start();
+        });
+    }
+
+    private static String safe(String s) {
+        return s == null ? "" : s.toLowerCase();
+    }
+
+    private static String nullToEmpty(String s) {
+        return s == null ? "" : s;
+    }
 
     private static String joinNonEmpty(String a, String b) {
         a = nullToEmpty(a).trim();

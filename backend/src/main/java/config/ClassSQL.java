@@ -289,6 +289,159 @@ public class ClassSQL {
             throw new RuntimeException("Failed to load classes for student", e);
         }
     }
+    public List<Map<String, Object>> listStudentsNotEnrolledInClass(String classCode) {
+        String sql = """
+        SELECT
+            u.id,
+            u.first_name,
+            u.last_name,
+            u.email,
+            u.student_code
+        FROM users u
+        WHERE u.user_type = 'STUDENT'
+          AND u.id NOT IN (
+              SELECT e.student_id
+              FROM enrollments e
+              JOIN classes c ON c.id = e.class_id
+              WHERE c.class_code = ?
+          )
+        ORDER BY u.last_name, u.first_name
+    """;
+
+        List<Map<String, Object>> out = new ArrayList<>();
+
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            ps.setString(1, classCode);
+
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    out.add(Map.of(
+                            "id", rs.getLong("id"),
+                            "firstName", rs.getString("first_name"),
+                            "lastName", rs.getString("last_name"),
+                            "email", rs.getString("email"),
+                            "studentCode", rs.getString("student_code") == null ? "" : rs.getString("student_code")
+                    ));
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new RuntimeException("Failed to load available students", e);
+        }
+
+        return out;
+    }
+
+    public Long findClassIdByCode(String classCode) {
+        String sql = """
+        SELECT id
+        FROM classes
+        WHERE class_code = ?
+        LIMIT 1
+    """;
+
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            ps.setString(1, classCode);
+
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) return rs.getLong("id");
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return null;
+    }
+
+    public Long findStudentIdByEmail(String email) {
+        String sql = """
+        SELECT id
+        FROM users
+        WHERE email = ?
+          AND user_type = 'STUDENT'
+        LIMIT 1
+    """;
+
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            ps.setString(1, email);
+
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) return rs.getLong("id");
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return null;
+    }
+
+    public boolean enrollmentExists(long classId, long studentId) {
+        String sql = """
+        SELECT COUNT(*)
+        FROM enrollments
+        WHERE class_id = ?
+          AND student_id = ?
+    """;
+
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            ps.setLong(1, classId);
+            ps.setLong(2, studentId);
+
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) return rs.getInt(1) > 0;
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return false;
+    }
+
+    public void enrollStudent(long classId, long studentId) {
+        String sql = """
+        INSERT INTO enrollments (class_id, student_id, status)
+        VALUES (?, ?, 'ACTIVE')
+    """;
+
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            ps.setLong(1, classId);
+            ps.setLong(2, studentId);
+            ps.executeUpdate();
+
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to enroll student", e);
+        }
+    }
+
+    public void enrollStudentsByEmails(String classCode, List<String> studentEmails) {
+        Long classId = findClassIdByCode(classCode);
+        if (classId == null) {
+            throw new IllegalArgumentException("Class not found: " + classCode);
+        }
+
+        for (String email : studentEmails) {
+            if (email == null || email.isBlank()) continue;
+
+            Long studentId = findStudentIdByEmail(email.trim());
+            if (studentId == null) {
+                throw new IllegalArgumentException("Student not found: " + email);
+            }
+
+            if (!enrollmentExists(classId, studentId)) {
+                enrollStudent(classId, studentId);
+            }
+        }
+    }
 
 
 }
