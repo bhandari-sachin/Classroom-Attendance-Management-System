@@ -65,7 +65,7 @@ expand automated testing with JaCoCo, and create a working local Docker image.
 
 * Docker Image
 
-- Created Dockerfile
+- Created Dockerfile next spring.
 
 - Built project Docker image locally
 
@@ -101,7 +101,7 @@ expand automated testing with JaCoCo, and create a working local Docker image.
 
 ## Postponed / Incomplete Use Cases
 
-* FAdvanced QR token validation logic
+* Advanced QR token validation logic
 
 * Deployment to remote server/cloud environment
 
