@@ -18,8 +18,6 @@ public class Attendance {
         this.sessionId = sessionId;
         this.status = status;
         this.markedBy = markedBy;
-<<<<<<< HEAD
-=======
     }
 
     public Long getId() {
@@ -28,7 +26,6 @@ public class Attendance {
 
     public void setId(Long id) {
         this.id = id;
->>>>>>> origin/admin-api
     }
 
     public Long getStudentId() {
@@ -50,23 +47,10 @@ public class Attendance {
     public AttendanceStatus getStatus() {
         return status;
     }
-<<<<<<< HEAD
-    public MarkedBy getMarkedBy() {
-        return markedBy;
-    }
-    public String getRemarks() {
-        return remarks;
-    }
-=======
->>>>>>> origin/admin-api
 
     public void setStatus(AttendanceStatus status) {
         this.status = status;
     }
-<<<<<<< HEAD
-    public void setRemarks(String remarks) {
-        this.remarks = remarks;
-=======
 
     public MarkedBy getMarkedBy() {
         return markedBy;
@@ -82,6 +66,5 @@ public class Attendance {
 
     public void setMarkedAt(LocalDateTime markedAt) {
         this.markedAt = markedAt;
->>>>>>> origin/admin-api
     }
 }

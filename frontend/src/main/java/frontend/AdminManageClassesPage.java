@@ -1,6 +1,5 @@
 package frontend;
 
-import config.ClassSQL;
 import frontend.auth.AppRouter;
 import frontend.auth.AuthState;
 import frontend.auth.JwtStore;

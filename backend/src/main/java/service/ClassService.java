@@ -1,6 +1,5 @@
 package service;
 
-import config.ClassSQL;
 import model.CourseClass;
 import model.Student;
 

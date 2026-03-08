@@ -3,7 +3,6 @@ package http;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import config.AttendanceSQL;
-import config.ClassSQL;
 import config.SessionSQL;
 import model.Session;
 import security.Auth;

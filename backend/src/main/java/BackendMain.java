@@ -1,6 +1,5 @@
 import com.sun.net.httpserver.HttpServer;
 import config.AttendanceSQL;
-import config.ClassSQL;
 import config.DatabaseInitializer;
 import config.SessionSQL;
 import http.*;

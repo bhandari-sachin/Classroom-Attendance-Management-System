@@ -7,7 +7,6 @@ import frontend.auth.AuthState;
 import frontend.auth.JwtStore;
 <<<<<<< HEAD:frontend/src/main/java/frontend/StudentDashboardApp.java
 import config.AttendanceSQL;
-import config.ClassSQL;
 import config.SessionSQL;
 =======
 import javafx.application.Platform;

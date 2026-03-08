@@ -2,7 +2,6 @@ package http;
 
 import com.auth0.jwt.interfaces.Claim;
 import com.auth0.jwt.interfaces.DecodedJWT;
-import config.ClassSQL;
 import config.SessionSQL;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;

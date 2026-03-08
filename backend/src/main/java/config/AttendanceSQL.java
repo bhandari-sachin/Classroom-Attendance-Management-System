@@ -1,15 +1,13 @@
 package config;
 
-import dto.*;
 import model.Attendance;
 import model.AttendanceStatus;
+import dto.AttendanceView;
 import model.MarkedBy;
 
 import java.sql.Connection;
-import java.sql.Date;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
-import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -37,12 +35,8 @@ public class AttendanceSQL {
     }
 
     public void save(Attendance attendance) {
-<<<<<<< HEAD
-        String sql = "INSERT INTO attendance (student_id, session_id, status, marked_by, remarks) VALUES (?, ?, ?, ?, ?)";
-=======
         String sql = "INSERT INTO attendance (student_id, session_id, status, marked_by) VALUES (?, ?, ?, ?)";
 
->>>>>>> origin/admin-api
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
 
@@ -50,7 +44,6 @@ public class AttendanceSQL {
             stmt.setLong(2, attendance.getSessionId());
             stmt.setString(3, attendance.getStatus().name());
             stmt.setString(4, attendance.getMarkedBy().name());
-            stmt.setString(5, attendance.getRemarks());
 
             stmt.executeUpdate();
 
@@ -59,32 +52,16 @@ public class AttendanceSQL {
         }
     }
 
-<<<<<<< HEAD
-    public void updateStatus(
-            Long studentId,
-            Long sessionId,
-            AttendanceStatus status,
-            MarkedBy markedBy,
-            String remarks) {
-
-        String sql = """
-        UPDATE attendance
-        SET status = ?, marked_by = ?, remarks = ?
-        WHERE student_id = ? AND session_id = ?
-    """;
-=======
     public void updateStatus(Long studentId, Long sessionId, AttendanceStatus status, MarkedBy markedBy) {
         String sql = "UPDATE attendance SET status = ?, marked_by = ?, marked_at = CURRENT_TIMESTAMP WHERE student_id = ? AND session_id = ?";
->>>>>>> origin/admin-api
 
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
 
             stmt.setString(1, status.name());
             stmt.setString(2, markedBy.name());
-            stmt.setString(3, remarks);
-            stmt.setLong(4, studentId);
-            stmt.setLong(5, sessionId);
+            stmt.setLong(3, studentId);
+            stmt.setLong(4, sessionId);
 
             stmt.executeUpdate();
 
@@ -201,393 +178,6 @@ public class AttendanceSQL {
         return results;
     }
 
-    //Statistics
-    public AttendanceStats getOverallStats(){
-        String sql = """
-        SELECT
-            SUM(CASE WHEN status = 'PRESENT' THEN 1 ELSE 0 END) as present_count,
-            SUM(CASE WHEN status = 'ABSENT' THEN 1 ELSE 0 END) as absent_count,
-            SUM(CASE WHEN status = 'EXCUSED' THEN 1 ELSE 0 END) as excused_count,
-            COUNT(*) as total_records
-        FROM attendance
-    """;
-
-        try (Connection conn = DatabaseConnection.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
-
-            ResultSet rs = stmt.executeQuery();
-
-            if (rs.next()) {
-                int present = rs.getInt("present_count");
-                int absent = rs.getInt("absent_count");
-                int excused = rs.getInt("excused_count");
-                int total = rs.getInt("total_records");
-
-                return new AttendanceStats(present, absent, excused, total);
-            }
-
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-
-        return new AttendanceStats(0, 0, 0, 0);
-    }
-
-    public AttendanceStats getStatsForClass(Long classId) {
-        String sql = """
-        SELECT
-            SUM(CASE WHEN a.status = 'PRESENT' THEN 1 ELSE 0 END) as present_count,
-            SUM(CASE WHEN a.status = 'ABSENT' THEN 1 ELSE 0 END) as absent_count,
-            SUM(CASE WHEN a.status = 'EXCUSED' THEN 1 ELSE 0 END) as excused_count,
-            COUNT(*) as total_records
-        FROM attendance a
-        JOIN sessions s ON a.session_id = s.id
-        WHERE s.class_id = ?
-    """;
-
-        try (Connection conn = DatabaseConnection.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
-
-            stmt.setLong(1, classId);
-            ResultSet rs = stmt.executeQuery();
-
-            if (rs.next()) {
-                int present = rs.getInt("present_count");
-                int absent = rs.getInt("absent_count");
-                int excused = rs.getInt("excused_count");
-                int total = rs.getInt("total_records");
-
-                return new AttendanceStats(present, absent, excused, total);
-            }
-
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-
-        return new AttendanceStats(0, 0, 0, 0);
-    }
-
-    public AttendanceStats getStatsForStudent(Long studentId) {
-        String sql = """
-        SELECT
-            SUM(CASE WHEN status = 'PRESENT' THEN 1 ELSE 0 END) as present_count,
-            SUM(CASE WHEN status = 'ABSENT' THEN 1 ELSE 0 END) as absent_count,
-            SUM(CASE WHEN status = 'EXCUSED' THEN 1 ELSE 0 END) as excused_count,
-            COUNT(*) as total_records
-        FROM attendance
-        WHERE student_id = ?
-    """;
-
-        try (Connection conn = DatabaseConnection.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
-
-            stmt.setLong(1, studentId);
-            ResultSet rs = stmt.executeQuery();
-
-            if (rs.next()) {
-                int present = rs.getInt("present_count");
-                int absent = rs.getInt("absent_count");
-                int excused = rs.getInt("excused_count");
-                int total = rs.getInt("total_records");
-
-                return new AttendanceStats(present, absent, excused, total);
-            }
-
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-
-        return new AttendanceStats(0, 0, 0, 0);
-    }
-
-    public AttendanceStats getStatsForStudentByDate(Long studentId, LocalDate start, LocalDate end) {
-
-        String sql = """
-    SELECT
-        SUM(CASE WHEN a.status = 'PRESENT' THEN 1 ELSE 0 END) AS present_count,
-        SUM(CASE WHEN a.status = 'ABSENT' THEN 1 ELSE 0 END) AS absent_count,
-        SUM(CASE WHEN a.status = 'EXCUSED' THEN 1 ELSE 0 END) AS excused_count,
-        COUNT(*) AS total_records
-    FROM attendance a
-    JOIN sessions s ON a.session_id = s.id
-    WHERE a.student_id = ?
-      AND s.session_date BETWEEN ? AND ?
-    """;
-
-        try (Connection conn = DatabaseConnection.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
-
-            stmt.setLong(1, studentId);
-            stmt.setDate(2, Date.valueOf(start));
-            stmt.setDate(3, Date.valueOf(end));
-
-            ResultSet rs = stmt.executeQuery();
-
-            if (rs.next()) {
-                return new AttendanceStats(
-                        rs.getInt("present_count"),
-                        rs.getInt("absent_count"),
-                        rs.getInt("excused_count"),
-                        rs.getInt("total_records")
-                );
-            }
-
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-
-        return new AttendanceStats(0,0,0,0);
-    }
-
-    public AttendanceStats getStatsForStudentInClass(Long studentId, Long classId) {
-
-        String sql = """
-        SELECT
-            SUM(CASE WHEN a.status = 'PRESENT' THEN 1 ELSE 0 END) AS present_count,
-            SUM(CASE WHEN a.status = 'ABSENT' THEN 1 ELSE 0 END) AS absent_count,
-            SUM(CASE WHEN a.status = 'EXCUSED' THEN 1 ELSE 0 END) AS excused_count,
-            COUNT(*) AS total_records
-        FROM attendance a
-        JOIN sessions s ON a.session_id = s.id
-        WHERE a.student_id = ?
-          AND s.class_id = ?
-    """;
-
-        try (Connection conn = DatabaseConnection.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
-
-            stmt.setLong(1, studentId);
-            stmt.setLong(2, classId);
-
-            ResultSet rs = stmt.executeQuery();
-
-            if (rs.next()) {
-                return new AttendanceStats(
-                        rs.getInt("present_count"),
-                        rs.getInt("absent_count"),
-                        rs.getInt("excused_count"),
-                        rs.getInt("total_records")
-                );
-            }
-
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-
-        return new AttendanceStats(0,0,0,0);
-    }
-
-    public AttendanceStats getStatsForStudentInClassByDate(Long studentId, Long classId, LocalDate start, LocalDate end) {
-
-        String sql = """
-        SELECT
-            SUM(CASE WHEN a.status = 'PRESENT' THEN 1 ELSE 0 END) AS present_count,
-            SUM(CASE WHEN a.status = 'ABSENT' THEN 1 ELSE 0 END) AS absent_count,
-            SUM(CASE WHEN a.status = 'EXCUSED' THEN 1 ELSE 0 END) AS excused_count,
-            COUNT(*) AS total_records
-        FROM attendance a
-        JOIN sessions s ON a.session_id = s.id
-        WHERE a.student_id = ?
-          AND s.class_id = ?
-            AND s.session_date BETWEEN ? AND ?
-    """;
-
-        try (Connection conn = DatabaseConnection.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
-
-            stmt.setLong(1, studentId);
-            stmt.setLong(2, classId);
-            stmt.setDate(3, Date.valueOf(start));
-            stmt.setDate(4, Date.valueOf(end));
-
-            ResultSet rs = stmt.executeQuery();
-
-            if (rs.next()) {
-                return new AttendanceStats(
-                        rs.getInt("present_count"),
-                        rs.getInt("absent_count"),
-                        rs.getInt("excused_count"),
-                        rs.getInt("total_records")
-                );
-            }
-
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-
-        return new AttendanceStats(0,0,0,0);
-    }
-
-    public AttendanceStats getStatsByDateRange(LocalDate start, LocalDate end) {
-
-        String sql = """
-        SELECT
-            SUM(CASE WHEN a.status = 'PRESENT' THEN 1 ELSE 0 END) AS present_count,
-            SUM(CASE WHEN a.status = 'ABSENT' THEN 1 ELSE 0 END) AS absent_count,
-            SUM(CASE WHEN a.status = 'EXCUSED' THEN 1 ELSE 0 END) AS excused_count,
-            COUNT(*) AS total_records
-        FROM attendance a
-        JOIN sessions s ON a.session_id = s.id
-        WHERE s.session_date BETWEEN ? AND ?
-    """;
-
-        try (Connection conn = DatabaseConnection.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
-
-            stmt.setDate(1, Date.valueOf(start));
-            stmt.setDate(2, Date.valueOf(end));
-
-            ResultSet rs = stmt.executeQuery();
-
-            if (rs.next()) {
-                return new AttendanceStats(
-                        rs.getInt("present_count"),
-                        rs.getInt("absent_count"),
-                        rs.getInt("excused_count"),
-                        rs.getInt("total_records")
-                );
-            }
-
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-
-        return new AttendanceStats(0,0,0,0);
-    }
-
-    // exporting stats
-    public List<StudentClassReportRow> getStudentYearlyReport(Long studentId, int year) {
-
-        String sql = """
-        SELECT c.name,
-               SUM(CASE WHEN a.status='PRESENT' THEN 1 ELSE 0 END),
-               SUM(CASE WHEN a.status='ABSENT' THEN 1 ELSE 0 END),
-               SUM(CASE WHEN a.status='EXCUSED' THEN 1 ELSE 0 END),
-               COUNT(*)
-        FROM attendance a
-        JOIN sessions s ON a.session_id = s.id
-        JOIN classes c ON s.class_id = c.id
-        WHERE a.student_id = ?
-          AND YEAR(s.session_date) = ?
-        GROUP BY c.name
-    """;
-
-        List<StudentClassReportRow> list = new ArrayList<>();
-
-        try (Connection conn = DatabaseConnection.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
-
-            stmt.setLong(1, studentId);
-            stmt.setInt(2, year);
-
-            ResultSet rs = stmt.executeQuery();
-
-            while (rs.next()) {
-                int present = rs.getInt(2);
-                int total = rs.getInt(5);
-
-                list.add(new StudentClassReportRow(
-                        rs.getString(1),
-                        present,
-                        rs.getInt(3),
-                        rs.getInt(4),
-                        total == 0 ? 0 : (present * 100.0 / total)
-                ));
-            }
-
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-
-        return list;
-    }
-
-    public List<TeacherStudentReportRow> getTeacherClassReport(Long teacherId, Long classId) {
-
-        String sql = """
-        SELECT CONCAT(u.first_name,' ',u.last_name),
-               SUM(CASE WHEN a.status='PRESENT' THEN 1 ELSE 0 END),
-               SUM(CASE WHEN a.status='ABSENT' THEN 1 ELSE 0 END),
-               SUM(CASE WHEN a.status='EXCUSED' THEN 1 ELSE 0 END),
-               COUNT(*)
-        FROM attendance a
-        JOIN users u ON a.student_id = u.id
-        JOIN sessions s ON a.session_id = s.id
-        JOIN classes c ON s.class_id = c.id
-        WHERE c.teacher_id = ?
-          AND c.id = ?
-        GROUP BY u.id
-    """;
-
-        List<TeacherStudentReportRow> list = new ArrayList<>();
-
-        try (Connection conn = DatabaseConnection.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
-
-            stmt.setLong(1, teacherId);
-            stmt.setLong(2, classId);
-
-            ResultSet rs = stmt.executeQuery();
-
-            while (rs.next()) {
-                int present = rs.getInt(2);
-                int total = rs.getInt(5);
-
-                list.add(new TeacherStudentReportRow(
-                        rs.getString(1),
-                        present,
-                        rs.getInt(3),
-                        rs.getInt(4),
-                        total == 0 ? 0 : (present * 100.0 / total)
-                ));
-            }
-
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-
-        return list;
-    }
-
-    public List<AttendanceReportRow> getAllStudentsStats() {
-
-        String sql = """
-        SELECT u.id,
-               u.first_name,
-               u.last_name,
-               SUM(CASE WHEN a.status='PRESENT' THEN 1 ELSE 0 END) present,
-               SUM(CASE WHEN a.status='ABSENT' THEN 1 ELSE 0 END) absent,
-               SUM(CASE WHEN a.status='EXCUSED' THEN 1 ELSE 0 END) excused,
-               COUNT(*) total
-        FROM users u
-        LEFT JOIN attendance a ON u.id = a.student_id
-        WHERE u.user_type = 'STUDENT'
-        GROUP BY u.id
-    """;
-
-        List<AttendanceReportRow> list = new ArrayList<>();
-        try(Connection conn = DatabaseConnection.getConnection();
-            PreparedStatement stmt = conn.prepareStatement(sql)) {
-
-            ResultSet rs = stmt.executeQuery();
-
-            while(rs.next()) {
-                list.add(new AttendanceReportRow(
-                        rs.getLong("id"),
-                        rs.getString("first_name"),
-                        rs.getString("last_name"),
-                        rs.getInt("present"),
-                        rs.getInt("absent"),
-                        rs.getInt("excused"),
-                        rs.getInt("total")
-                ));
-            }
-        } catch (Exception e){ e.printStackTrace(); }
-
-        return list;
-    }
-
-    // Sessions
     public String getSessionCode(Long sessionId) {
         String sql = "SELECT qr_token FROM sessions WHERE id = ?";
 
@@ -632,21 +222,6 @@ public class AttendanceSQL {
         }
         return new dto.AttendanceStats(0,0,0,0);
     }
-<<<<<<< HEAD
-
-    public AttendanceStats getStatsForClassByDateRange(Long classId, LocalDate start, LocalDate end) {
-        String sql = """
-        SELECT
-            SUM(CASE WHEN a.status = 'PRESENT' THEN 1 ELSE 0 END) AS present_count,
-            SUM(CASE WHEN a.status = 'ABSENT' THEN 1 ELSE 0 END) AS absent_count,
-            SUM(CASE WHEN a.status = 'EXCUSED' THEN 1 ELSE 0 END) AS excused_count,
-            COUNT(*) AS total_records
-        FROM attendance a
-        JOIN sessions s ON a.session_id = s.id
-        WHERE s.class_id = ?
-          AND s.session_date BETWEEN ? AND ?
-        """;
-=======
     public dto.AttendanceStats getStudentStats(Long studentId) {
         String sql = """
         SELECT
@@ -657,16 +232,10 @@ public class AttendanceSQL {
         FROM attendance
         WHERE student_id = ?
     """;
->>>>>>> origin/admin-api
 
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
 
-<<<<<<< HEAD
-            stmt.setLong(1, classId);
-            stmt.setDate(2, Date.valueOf(start));
-            stmt.setDate(3, Date.valueOf(end));
-=======
             stmt.setLong(1, studentId);
 
             try (ResultSet rs = stmt.executeQuery()) {
@@ -927,7 +496,6 @@ public class AttendanceSQL {
             if (classId != null) {
                 stmt.setLong(i++, classId);
             }
->>>>>>> origin/admin-api
 
             ResultSet rs = stmt.executeQuery();
 
@@ -935,20 +503,6 @@ public class AttendanceSQL {
                 int present = rs.getInt("present_count");
                 int absent = rs.getInt("absent_count");
                 int excused = rs.getInt("excused_count");
-<<<<<<< HEAD
-                int total = rs.getInt("total_records");
-
-                return new AttendanceStats(present, absent, excused, total);
-            }
-
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-
-        return new AttendanceStats(0, 0, 0, 0);
-    }
-}
-=======
                 int total = rs.getInt("total_days");
                 double rate = total == 0 ? 0 : (present * 100.0 / total);
 
@@ -1080,4 +634,3 @@ public class AttendanceSQL {
     }
 
 }
->>>>>>> origin/admin-api

@@ -1,9 +1,7 @@
 package service;
 
-import model.Session;
 import util.QRCodeGenerator;
 import config.SessionSQL;
-import java.util.List;
 
 public class SessionService {
 
@@ -13,22 +11,9 @@ public class SessionService {
         this.sessionSQL = sessionSQL;
     }
 
-    public List<Session> getSessionsByClassId(Long classId) {
-        return sessionSQL.findByClassId(classId);
-    }
-<<<<<<< HEAD
-
     public String startSession(Long sessionId) {
-        String qrCode = QRCodeGenerator.generate();
-        sessionSQL.activateSession(sessionId, qrCode);
-        return qrCode;
+        String code = QRCodeGenerator.generate();
+        sessionSQL.updateQRCode(sessionId, code);
+        return code;
     }
-    public void endSession(Long sessionId) {
-        sessionSQL.completeSession(sessionId);
-    }
-    public void cancelSession(Long sessionId) {
-        sessionSQL.updateStatus(sessionId, "CANCELED");
-    }
-=======
->>>>>>> origin/admin-api
 }

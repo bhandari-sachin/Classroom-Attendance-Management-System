@@ -2,7 +2,6 @@ package http;
 
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
-import config.ClassSQL;
 import security.Auth;
 import security.JwtService;
 

@@ -3,11 +3,9 @@ package http;
 import com.auth0.jwt.interfaces.Claim;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import config.AttendanceSQL;
-import config.ClassSQL;
 import org.junit.jupiter.api.Test;
 import security.JwtService;
 
-import java.net.URI;
 import java.util.Collections;
 
 import static org.junit.jupiter.api.Assertions.*;

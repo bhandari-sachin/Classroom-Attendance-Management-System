@@ -3,16 +3,12 @@ package http;
 import com.auth0.jwt.interfaces.Claim;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import config.AttendanceSQL;
-import config.ClassSQL;
 import config.SessionSQL;
-import dto.AttendanceView;
 import model.Session;
 import org.junit.jupiter.api.Test;
 import security.JwtService;
 
 import java.time.LocalDate;
-import java.util.Collections;
-import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;

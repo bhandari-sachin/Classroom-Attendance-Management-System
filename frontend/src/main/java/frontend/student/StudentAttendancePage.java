@@ -7,7 +7,6 @@ import frontend.auth.AuthState;
 import frontend.auth.JwtStore;
 <<<<<<< HEAD:frontend/src/main/java/frontend/StudentAttendancePage.java
 import config.AttendanceSQL;
-import config.ClassSQL;
 import config.SessionSQL;
 import dto.AttendanceStats;
 =======
@@ -33,7 +32,6 @@ import service.ClassService;
 
 import java.util.List;
 
-import java.util.List;
 import java.util.Map;
 
 public class StudentAttendancePage {

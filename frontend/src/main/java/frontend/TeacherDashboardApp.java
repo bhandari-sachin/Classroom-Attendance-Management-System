@@ -4,7 +4,6 @@ import frontend.auth.AppRouter;
 import frontend.auth.AuthState;
 import frontend.auth.JwtStore;
 import config.AttendanceSQL;
-import config.ClassSQL;
 import config.SessionSQL;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;

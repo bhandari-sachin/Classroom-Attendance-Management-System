@@ -1,7 +1,6 @@
 package frontend;
 
 import config.AttendanceSQL;
-import config.ClassSQL;
 import config.SessionSQL;
 import config.UserSQL;
 import dto.AttendanceStats;

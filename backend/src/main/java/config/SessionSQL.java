@@ -91,11 +91,7 @@ public class SessionSQL {
                         rs.getLong("id"),
                         rs.getLong("class_id"),
                         rs.getDate("session_date").toLocalDate(),
-                        rs.getTime("start_time").toLocalTime(),
-                        rs.getTime("end_time").toLocalTime(),
-                        rs.getString("topic"),
-                        rs.getString("qr_token"),
-                        rs.getString("status")
+                        rs.getString("qr_token")
                 );
             }
         } catch (Exception e) {
@@ -103,52 +99,8 @@ public class SessionSQL {
         }
         return null;
     }
-<<<<<<< HEAD
-
-    public List<Session> findByClassId(Long classId) {
-        String sql = """
-                    SELECT * FROM sessions
-                    WHERE class_id = ?
-                    ORDER BY session_date DESC
-                """;
-
-        List<Session> sessions = new ArrayList<>();
-
-        try (Connection conn = DatabaseConnection.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
-
-            stmt.setLong(1, classId);
-            ResultSet rs = stmt.executeQuery();
-
-            while (rs.next()) {
-                sessions.add(new Session(
-                        rs.getLong("id"),
-                        rs.getLong("class_id"),
-                        rs.getDate("session_date").toLocalDate(),
-                        rs.getTime("start_time").toLocalTime(),
-                        rs.getTime("end_time").toLocalTime(),
-                        rs.getString("topic"),
-                        rs.getString("qr_token"),
-                        rs.getString("status")
-                ));
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-
-        return sessions;
-    }
-
-    public void updateQRCode(Long sessionId, String code) {
-        String sql = """
-                    UPDATE sessions
-                    SET qr_token = ?, status = 'SCHEDULED'
-                    WHERE id = ?
-                """;
-=======
     public void updateQRCode(Long sessionId, String code) {
         String sql = "UPDATE sessions SET qr_token = ? WHERE id = ?";
->>>>>>> origin/admin-api
 
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
@@ -162,98 +114,13 @@ public class SessionSQL {
         }
     }
 
-<<<<<<< HEAD
-    public Session findByQRCode(String qrCode) {
-        String sql = "SELECT * FROM sessions WHERE qr_token = ?";
-
-        try (Connection conn = DatabaseConnection.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
-
-            stmt.setString(1, qrCode);
-            ResultSet rs = stmt.executeQuery();
-
-            if (rs.next()) {
-                return new Session(
-                        rs.getLong("id"),
-                        rs.getLong("class_id"),
-                        rs.getDate("session_date").toLocalDate(),
-                        rs.getTime("start_time").toLocalTime(),
-                        rs.getTime("end_time").toLocalTime(),
-                        rs.getString("qr_token"),
-                        rs.getString("topic"),
-                        rs.getString("status")
-                );
-            }
-
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-
-        return null;
-    }
-
-    public void updateStatus(Long sessionId, String status) {
-        String sql = """
-                    UPDATE sessions
-                    SET status = ?
-                    WHERE id = ?
-                """;
-
-        try (Connection conn = DatabaseConnection.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
-
-            stmt.setString(1, status);
-            stmt.setLong(2, sessionId);
-            stmt.executeUpdate();
-
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
-
-    public void activateSession(Long sessionId, String qrToken) {
-        String sql = """
-                    UPDATE sessions
-                    SET qr_token = ?,
-                        start_time = CURTIME(),
-                        status = 'ACTIVE'
-                    WHERE id = ?
-                """;
-
-        try (Connection conn = DatabaseConnection.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
-
-            stmt.setString(1, qrToken);
-            stmt.setLong(2, sessionId);
-            stmt.executeUpdate();
-
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
-
-    public void completeSession(Long sessionId) {
-        String sql = """
-                    UPDATE sessions
-                    SET end_time = CURTIME(),
-                        status = 'COMPLETED'
-                    WHERE id = ?
-                """;
-=======
     public String getQRCode(Long sessionId) {
         String sql = "SELECT qr_token FROM sessions WHERE id = ?";
->>>>>>> origin/admin-api
 
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
 
             stmt.setLong(1, sessionId);
-<<<<<<< HEAD
-            stmt.executeUpdate();
-
-        } catch (Exception e) {
-            e.printStackTrace();
-=======
             ResultSet rs = stmt.executeQuery();
 
             if (rs.next()) {
@@ -263,7 +130,6 @@ public class SessionSQL {
 
         } catch (Exception e) {
             throw new RuntimeException("Failed to get session QR code", e);
->>>>>>> origin/admin-api
         }
     }
 }

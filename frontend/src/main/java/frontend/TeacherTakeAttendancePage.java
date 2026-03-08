@@ -20,7 +20,6 @@ import model.Session;
 import service.AttendanceService;
 import service.ClassService;
 import service.SessionService;
-import config.ClassSQL;
 import config.SessionSQL;
 import config.AttendanceSQL;
 import util.QRCodeGenerator;
