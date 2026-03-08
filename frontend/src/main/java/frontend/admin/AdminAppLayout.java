@@ -1,4 +1,4 @@
-package frontend;
+package frontend.admin;
 
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;

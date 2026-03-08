@@ -1,12 +1,19 @@
-package frontend;
+package frontend.student;
 
+import frontend.AppLayout;
+import frontend.api.StudentAttendanceApi;
 import frontend.auth.AppRouter;
 import frontend.auth.AuthState;
 import frontend.auth.JwtStore;
+<<<<<<< HEAD:frontend/src/main/java/frontend/StudentAttendancePage.java
 import config.AttendanceSQL;
 import config.ClassSQL;
 import config.SessionSQL;
 import dto.AttendanceStats;
+=======
+import javafx.application.Platform;
+import javafx.concurrent.Task;
+>>>>>>> origin/admin-api:frontend/src/main/java/frontend/student/StudentAttendancePage.java
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Group;
@@ -26,8 +33,12 @@ import service.ClassService;
 
 import java.util.List;
 
+import java.util.List;
+import java.util.Map;
+
 public class StudentAttendancePage {
 
+<<<<<<< HEAD:frontend/src/main/java/frontend/StudentAttendancePage.java
     private final Label presentValueLabel = new Label("0");
     private final Label absentValueLabel = new Label("0");
     private final Label excusedValueLabel = new Label("0");
@@ -36,6 +47,10 @@ public class StudentAttendancePage {
 
     private final ClassService classService = new ClassService(new ClassSQL());
     private final AttendanceService attendanceService = new AttendanceService(new AttendanceSQL(), new SessionSQL());
+=======
+    // backend base url (same port as BackendMain)
+    private static final String BASE_URL = "http://localhost:8081";
+>>>>>>> origin/admin-api:frontend/src/main/java/frontend/student/StudentAttendancePage.java
 
     public Parent build(Scene scene, AppRouter router, JwtStore jwtStore, AuthState state) {
 
@@ -99,12 +114,30 @@ public class StudentAttendancePage {
 
         stats.getColumnConstraints().addAll(c1, c2);
 
+<<<<<<< HEAD:frontend/src/main/java/frontend/StudentAttendancePage.java
         VBox rateCard = rateCard("Attendance Rate", rateValueLabel);
 
         VBox presentCard = smallStatCard("Present", presentValueLabel, "#3BAA66", "check");
         VBox absentCard  = smallStatCard("Absent",  absentValueLabel,  "#E05A5A", "x");
         VBox excusedCard = smallStatCard("Excused", excusedValueLabel, "#E09A3B", "clock");
         VBox totalDaysCard = smallStatCard("Total Days", totalDaysValueLabel, "#BFC5CC", "calendar");
+=======
+        // Labels we can update after API call
+        Label rateValue = new Label("0%");
+        rateValue.getStyleClass().add("rate-value");
+
+        VBox rateCard = rateCardWithValue("Attendance Rate", rateValue);
+
+        Label presentValue = new Label("0");
+        Label absentValue = new Label("0");
+        Label excusedValue = new Label("0");
+        Label totalDaysValue = new Label("0");
+
+        VBox presentCard = smallStatCardWithValue("Present", presentValue, "#3BAA66", "check");
+        VBox absentCard  = smallStatCardWithValue("Absent",  absentValue,  "#E05A5A", "x");
+        VBox excusedCard = smallStatCardWithValue("Excused", excusedValue, "#E09A3B", "clock");
+        VBox totalDaysCard = smallStatCardWithValue("Total Days", totalDaysValue, "#BFC5CC", "calendar");
+>>>>>>> origin/admin-api:frontend/src/main/java/frontend/student/StudentAttendancePage.java
 
         stats.add(rateCard, 0, 0);
         stats.add(presentCard, 1, 0);
@@ -116,22 +149,14 @@ public class StudentAttendancePage {
         Label recordsTitle = new Label("Attendance Records");
         recordsTitle.getStyleClass().add("section-title");
 
-        VBox recordsCard = new VBox(8);
+        VBox recordsCard = new VBox(10);
         recordsCard.getStyleClass().add("records-card");
-        recordsCard.setAlignment(Pos.CENTER);
         recordsCard.setMinHeight(160);
 
-        Label recIcon = new Label("📅");
-        recIcon.getStyleClass().add("empty-icon");
-        recIcon.setFont(Font.font("Segoe UI Emoji", 18));
-
-        Label recT = new Label("No Records Found");
-        recT.getStyleClass().add("empty-title");
-
-        Label recS = new Label("No attendance records for the selected filters");
-        recS.getStyleClass().add("empty-subtitle");
-
-        recordsCard.getChildren().addAll(recIcon, recT, recS);
+        Label loadingRecords = new Label("Loading records…");
+        loadingRecords.getStyleClass().add("empty-subtitle");
+        recordsCard.setAlignment(Pos.CENTER);
+        recordsCard.getChildren().add(loadingRecords);
 
         page.getChildren().addAll(
                 title,
@@ -143,10 +168,15 @@ public class StudentAttendancePage {
                 recordsCard
         );
 
+<<<<<<< HEAD:frontend/src/main/java/frontend/StudentAttendancePage.java
         updateStatsForSelection(classFilter.getValue(), timeFilter.getValue(), studentId);
 
         classFilter.setOnAction(e -> updateStatsForSelection(classFilter.getValue(), timeFilter.getValue(), studentId));
         timeFilter.setOnAction(e -> updateStatsForSelection(classFilter.getValue(), timeFilter.getValue(), studentId));
+=======
+        // Load from backend (NOT on UI thread)
+        loadAttendance(jwtStore, state, rateValue, presentValue, absentValue, excusedValue, totalDaysValue, recordsCard);
+>>>>>>> origin/admin-api:frontend/src/main/java/frontend/student/StudentAttendancePage.java
 
         return AppLayout.wrapWithSidebar(
                 studentName,
@@ -156,7 +186,7 @@ public class StudentAttendancePage {
                 "My Attendance",
                 "Email",
                 page,
-                "third", // ✅ active = My Attendance
+                "third",
                 new AppLayout.Navigator() {
                     @Override public void goDashboard() { router.go("student-dashboard"); }
                     @Override public void goTakeAttendance() { router.go("student-mark"); }
@@ -170,6 +200,7 @@ public class StudentAttendancePage {
         );
     }
 
+<<<<<<< HEAD:frontend/src/main/java/frontend/StudentAttendancePage.java
     private void updateStatsForSelection(Object selectedClassObj, String timeFilterValue, Long studentId) {
         Long classId = null;
         if (selectedClassObj instanceof CourseClass) classId = ((CourseClass) selectedClassObj).getId();
@@ -205,6 +236,138 @@ public class StudentAttendancePage {
     /* ================= COMPONENTS ================= */
 
     private VBox rateCard(String label, Label valueLabel) {
+=======
+    private void loadAttendance(JwtStore jwtStore,
+                                AuthState state,
+                                Label rateValue,
+                                Label presentValue,
+                                Label absentValue,
+                                Label excusedValue,
+                                Label totalDaysValue,
+                                VBox recordsCard) {
+
+        StudentAttendanceApi api = new StudentAttendanceApi(BASE_URL);
+
+        Task<Void> task = new Task<>() {
+            Map<String, Object> summary;
+            List<Map<String, Object>> records;
+
+            @Override
+            protected Void call() throws Exception {
+                summary = api.getSummary(jwtStore, state);
+                records = api.getRecords(jwtStore, state);
+                return null;
+            }
+
+            @Override
+            protected void succeeded() {
+                Platform.runLater(() -> {
+                    // summary
+                    int present = num(summary.get("presentCount"));
+                    int absent  = num(summary.get("absentCount"));
+                    int excused = num(summary.get("excusedCount"));
+                    int total   = num(summary.get("totalDays"));
+
+                    double rate = dbl(summary.get("attendanceRate")); // already percent in backend example
+                    // if backend returns 0..100:
+                    rateValue.setText(((int) Math.round(rate)) + "%");
+
+                    presentValue.setText(String.valueOf(present));
+                    absentValue.setText(String.valueOf(absent));
+                    excusedValue.setText(String.valueOf(excused));
+                    totalDaysValue.setText(String.valueOf(total));
+
+                    // records
+                    recordsCard.getChildren().clear();
+                    recordsCard.setAlignment(Pos.TOP_LEFT);
+
+                    if (records == null || records.isEmpty()) {
+                        VBox empty = emptyRecords();
+                        recordsCard.setAlignment(Pos.CENTER);
+                        recordsCard.getChildren().add(empty);
+                        return;
+                    }
+
+                    for (Map<String, Object> r : records) {
+                        String date = String.valueOf(r.getOrDefault("sessionDate", "—"));
+                        String status = String.valueOf(r.getOrDefault("status", "—"));
+                        recordsCard.getChildren().add(recordRow(date, status));
+                    }
+                });
+            }
+
+            @Override
+            protected void failed() {
+                Throwable e = getException();
+                Platform.runLater(() -> {
+                    recordsCard.getChildren().clear();
+                    recordsCard.setAlignment(Pos.CENTER);
+
+                    Label err = new Label("Failed to load attendance: " + (e == null ? "" : e.getMessage()));
+                    err.getStyleClass().add("empty-subtitle");
+                    recordsCard.getChildren().add(err);
+                });
+            }
+        };
+
+        Thread t = new Thread(task);
+        t.setDaemon(true);
+        t.start();
+    }
+
+    private static int num(Object v) {
+        if (v == null) return 0;
+        if (v instanceof Number n) return n.intValue();
+        try { return Integer.parseInt(String.valueOf(v)); } catch (Exception e) { return 0; }
+    }
+
+    private static double dbl(Object v) {
+        if (v == null) return 0;
+        if (v instanceof Number n) return n.doubleValue();
+        try { return Double.parseDouble(String.valueOf(v)); } catch (Exception e) { return 0; }
+    }
+
+    /* ================= UI helpers ================= */
+
+    private VBox emptyRecords() {
+        VBox box = new VBox(8);
+        box.setAlignment(Pos.CENTER);
+
+        Label recIcon = new Label("📅");
+        recIcon.getStyleClass().add("empty-icon");
+        recIcon.setFont(Font.font("Segoe UI Emoji", 18));
+
+        Label recT = new Label("No Records Found");
+        recT.getStyleClass().add("empty-title");
+
+        Label recS = new Label("No attendance records for the selected filters");
+        recS.getStyleClass().add("empty-subtitle");
+
+        box.getChildren().addAll(recIcon, recT, recS);
+        return box;
+    }
+
+    private HBox recordRow(String date, String status) {
+        HBox row = new HBox(10);
+        row.setAlignment(Pos.CENTER_LEFT);
+        row.setPadding(new Insets(10));
+        row.getStyleClass().add("record-row");
+
+        Label d = new Label(date);
+        d.getStyleClass().add("record-date");
+
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+
+        Label chip = new Label(status);
+        chip.getStyleClass().add("record-chip");
+
+        row.getChildren().addAll(d, spacer, chip);
+        return row;
+    }
+
+    private VBox rateCardWithValue(String label, Label valueLabel) {
+>>>>>>> origin/admin-api:frontend/src/main/java/frontend/student/StudentAttendancePage.java
         VBox card = new VBox(8);
         card.getStyleClass().add("rate-card");
 
@@ -222,13 +385,20 @@ public class StudentAttendancePage {
 
         top.getChildren().addAll(lbl, spacer, trend);
 
+<<<<<<< HEAD:frontend/src/main/java/frontend/StudentAttendancePage.java
         valueLabel.getStyleClass().add("rate-value");
 
+=======
+>>>>>>> origin/admin-api:frontend/src/main/java/frontend/student/StudentAttendancePage.java
         card.getChildren().addAll(top, valueLabel);
         return card;
     }
 
+<<<<<<< HEAD:frontend/src/main/java/frontend/StudentAttendancePage.java
     private VBox smallStatCard(String label, Label valueLabel, String colorHex, String iconKey) {
+=======
+    private VBox smallStatCardWithValue(String label, Label valueLabel, String colorHex, String iconKey) {
+>>>>>>> origin/admin-api:frontend/src/main/java/frontend/student/StudentAttendancePage.java
         VBox card = new VBox(6);
         card.getStyleClass().add("mini-stat-card");
 

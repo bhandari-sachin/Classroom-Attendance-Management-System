@@ -5,6 +5,7 @@ import java.time.LocalTime;
 
 public class Session {
 
+<<<<<<< HEAD
     private Long id;
     private Long classId;
     private LocalDate sessionDate;
@@ -26,6 +27,21 @@ public class Session {
     }
 
     public Long getId() {
+=======
+    private final long id;
+    private final long classId;
+    private final LocalDate sessionDate;
+    private String QRCode;
+
+    public Session(long id, long classId, LocalDate sessionDate, String QRCode) {
+        this.id = id;
+        this.classId = classId;
+        this.sessionDate = sessionDate;
+        this.QRCode = QRCode;
+    }
+
+    public long getId() {
+>>>>>>> origin/admin-api
         return id;
     }
     public Long getClassId() { return classId; }
@@ -39,4 +55,21 @@ public class Session {
     }
     public String getStatus() { return status; }
 
+<<<<<<< HEAD
+=======
+    public long getClassId() {
+        return classId;
+    }
+
+    public LocalDate getSessionDate() {
+        return sessionDate;
+    }
+
+    public String getQrCode() {
+        return QRCode;
+    }
+    public void setQRCode(String QRCode) {
+        this.QRCode = QRCode;
+    }
+>>>>>>> origin/admin-api
 }

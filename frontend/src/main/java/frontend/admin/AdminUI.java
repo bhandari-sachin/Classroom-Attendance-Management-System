@@ -1,5 +1,7 @@
-package frontend;
+package frontend.admin;
 
+import frontend.ClassRow;
+import frontend.UserRow;
 import javafx.geometry.Pos;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
@@ -158,6 +160,7 @@ public class AdminUI {
         TableColumn<ClassRow, Number> cStudents = new TableColumn<>("Students");
         cStudents.setCellValueFactory(d -> d.getValue().studentsProperty());
 
+<<<<<<< HEAD:frontend/src/main/java/frontend/AdminUI.java
         TableColumn<ClassRow, Void> cActions = new TableColumn<>("Actions");
         cActions.setCellFactory(col -> new TableCell<>() {
             private final HBox box = new HBox(10);
@@ -180,6 +183,9 @@ public class AdminUI {
 
         table.getColumns().addAll(cName, cCode, cTeacher, cSchedule, cStudents, cActions);
 
+=======
+        table.getColumns().addAll(cName, cCode, cTeacher, cSchedule, cStudents);
+>>>>>>> origin/admin-api:frontend/src/main/java/frontend/admin/AdminUI.java
         return table;
     }
 

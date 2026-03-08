@@ -1,7 +1,12 @@
-package frontend;
+package frontend.student;
 
+<<<<<<< HEAD:frontend/src/main/java/frontend/StudentMarkAttendancePage.java
 import config.AttendanceSQL;
 import config.SessionSQL;
+=======
+import frontend.AppLayout;
+import frontend.api.StudentAttendanceApi;
+>>>>>>> origin/admin-api:frontend/src/main/java/frontend/student/StudentMarkAttendancePage.java
 import frontend.auth.AppRouter;
 import frontend.auth.AuthState;
 import frontend.auth.JwtStore;
@@ -89,6 +94,7 @@ public class StudentMarkAttendancePage {
 
         submit.setOnAction(e -> {
             String code = codeField.getText().trim();
+<<<<<<< HEAD:frontend/src/main/java/frontend/StudentMarkAttendancePage.java
 
             if (code.isEmpty()) {
                 messageLabel.setText("Please enter an attendance code");
@@ -141,6 +147,28 @@ public class StudentMarkAttendancePage {
                         messageLabel.setManaged(true);
                         submit.setDisable(false);
                     });
+=======
+            if (code.isBlank()) {
+                new Alert(Alert.AlertType.WARNING, "Enter attendance code first.").show();
+                return;
+            }
+
+            StudentAttendanceApi api = new StudentAttendanceApi("http://localhost:8081");
+
+            new Thread(() -> {
+                try {
+                    api.submitCode(code, jwtStore, state);
+
+                    javafx.application.Platform.runLater(() -> {
+                        codeField.clear();
+                        new Alert(Alert.AlertType.INFORMATION, "Attendance marked!").show();
+                    });
+
+                } catch (Exception exx) {
+                    javafx.application.Platform.runLater(() ->
+                            new Alert(Alert.AlertType.ERROR, exx.getMessage()).show()
+                    );
+>>>>>>> origin/admin-api:frontend/src/main/java/frontend/student/StudentMarkAttendancePage.java
                 }
             }).start();
         });

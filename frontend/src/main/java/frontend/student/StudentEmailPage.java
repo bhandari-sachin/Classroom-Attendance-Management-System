@@ -1,11 +1,22 @@
-package frontend;
+package frontend.student;
 
+<<<<<<< HEAD:frontend/src/main/java/frontend/StudentEmailPage.java
 import config.UserSQL;
 import frontend.auth.AppRouter;
 import frontend.auth.AuthState;
 import frontend.auth.JwtStore;
+=======
+import frontend.AppLayout;
+import frontend.TeacherRow;
+import frontend.api.StudentTeacherApi;
+import frontend.auth.AppRouter;
+import frontend.auth.AuthState;
+import frontend.auth.JwtStore;
+import javafx.application.Platform;
+>>>>>>> origin/admin-api:frontend/src/main/java/frontend/student/StudentEmailPage.java
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
+import javafx.concurrent.Task;
 import javafx.geometry.Insets;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
@@ -19,9 +30,18 @@ import service.UserService;
 
 import java.util.List;
 
+import java.util.List;
+import java.util.Map;
+
 public class StudentEmailPage {
 
+<<<<<<< HEAD:frontend/src/main/java/frontend/StudentEmailPage.java
     // show teacher contacts from backend
+=======
+    private static final String BASE_URL = "http://localhost:8081";
+
+    // ✅ now real data, starts empty
+>>>>>>> origin/admin-api:frontend/src/main/java/frontend/student/StudentEmailPage.java
     private final ObservableList<TeacherRow> rows = FXCollections.observableArrayList();
 
     public Parent build(Scene scene, AppRouter router, JwtStore jwtStore, AuthState state) {
@@ -47,8 +67,11 @@ public class StudentEmailPage {
         Label title = new Label("Email");
         title.getStyleClass().add("title");
 
-        Label info = new Label("Teacher emails (connect real backend later).");
+        Label info = new Label("Your teacher emails.");
         info.getStyleClass().add("subtitle");
+
+        Label status = new Label("Loading…");
+        status.getStyleClass().add("subtitle");
 
         TableView<TeacherRow> table = new TableView<>(rows);
         table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
@@ -62,7 +85,10 @@ public class StudentEmailPage {
 
         table.getColumns().addAll(colName, colEmail);
 
-        page.getChildren().addAll(title, info, table);
+        page.getChildren().addAll(title, info, status, table);
+
+        // ✅ fetch from backend
+        loadTeachers(jwtStore, state, status);
 
         return AppLayout.wrapWithSidebar(
                 studentName,
@@ -72,7 +98,7 @@ public class StudentEmailPage {
                 "My Attendance",
                 "Email",
                 page,
-                "fourth", // ✅ active = Email
+                "fourth",
                 new AppLayout.Navigator() {
                     @Override public void goDashboard() { router.go("student-dashboard"); }
                     @Override public void goTakeAttendance() { router.go("student-mark"); }
@@ -84,5 +110,43 @@ public class StudentEmailPage {
                     }
                 }
         );
+    }
+
+    private void loadTeachers(JwtStore jwtStore, AuthState state, Label statusLabel) {
+        StudentTeacherApi api = new StudentTeacherApi(BASE_URL);
+
+        Task<List<Map<String, Object>>> task = new Task<>() {
+            @Override
+            protected List<Map<String, Object>> call() throws Exception {
+                return api.getTeachers(jwtStore, state);
+            }
+
+            @Override
+            protected void succeeded() {
+                List<Map<String, Object>> list = getValue();
+
+                Platform.runLater(() -> {
+                    rows.clear();
+                    for (Map<String, Object> t : list) {
+                        String name = String.valueOf(t.getOrDefault("teacherName", ""));
+                        String email = String.valueOf(t.getOrDefault("email", ""));
+                        rows.add(new TeacherRow(name, email));
+                    }
+                });
+            }
+
+            @Override
+            protected void failed() {
+                Throwable e = getException();
+                Platform.runLater(() -> statusLabel.setText(
+                        "Failed to load teachers: " + (e == null ? "" : e.getMessage())
+                ));
+                if (e != null) e.printStackTrace();
+            }
+        };
+
+        Thread th = new Thread(task);
+        th.setDaemon(true);
+        th.start();
     }
 }

@@ -24,6 +24,7 @@ public class JwtService {
         return JWT.create()
                 .withIssuer(issuer)
                 .withSubject(String.valueOf(userId))
+                .withClaim("id", userId)
                 .withClaim("email", email)
                 .withClaim("role", role)
                 .withIssuedAt(Date.from(now))

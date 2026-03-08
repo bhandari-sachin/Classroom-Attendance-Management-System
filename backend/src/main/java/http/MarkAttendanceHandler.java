@@ -9,7 +9,10 @@ import com.sun.net.httpserver.HttpHandler;
 import service.AttendanceService;
 
 import java.io.IOException;
+<<<<<<< HEAD
 import java.io.InputStream;
+=======
+>>>>>>> origin/admin-api
 import java.util.Map;
 
 public class MarkAttendanceHandler implements HttpHandler {
@@ -18,6 +21,11 @@ public class MarkAttendanceHandler implements HttpHandler {
     private final AttendanceService attendanceService;
     private final ObjectMapper om = new ObjectMapper();
 
+<<<<<<< HEAD
+=======
+    private final AttendanceService attendanceService;
+
+>>>>>>> origin/admin-api
     public MarkAttendanceHandler(JwtService jwtService, AttendanceService attendanceService) {
         this.jwtService = jwtService;
         this.attendanceService = attendanceService;
@@ -26,10 +34,11 @@ public class MarkAttendanceHandler implements HttpHandler {
     @Override
     public void handle(HttpExchange ex) throws IOException {
         try {
-            DecodedJWT jwt = Auth.requireJwt(ex, jwtService);
-            Auth.requireRole(jwt, "TEACHER", "ADMIN");
+            var jwt = Auth.requireJwt(ex, jwtService);
+            Auth.requireRole(jwt, "STUDENT");
 
             if (!"POST".equalsIgnoreCase(ex.getRequestMethod())) {
+<<<<<<< HEAD
                 HttpUtil.json(ex, 405, Map.of("error", "Method not allowed"));
                 return;
             }
@@ -63,6 +72,37 @@ public class MarkAttendanceHandler implements HttpHandler {
         } catch (Exception e) {
             e.printStackTrace();
             HttpUtil.json(ex, 500, Map.of("error", e.getMessage()));
+=======
+                HttpUtil.send(ex, 405, "Method Not Allowed");
+                return;
+            }
+
+            Map<String, Object> body =
+                    new com.fasterxml.jackson.databind.ObjectMapper()
+                            .readValue(ex.getRequestBody(), Map.class);
+
+            String code = (String) body.get("code");
+            if (code == null || code.isBlank()) {
+                HttpUtil.json(ex, 400, Map.of("error", "Attendance code required"));
+                return;
+            }
+
+            Long studentId = jwt.getClaim("id").isNull()
+                    ? Long.valueOf(jwt.getSubject())
+                    : jwt.getClaim("id").asLong();
+
+            attendanceService.markByCode(studentId, code);
+
+            HttpUtil.json(ex, 200, Map.of("status", "attendance marked"));
+
+        } catch (SecurityException se) {
+            HttpUtil.json(ex, 403, Map.of("error", se.getMessage()));
+        } catch (IllegalArgumentException bad) {
+            HttpUtil.json(ex, 400, Map.of("error", bad.getMessage()));
+        } catch (Exception e) {
+            e.printStackTrace();
+            HttpUtil.json(ex, 500, Map.of("error", "Server error"));
+>>>>>>> origin/admin-api
         }
     }
 }

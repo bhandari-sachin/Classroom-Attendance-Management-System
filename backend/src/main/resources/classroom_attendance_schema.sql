@@ -94,5 +94,5 @@ CREATE TABLE IF NOT EXISTS attendance
     CONSTRAINT chk_attendance_status
         CHECK (status IN ('PRESENT', 'ABSENT', 'EXCUSED')),
     CONSTRAINT chk_marked_by
-        CHECK (marked_by IN ('QR', 'TEACHER'))
+        CHECK (marked_by IN ('QR', 'TEACHER', 'STUDENT'))
 );

@@ -16,6 +16,7 @@ public class SessionService {
     public List<Session> getSessionsByClassId(Long classId) {
         return sessionSQL.findByClassId(classId);
     }
+<<<<<<< HEAD
 
     public String startSession(Long sessionId) {
         String qrCode = QRCodeGenerator.generate();
@@ -28,4 +29,6 @@ public class SessionService {
     public void cancelSession(Long sessionId) {
         sessionSQL.updateStatus(sessionId, "CANCELED");
     }
+=======
+>>>>>>> origin/admin-api
 }
