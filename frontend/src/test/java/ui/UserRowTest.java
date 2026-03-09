@@ -1,7 +1,7 @@
 package ui;
 
 import frontend.UserRow;
-import model.UserRole;
+//import model.UserRole;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
