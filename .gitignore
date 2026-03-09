@@ -50,3 +50,4 @@ desktop.ini
 # Coverage Reports
 /jacoco.exec
 /coverage/
+.idea/misc.xml
