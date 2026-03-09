@@ -6,6 +6,7 @@ WORKDIR /app
 COPY pom.xml .
 COPY common/pom.xml common/pom.xml
 COPY backend/pom.xml backend/pom.xml
+COPY frontend/pom.xml frontend/pom.xml
 
 COPY common/src common/src
 COPY backend/src backend/src
