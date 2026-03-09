@@ -2,21 +2,16 @@ pipeline {
     agent any
 
     environment {
-        // Docker CLI path for Windows agents
         PATH = "C:\\Program Files\\Docker\\Docker\\resources\\bin;${env.PATH}"
 
-        // Jenkins Credentials (Username/Password) for Docker Hub
-        DOCKERHUB_CREDENTIALS_ID = '11de06b8-c29b-4e4c-bf92-2d6a8d92868e'   // <-- your Jenkins credential ID
+        DOCKERHUB_CREDENTIALS_ID = '11de06b8-c29b-4e4c-bf92-2d6a8d92868e'
 
-        // Docker Hub repo (username/repo)
-        DOCKERHUB_REPO = 'sachinbhandari/classroom_attendance_sys' // <-- change this
+        BACKEND_IMAGE_REPO  = 'sachinbhandari/classroom-attendance-backend'
+        FRONTEND_IMAGE_REPO = 'sachinbhandari/classroom-attendance-frontend'
 
-        // Tags
         DOCKER_IMAGE_TAG_LATEST = 'latest'
         DOCKER_IMAGE_TAG_BUILD  = "${env.BUILD_NUMBER}"
     }
-
-
 
     stages {
         stage('Check Docker') {
@@ -52,14 +47,12 @@ pipeline {
 
         stage('Code Coverage') {
             steps {
-                // Generates JaCoCo reports (multi-module => multiple targets)
                 bat 'mvn -B jacoco:report'
             }
         }
 
         stage('Publish Coverage Report') {
             steps {
-                // Coverage plugin (JaCoCo parser)
                 recordCoverage(
                     tools: [[parser: 'JACOCO', pattern: '**/target/site/jacoco/jacoco.xml']],
                     id: 'jacoco',
@@ -69,18 +62,31 @@ pipeline {
             }
         }
 
-        stage('Build Docker Image') {
+        stage('Build Backend Docker Image') {
             steps {
                 bat """
                     docker build ^
-                      -t %DOCKERHUB_REPO%:%DOCKER_IMAGE_TAG_BUILD% ^
-                      -t %DOCKERHUB_REPO%:%DOCKER_IMAGE_TAG_LATEST% ^
+                      -f backend\\Dockerfile ^
+                      -t %BACKEND_IMAGE_REPO%:%DOCKER_IMAGE_TAG_BUILD% ^
+                      -t %BACKEND_IMAGE_REPO%:%DOCKER_IMAGE_TAG_LATEST% ^
                       .
                 """
             }
         }
 
-        stage('Push Docker Image to Docker Hub') {
+        stage('Build Frontend Docker Image') {
+            steps {
+                bat """
+                    docker build ^
+                      -f frontend\\Dockerfile ^
+                      -t %FRONTEND_IMAGE_REPO%:%DOCKER_IMAGE_TAG_BUILD% ^
+                      -t %FRONTEND_IMAGE_REPO%:%DOCKER_IMAGE_TAG_LATEST% ^
+                      .
+                """
+            }
+        }
+
+        stage('Push Docker Images to Docker Hub') {
             steps {
                 withCredentials([usernamePassword(
                     credentialsId: "${DOCKERHUB_CREDENTIALS_ID}",
@@ -89,11 +95,23 @@ pipeline {
                 )]) {
                     bat """
                         docker login -u %DOCKER_USER% -p %DOCKER_PASS%
-                        docker push %DOCKERHUB_REPO%:%DOCKER_IMAGE_TAG_BUILD%
-                        docker push %DOCKERHUB_REPO%:%DOCKER_IMAGE_TAG_LATEST%
+
+                        docker push %BACKEND_IMAGE_REPO%:%DOCKER_IMAGE_TAG_BUILD%
+                        docker push %BACKEND_IMAGE_REPO%:%DOCKER_IMAGE_TAG_LATEST%
+
+                        docker push %FRONTEND_IMAGE_REPO%:%DOCKER_IMAGE_TAG_BUILD%
+                        docker push %FRONTEND_IMAGE_REPO%:%DOCKER_IMAGE_TAG_LATEST%
+
                         docker logout
                     """
                 }
+            }
+        }
+
+        stage('Deploy with Docker Compose') {
+            steps {
+                bat 'docker compose down'
+                bat 'docker compose up -d'
             }
         }
     }
