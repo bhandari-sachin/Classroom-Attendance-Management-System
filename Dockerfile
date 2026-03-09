@@ -10,7 +10,7 @@ COPY frontend/pom.xml frontend/pom.xml
 # Cache dependencies
 RUN mvn -B -ntp dependency:go-offline
 
-# Copy full source and build from root
+# Copy full source and build
 COPY . .
 RUN mvn -B -ntp clean package -DskipTests
 
@@ -18,7 +18,7 @@ RUN mvn -B -ntp clean package -DskipTests
 FROM eclipse-temurin:21-jdk
 WORKDIR /app
 
-# Install Linux GUI libraries needed by JavaFX
+# Install GUI libraries needed by JavaFX
 RUN apt-get update && apt-get install -y \
     libx11-6 \
     libxext6 \
@@ -27,7 +27,7 @@ RUN apt-get update && apt-get install -y \
     libxi6 \
     libgtk-3-0 \
     libgl1 \
-    libasound2 \
+    libasound2t64 \
     wget \
     unzip \
     && rm -rf /var/lib/apt/lists/*
@@ -39,10 +39,10 @@ RUN mkdir -p /opt/javafx \
     && mv /opt/javafx/javafx-sdk-21 /opt/javafx/sdk \
     && rm -f /tmp/javafx.zip
 
-# Copy built frontend jar
+# Copy frontend jar
 COPY --from=builder /app/frontend/target/frontend.jar app.jar
 
-# Send GUI to VcXsrv on Windows host
+# Send GUI to VcXsrv on Windows
 ENV DISPLAY=host.docker.internal:0.0
 
 # Run JavaFX app
