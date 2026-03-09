@@ -1,3 +1,5 @@
+/*
+
 package frontend;
 
 import javafx.beans.property.SimpleStringProperty;
@@ -23,3 +25,5 @@ public class UserRow {
     public StringProperty typeProperty() { return type; }
     public StringProperty enrolledProperty() { return enrolled; }
 }
+
+ */

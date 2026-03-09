@@ -1,0 +1,28 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: attendance-backend
+    ports:
+      - "8080:8080"
+    environment:
+      DB_URL: jdbc:mysql://host.docker.internal:3306/classroom_attendance?serverTimezone=UTC
+      DB_USERNAME: db_user
+      DB_PASSWORD: db_password
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    container_name: attendance-frontend
+    depends_on:
+      - backend
+    environment:
+      DISPLAY: host.docker.internal:0.0
+      LIBGL_ALWAYS_INDIRECT: "1"
+      BACKEND_URL: http://backend:8080
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
