@@ -40,8 +40,8 @@ The system follows a **layered architecture** consisting of:
 ![navigate to diagrams/Architecture.png](diagrams/Architecture.png)
 
 The use case and ER diagrams for the system are as follows:
-- Use Case Diagram: ![navigate to diagrams/UseCase02.png](diagrams/UseCase02.png)
-- ER Diagram: ![navigate to diagrams/ERdiagramV2.png](diagrams/ERdiagramV2.png)
+- Use Case Diagram: ![navigate to diagrams/UseCase02.png](diagrams/UseCase02.pdf)
+- ER Diagram: ![navigate to diagrams/ERdiagramV2.png](diagrams/ERdiagramV2.pdf)
 
 ---
 
