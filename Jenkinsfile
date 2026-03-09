@@ -6,7 +6,7 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
-                git branch: 'admin-api',
+                git branch: 'main',
                         url: 'https://github.com/bhandari-sachin/Classroom-Attendance-Management-System.git'
             }
         }
