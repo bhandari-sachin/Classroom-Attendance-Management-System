@@ -1,24 +1,41 @@
 services:
+  db:
+    image: mysql:8.4
+    container_name: attendance-db
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: classroom_attendance
+      MYSQL_USER: db_user
+      MYSQL_PASSWORD: db_password
+      MYSQL_ROOT_PASSWORD: rootpassword
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+
   backend:
     image: sachinbhandari/classroom-attendance-backend:latest
     container_name: attendance-backend
+    restart: unless-stopped
+    depends_on:
+      - db
     ports:
       - "8081:8081"
     environment:
-      DB_URL: jdbc:mysql://host.docker.internal:3306/classroom_attendance?serverTimezone=UTC
+      DB_URL: jdbc:mysql://db:3306/classroom_attendance?serverTimezone=UTC
       DB_USERNAME: db_user
       DB_PASSWORD: db_password
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
 
   frontend:
     image: sachinbhandari/classroom-attendance-frontend:latest
     container_name: attendance-frontend
+    restart: unless-stopped
     depends_on:
       - backend
     environment:
       DISPLAY: host.docker.internal:0.0
       LIBGL_ALWAYS_INDIRECT: "1"
       BACKEND_URL: http://backend:8081
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
+
+volumes:
+  mysql_data:
