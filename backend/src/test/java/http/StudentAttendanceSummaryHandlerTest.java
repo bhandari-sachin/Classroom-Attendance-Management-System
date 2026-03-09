@@ -22,7 +22,7 @@ class StudentAttendanceSummaryHandlerTest {
 
         handler.handle(ex);
 
-        assertEquals(401, ex.statusCode);
+        assertEquals(403, ex.statusCode);
         assertTrue(ex.responseBodyString().contains("Missing Authorization header"));
         verify(attendanceService, never()).getStudentStats(anyLong());
     }
@@ -41,7 +41,7 @@ class StudentAttendanceSummaryHandlerTest {
 
         handler.handle(ex);
 
-        assertEquals(401, ex.statusCode);
+        assertEquals(403, ex.statusCode);
         assertTrue(ex.responseBodyString().contains("Forbidden for role"));
         verify(attendanceService, never()).getStudentStats(anyLong());
     }

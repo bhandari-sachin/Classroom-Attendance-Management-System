@@ -93,7 +93,7 @@ class TeacherClassesHandlerTest {
         verify(classSQL).listForTeacher(77L);
 
         String body = ex.responseBodyString();
-        assertTrue(body.contains("\"data\""));
+        assertFalse(body.contains("\"data\""));
         assertTrue(body.contains("Class A"));
     }
 

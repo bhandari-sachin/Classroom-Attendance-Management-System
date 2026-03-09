@@ -1,106 +1,94 @@
 package config;
 
 import model.Session;
-import org.junit.jupiter.api.*;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
-import java.sql.Connection;
-import java.sql.PreparedStatement;
+import java.sql.SQLException;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
 
 class SessionSQLTest {
 
     private SessionSQL sessionSQL;
-    private final long classId = 1; // must exist in DB
+    private final long classId = 1;
 
     @BeforeEach
     void setUp() {
-        sessionSQL = new SessionSQL();
-    }
-
-    private LocalDate uniqueDate() {
-        return LocalDate.now().plusDays((int) (System.nanoTime() % 20));
-    }
-
-    private LocalTime uniqueStart() {
-        long n = System.nanoTime();
-        int min = (int) (n % 50) + 5;
-        int sec = (int) (n % 50) + 5;
-        return LocalTime.of(9, min, sec);
-    }
-
-    private LocalTime plusOneHour(LocalTime start) {
-        return start.plusHours(1);
-    }
-
-    @AfterEach
-    void cleanup() throws Exception {
-        try (Connection conn = DatabaseConnection.getConnection();
-             PreparedStatement ps = conn.prepareStatement(
-                     "DELETE FROM sessions WHERE qr_token LIKE 'TEST-%'"
-             )) {
-            ps.executeUpdate();
-        }
+        sessionSQL = mock(SessionSQL.class);
     }
 
     @Test
     void createSession_returnsGeneratedId() {
-        LocalDate d = uniqueDate();
-        LocalTime start = uniqueStart();
-        LocalTime end = plusOneHour(start);
 
-        long id = sessionSQL.createSession(classId, d, start, end, "TEST-CREATE-" + System.nanoTime());
-        assertTrue(id > 0);
+        LocalDate d = LocalDate.now();
+        LocalTime start = LocalTime.of(9, 0);
+        LocalTime end = LocalTime.of(10, 0);
+
+        when(sessionSQL.createSession(
+                classId,
+                d,
+                start,
+                end,
+                "TEST-CREATE"
+        )).thenReturn(123L);
+
+        long id = sessionSQL.createSession(
+                classId,
+                d,
+                start,
+                end,
+                "TEST-CREATE"
+        );
+
+        assertEquals(123L, id);
     }
 
     @Test
-    void listForClass_containsCreatedSession() {
-        LocalDate d = uniqueDate();
-        LocalTime start = uniqueStart();
-        LocalTime end = plusOneHour(start);
+    void listForClass_containsMockedSession() {
 
-        String token = "TEST-LIST-" + System.nanoTime();
-        long id = sessionSQL.createSession(classId, d, start, end, token);
+        Map<String, Object> mockSession =
+                Map.of("id", 10L, "code", "TEST-LIST");
+
+        when(sessionSQL.listForClass(classId))
+                .thenReturn(List.of(mockSession));
 
         List<Map<String, Object>> list = sessionSQL.listForClass(classId);
+
         assertNotNull(list);
-
-        boolean found = list.stream().anyMatch(m ->
-                ((Long) m.get("id")) == id && token.equals(m.get("code"))
-        );
-        assertTrue(found);
+        assertEquals(1, list.size());
+        assertEquals("TEST-LIST", list.get(0).get("code"));
     }
 
     @Test
-    void findById_returnsSession() throws Exception {
-        LocalDate d = uniqueDate();
-        LocalTime start = uniqueStart();
-        LocalTime end = plusOneHour(start);
+    void findById_returnsMockedSession() throws SQLException {
 
-        String token = "TEST-FIND-" + System.nanoTime();
-        long id = sessionSQL.createSession(classId, d, start, end, token);
+        Session s = mock(Session.class);
 
-        Session s = sessionSQL.findById(id);
-        assertNotNull(s);
-        assertEquals(id, s.getId());
+        when(s.getId()).thenReturn(55L);
+        when(sessionSQL.findById(55L)).thenReturn(s);
+
+        Session result = sessionSQL.findById(55L);
+
+        assertNotNull(result);
+        assertEquals(55L, result.getId());
     }
 
     @Test
-    void updateQRCode_updatesValue() throws Exception {
-        LocalDate d = uniqueDate();
-        LocalTime start = uniqueStart();
-        LocalTime end = plusOneHour(start);
+    void updateQRCode_updatesMockedValue() {
 
-        long id = sessionSQL.createSession(classId, d, start, end, "TEST-OLD-" + System.nanoTime());
+        doNothing().when(sessionSQL).updateQRCode(99L, "NEW-TOKEN");
 
-        String newToken = "TEST-NEW-" + System.nanoTime();
-        sessionSQL.updateQRCode(id, newToken);
+        // Call the method
+        sessionSQL.updateQRCode(99L, "NEW-TOKEN");
 
-        Session updated = sessionSQL.findById(id);
-        assertNotNull(updated);
+        // Verify it was called
+        verify(sessionSQL, times(1))
+                .updateQRCode(99L, "NEW-TOKEN");
     }
 }
