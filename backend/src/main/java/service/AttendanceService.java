@@ -76,6 +76,26 @@ public class AttendanceService {
 
         }
     }
+    public void markByCode(Long studentId, String code) {
+
+        Long sessionId = attendanceSQL.findSessionIdByCode(code);
+        if (sessionId == null) {
+            throw new IllegalArgumentException("Invalid attendance code");
+        }
+
+        if (attendanceSQL.exists(studentId, sessionId)) {
+            throw new IllegalArgumentException("Attendance already marked");
+        }
+
+        Attendance a = new Attendance(
+                studentId,
+                sessionId,
+                AttendanceStatus.PRESENT,
+                MarkedBy.QR
+        );
+
+        attendanceSQL.save(a);
+    }
 
     public boolean submitAttendanceCode(Long studentId, Long sessionId, String code) throws SQLException {
 
@@ -124,6 +144,25 @@ public class AttendanceService {
             String searchTerm
     ) {
         return attendanceSQL.filterAttendanceByStudent(classId, searchTerm);
+    }
+    public dto.AttendanceStats getOverallStats() {
+        return attendanceSQL.getOverallStats();
+    }
+    public AttendanceStats getStudentStats(long studentId) {
+        return attendanceSQL.getStudentStats(studentId);
+    }
+
+
+
+    public List<dto.AttendanceView> getStudentAttendanceViews(Long studentId) {
+        return attendanceSQL.getStudentAttendanceViews(studentId);
+    }
+    public AttendanceStats getStudentStats(Long studentId, Long classId, String period) {
+        return attendanceSQL.getStudentStats(studentId, classId, period);
+    }
+
+    public List<dto.AttendanceView> getStudentAttendanceViews(Long studentId, Long classId, String period) {
+        return attendanceSQL.getStudentAttendanceViews(studentId, classId, period);
     }
 
     public AttendanceStats getOverallStats() {

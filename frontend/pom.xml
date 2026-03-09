@@ -40,11 +40,16 @@
             <artifactId>javafx-base</artifactId>
             <version>${javafx.version}</version>
         </dependency>
+        <dependency>
+            <groupId>org.openjfx</groupId>
+            <artifactId>javafx-swing</artifactId>
+            <version>${javafx.version}</version>
+        </dependency>
 
-        <!-- Backend dependency -->
+        <!-- Shared models / DTOs -->
         <dependency>
             <groupId>org.example</groupId>
-            <artifactId>backend</artifactId>
+            <artifactId>common</artifactId>
             <version>1.0-SNAPSHOT</version>
         </dependency>
 
@@ -55,15 +60,25 @@
             <version>2.17.2</version>
         </dependency>
 
-        <!-- Tests (JUnit 5) -->
+        <!-- QR / Barcode -->
+        <dependency>
+            <groupId>com.google.zxing</groupId>
+            <artifactId>core</artifactId>
+            <version>3.5.3</version>
+        </dependency>
+        <dependency>
+            <groupId>com.google.zxing</groupId>
+            <artifactId>javase</artifactId>
+            <version>3.5.3</version>
+        </dependency>
+
+        <!-- Tests -->
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter</artifactId>
             <version>${junit.jupiter.version}</version>
             <scope>test</scope>
         </dependency>
-
-
         <dependency>
             <groupId>org.testng</groupId>
             <artifactId>testng</artifactId>
@@ -71,27 +86,22 @@
             <scope>test</scope>
         </dependency>
 
-
     </dependencies>
 
     <build>
-        <!-- Produces: frontend/target/frontend.jar -->
         <finalName>frontend</finalName>
 
         <plugins>
 
-            <!-- Surefire (JUnit 5) -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>3.3.1</version>
                 <configuration>
-                    <!-- Helps on some JavaFX/module setups -->
                     <useModulePath>false</useModulePath>
                 </configuration>
             </plugin>
 
-            <!-- JaCoCo -->
             <plugin>
                 <groupId>org.jacoco</groupId>
                 <artifactId>jacoco-maven-plugin</artifactId>
@@ -112,7 +122,6 @@
                 </executions>
             </plugin>
 
-            <!-- JavaFX plugin (handy for: mvn javafx:run) -->
             <plugin>
                 <groupId>org.openjfx</groupId>
                 <artifactId>javafx-maven-plugin</artifactId>
@@ -122,7 +131,6 @@
                 </configuration>
             </plugin>
 
-            <!-- Shade: makes a runnable fat jar with Main-Class in MANIFEST -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-shade-plugin</artifactId>
