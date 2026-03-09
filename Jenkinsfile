@@ -28,15 +28,9 @@ pipeline {
             }
         }
 
-        stage('Build') {
+        stage('Build and Test') {
             steps {
-                bat 'mvn -B clean install'
-            }
-        }
-
-        stage('Test') {
-            steps {
-                bat 'mvn -B test'
+                bat 'mvn -B clean verify'
             }
             post {
                 always {
@@ -45,7 +39,7 @@ pipeline {
             }
         }
 
-        stage('Code Coverage') {
+        stage('Generate Coverage Report') {
             steps {
                 bat 'mvn -B jacoco:report'
             }
@@ -66,7 +60,7 @@ pipeline {
             steps {
                 bat """
                     docker build ^
-                      -f backend\\Dockerfile ^
+                      -f backend\\backend.dockerfile ^
                       -t %BACKEND_IMAGE_REPO%:%DOCKER_IMAGE_TAG_BUILD% ^
                       -t %BACKEND_IMAGE_REPO%:%DOCKER_IMAGE_TAG_LATEST% ^
                       .
@@ -78,7 +72,7 @@ pipeline {
             steps {
                 bat """
                     docker build ^
-                      -f frontend\\Dockerfile ^
+                      -f frontend\\frontend.dockerfile ^
                       -t %FRONTEND_IMAGE_REPO%:%DOCKER_IMAGE_TAG_BUILD% ^
                       -t %FRONTEND_IMAGE_REPO%:%DOCKER_IMAGE_TAG_LATEST% ^
                       .
@@ -94,7 +88,7 @@ pipeline {
                     passwordVariable: 'DOCKER_PASS'
                 )]) {
                     bat """
-                        docker login -u %DOCKER_USER% -p %DOCKER_PASS%
+                        echo %DOCKER_PASS% | docker login -u %DOCKER_USER% --password-stdin
 
                         docker push %BACKEND_IMAGE_REPO%:%DOCKER_IMAGE_TAG_BUILD%
                         docker push %BACKEND_IMAGE_REPO%:%DOCKER_IMAGE_TAG_LATEST%
@@ -111,6 +105,7 @@ pipeline {
         stage('Deploy with Docker Compose') {
             steps {
                 bat 'docker compose down'
+                bat 'docker compose pull'
                 bat 'docker compose up -d'
             }
         }

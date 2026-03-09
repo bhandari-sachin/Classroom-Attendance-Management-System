@@ -6,21 +6,19 @@ WORKDIR /app
 COPY pom.xml .
 COPY common/pom.xml common/pom.xml
 COPY backend/pom.xml backend/pom.xml
-COPY frontend/pom.xml frontend/pom.xml
 
 COPY common/src common/src
-COPY frontend/src frontend/src
+COPY backend/src backend/src
 
-RUN mvn -pl frontend -am clean package -DskipTests
+RUN mvn -pl backend -am clean package -DskipTests
 
 # Runtime stage
 FROM eclipse-temurin:21-jre
 
 WORKDIR /app
 
-COPY --from=build /app/frontend/target/frontend.jar app.jar
+COPY --from=build /app/backend/target/backend.jar app.jar
 
-ENV DISPLAY=host.docker.internal:0.0
-ENV LIBGL_ALWAYS_INDIRECT=1
+EXPOSE 8081
 
 ENTRYPOINT ["java", "-jar", "app.jar"]
