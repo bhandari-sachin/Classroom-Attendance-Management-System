@@ -39,6 +39,10 @@ The system follows a **layered architecture** consisting of:
 
 ![navigate to diagrams/Architecture.png](diagrams/Architecture.png)
 
+The use case and ER diagrams for the system are as follows:
+- Use Case Diagram: ![navigate to diagrams/UseCase02.png](diagrams/UseCase02.png)
+- ER Diagram: ![navigate to diagrams/ERdiagramV2.png](diagrams/ERdiagramV2.png)
+
 ---
 
 ## Tools and Technologies Used
@@ -92,16 +96,6 @@ Key dependencies used in the frontend module include:
 - **Jackson** – JSON data processing
 - **JUnit / TestNG** – testing frameworks
 
-Example dependency:
-
-```xml
-<dependency>
-    <groupId>org.openjfx</groupId>
-    <artifactId>javafx-controls</artifactId>
-    <version>21.0.2</version>
-</dependency>
-```
-
 #### Backend Module
 
 The **backend module** contains the business logic and database access layer of the system.
@@ -120,49 +114,10 @@ Key dependencies used in the frontend module include:
 - **Spring Security Crypto** – password hashing
 - **JUnit / TestNG** – unit testing
 
-Example dependency:
-
-```xml
-<dependency>
-    <groupId>com.mysql</groupId>
-    <artifactId>mysql-connector-j</artifactId>
-    <version>9.3.0</version>
-</dependency>
-```
-
 ---
 
-## Build Plugins
+## Sprint Reports
 
-### JavaFX Maven Plugin
+All sprint planning and review documentation can be found in the following folder:
 
-The frontend module uses the JavaFX Maven Plugin to run the JavaFX application.
-
-```
-<plugin>
-    <groupId>org.openjfx</groupId>
-    <artifactId>javafx-maven-plugin</artifactId>
-</plugin>
-```
-
-### JaCoCo Code Coverage
-
-The project uses JaCoCo to measure code coverage during testing.
-```
-<plugin>
-    <groupId>org.jacoco</groupId>
-    <artifactId>jacoco-maven-plugin</artifactId>
-</plugin>
-```
----
-
-## Building the Project
-
-To build the entire project and download dependencies, run:
-```
-mvn clean install
-```
-To run the frontend application:
-```
-mvn javafx:run
-```
+https://github.com/bhandari-sachin/Classroom-Attendance-Management-System/tree/main/reports
