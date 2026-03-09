@@ -1,3 +1,4 @@
+package ui;
 
 import frontend.UserRow;
 import model.UserRole;

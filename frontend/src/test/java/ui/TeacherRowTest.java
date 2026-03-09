@@ -1,3 +1,4 @@
+package ui;
 
 import frontend.TeacherRow;
 import org.junit.jupiter.api.Test;
