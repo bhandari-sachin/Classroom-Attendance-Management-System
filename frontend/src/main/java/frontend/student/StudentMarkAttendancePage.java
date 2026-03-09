@@ -87,7 +87,9 @@ public class StudentMarkAttendancePage {
                 return;
             }
 
-            StudentAttendanceApi api = new StudentAttendanceApi("http://localhost:8081");
+            String backendUrl = System.getenv().getOrDefault("BACKEND_URL", "http://localhost:8081");
+
+            StudentAttendanceApi api = new StudentAttendanceApi(backendUrl);
 
             new Thread(() -> {
                 try {

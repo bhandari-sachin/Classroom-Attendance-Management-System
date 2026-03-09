@@ -33,8 +33,8 @@ public class TeacherDashboardApp {
         String teacherName = (state.getName() == null || state.getName().isBlank())
                 ? "Name"
                 : state.getName();
-
-        TeacherApi api = new TeacherApi("http://localhost:8081");
+        String backendUrl = System.getenv().getOrDefault("BACKEND_URL", "http://localhost:8081");
+        TeacherApi api = new TeacherApi(backendUrl);
 
         VBox page = new VBox(16);
         page.setPadding(new Insets(26));

@@ -48,8 +48,9 @@ public class TeacherTakeAttendancePage {
         String teacherName = (state.getName() == null || state.getName().isBlank())
                 ? "Name"
                 : state.getName();
+        String backendUrl = System.getenv().getOrDefault("BACKEND_URL", "http://localhost:8081");
+        TeacherApi api = new TeacherApi(backendUrl);
 
-        TeacherApi api = new TeacherApi("http://localhost:8081");
         final long[] currentSessionId = { -1L };
 
         VBox page = new VBox(16);

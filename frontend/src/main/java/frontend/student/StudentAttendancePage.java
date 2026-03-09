@@ -27,7 +27,9 @@ import java.util.Map;
 public class StudentAttendancePage {
 
     // backend base url (same port as BackendMain)
-    private static final String BASE_URL = "http://localhost:8081";
+    //private static final String BASE_URL = "http://localhost:8081";
+    private static final String BASE_URL =
+            System.getenv().getOrDefault("BACKEND_URL", "http://localhost:8081");
 
     public Parent build(Scene scene, AppRouter router, JwtStore jwtStore, AuthState state) {
 

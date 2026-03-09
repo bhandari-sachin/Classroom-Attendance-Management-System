@@ -23,7 +23,9 @@ import java.util.Map;
 
 public class StudentEmailPage {
 
-    private static final String BASE_URL = "http://localhost:8081";
+    //private static final String BASE_URL = "http://localhost:8081";
+    private static final String BASE_URL =
+            System.getenv().getOrDefault("BACKEND_URL", "http://localhost:8081");
 
     // ✅ now real data, starts empty
     private final ObservableList<TeacherRow> rows = FXCollections.observableArrayList();

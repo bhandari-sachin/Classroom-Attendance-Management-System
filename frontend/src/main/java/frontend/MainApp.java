@@ -34,7 +34,8 @@ public class MainApp extends Application {
         if (css != null) scene.getStylesheets().add(css.toExternalForm());
 
         JwtStore store = new JwtStore();
-        AuthService auth = new AuthService("http://localhost:8081"); // change
+        String backendUrl = System.getenv().getOrDefault("BACKEND_URL", "http://localhost:8081");
+        AuthService auth = new AuthService(backendUrl);
         AppRouter router = new AppRouter(scene);
 
         // ===== Auth routes =====

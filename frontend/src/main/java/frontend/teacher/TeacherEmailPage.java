@@ -44,7 +44,8 @@ public class TeacherEmailPage {
                 ? "Name"
                 : state.getName();
 
-        TeacherApi api = new TeacherApi("http://localhost:8081");
+        String backendUrl = System.getenv().getOrDefault("BACKEND_URL", "http://localhost:8081");
+        TeacherApi api = new TeacherApi(backendUrl);
 
         VBox page = new VBox(14);
         page.setPadding(new Insets(22));

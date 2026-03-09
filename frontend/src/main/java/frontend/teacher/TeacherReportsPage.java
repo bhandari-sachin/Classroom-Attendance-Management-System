@@ -84,7 +84,8 @@ public class TeacherReportsPage {
     public Parent build(Scene scene, AppRouter router, JwtStore jwtStore, AuthState state) {
 
         String teacherName = (state.getName() == null || state.getName().isBlank()) ? "Name" : state.getName();
-        TeacherApi api = new TeacherApi("http://localhost:8081");
+        String backendUrl = System.getenv().getOrDefault("BACKEND_URL", "http://localhost:8081");
+        TeacherApi api = new TeacherApi(backendUrl);
 
         VBox page = new VBox(14);
         page.setPadding(new Insets(22));
