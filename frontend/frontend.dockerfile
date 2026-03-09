@@ -18,7 +18,7 @@ FROM eclipse-temurin:21-jdk
 
 WORKDIR /app
 
-# JavaFX runtime dependencies
+# Install GUI libraries
 RUN apt-get update && apt-get install -y \
     libx11-6 \
     libxext6 \
@@ -26,24 +26,25 @@ RUN apt-get update && apt-get install -y \
     libxtst6 \
     libxi6 \
     libgtk-3-0 \
-    libgl1-mesa-glx \
-    libgl1-mesa-dri \
     mesa-utils \
     wget \
     unzip \
     && rm -rf /var/lib/apt/lists/*
 
-# Download Linux JavaFX SDK
+# Download JavaFX SDK
 RUN mkdir -p /javafx-sdk \
-    && wget -O /tmp/javafx.zip https://download2.gluonhq.com/openjfx/21.0.2/openjfx-21.0.2_linux-x64_bin-sdk.zip \
-    && unzip /tmp/javafx.zip -d /javafx-sdk \
+    && wget -O javafx.zip https://download2.gluonhq.com/openjfx/21.0.2/openjfx-21.0.2_linux-x64_bin-sdk.zip \
+    && unzip javafx.zip -d /javafx-sdk \
     && mv /javafx-sdk/javafx-sdk-21.0.2/lib /javafx-sdk/lib \
-    && rm -rf /javafx-sdk/javafx-sdk-21.0.2 /tmp/javafx.zip
+    && rm -rf /javafx-sdk/javafx-sdk-21.0.2 javafx.zip
 
+# Copy fat JAR
 COPY --from=build /app/frontend/target/frontend.jar app.jar
 
+# Set DISPLAY for Windows (Xming)
 ENV DISPLAY=host.docker.internal:0.0
 ENV LIBGL_ALWAYS_INDIRECT=1
 ENV BACKEND_URL=http://backend:8081
 
-ENTRYPOINT ["java", "--module-path", "/javafx-sdk/lib", "--add-modules", "javafx.controls,javafx.graphics,javafx.base,javafx.swing", "-jar", "app.jar"]
+# Run JavaFX app
+CMD ["java", "--module-path", "/javafx-sdk/lib", "--add-modules", "javafx.controls,javafx.graphics,javafx.base,javafx.swing", "-jar", "app.jar"]
