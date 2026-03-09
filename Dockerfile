@@ -10,7 +10,7 @@ COPY frontend/pom.xml frontend/pom.xml
 # Cache dependencies
 RUN mvn -B -ntp dependency:go-offline
 
-# Copy full source and build from ROOT
+# Copy full source and build from root
 COPY . .
 RUN mvn -B -ntp clean package -DskipTests
 
@@ -18,7 +18,7 @@ RUN mvn -B -ntp clean package -DskipTests
 FROM eclipse-temurin:21-jdk
 WORKDIR /app
 
-# Install GUI libraries needed by JavaFX
+# Install Linux GUI libraries needed by JavaFX
 RUN apt-get update && apt-get install -y \
     libx11-6 \
     libxext6 \
@@ -26,23 +26,24 @@ RUN apt-get update && apt-get install -y \
     libxtst6 \
     libxi6 \
     libgtk-3-0 \
-    libgl1-mesa-glx \
+    libgl1 \
     libasound2 \
     wget \
     unzip \
     && rm -rf /var/lib/apt/lists/*
 
 # Download JavaFX SDK
-RUN mkdir -p /javafx-sdk \
+RUN mkdir -p /opt/javafx \
     && wget -O /tmp/javafx.zip https://download2.gluonhq.com/openjfx/21/openjfx-21_linux-x64_bin-sdk.zip \
-    && unzip /tmp/javafx.zip -d /javafx-sdk \
-    && mv /javafx-sdk/javafx-sdk-21/lib /javafx-sdk/lib \
-    && rm -rf /javafx-sdk/javafx-sdk-21 /tmp/javafx.zip
+    && unzip /tmp/javafx.zip -d /opt/javafx \
+    && mv /opt/javafx/javafx-sdk-21 /opt/javafx/sdk \
+    && rm -f /tmp/javafx.zip
 
-# Copy app jar
+# Copy built frontend jar
 COPY --from=builder /app/frontend/target/frontend.jar app.jar
 
-# Send GUI to Windows host running VcXsrv
+# Send GUI to VcXsrv on Windows host
 ENV DISPLAY=host.docker.internal:0.0
 
-CMD ["java", "--module-path", "/javafx-sdk/lib", "--add-modules", "javafx.controls,javafx.fxml", "-jar", "app.jar"]
+# Run JavaFX app
+CMD ["java", "--module-path", "/opt/javafx/sdk/lib", "--add-modules", "javafx.controls,javafx.fxml", "-jar", "app.jar"]
