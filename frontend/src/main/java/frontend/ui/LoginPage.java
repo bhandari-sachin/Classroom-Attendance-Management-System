@@ -74,40 +74,7 @@ public class LoginPage extends StackPane {
             }).start();
         });
 
-        // ===== DEV QUICK LOGIN (NO BACKEND) =====
-        Label devLabel = new Label("Dev quick login");
-        devLabel.getStyleClass().add("subtitle");
 
-        Button devAdmin = new Button("Login as Admin");
-        Button devTeacher = new Button("Login as Teacher");
-        Button devStudent = new Button("Login as Student");
-
-        devAdmin.setMaxWidth(Double.MAX_VALUE);
-        devTeacher.setMaxWidth(Double.MAX_VALUE);
-        devStudent.setMaxWidth(Double.MAX_VALUE);
-
-        // reuse your existing button style
-        devAdmin.getStyleClass().add("primary-btn");
-        devTeacher.getStyleClass().add("primary-btn");
-        devStudent.getStyleClass().add("primary-btn");
-
-        devAdmin.setOnAction(e -> {
-            jwtStore.save(new AuthState("mock-token-admin", Role.ADMIN, "Admin User"));
-            router.go(RoleRedirect.routeFor(Role.ADMIN));
-        });
-
-        devTeacher.setOnAction(e -> {
-            jwtStore.save(new AuthState("mock-token-teacher", Role.TEACHER, "Teacher User"));
-            router.go(RoleRedirect.routeFor(Role.TEACHER));
-        });
-
-        devStudent.setOnAction(e -> {
-            jwtStore.save(new AuthState("mock-token-student", Role.STUDENT, "Student User"));
-            router.go(RoleRedirect.routeFor(Role.STUDENT));
-        });
-
-        VBox devBox = new VBox(8, devLabel, devAdmin, devTeacher, devStudent);
-        devBox.setPadding(new Insets(10, 0, 0, 0));
 
         Button goSignup = new Button("I don't have an account");
         goSignup.getStyleClass().add("link-button");
@@ -120,8 +87,7 @@ public class LoginPage extends StackPane {
                 password,
                 error,
                 loginBtn,
-                goSignup,
-                devBox
+                goSignup
         );
 
         StackPane.setAlignment(card, Pos.CENTER);
