@@ -23,7 +23,7 @@ pipeline {
 
         stage('Checkout') {
             steps {
-                git branch: 'fullstack',
+                git branch: 'main-branch',
                     url: 'https://github.com/bhandari-sachin/Classroom-Attendance-Management-System.git'
             }
         }
