@@ -65,7 +65,7 @@ No backlog items were postponed during this sprint.
 
 | Team Member | Role                              | Tasks Worked On                                                   | Estimated Time |
 |-------------|-----------------------------------|-------------------------------------------------------------------|-------------|
-| Sachin Bhandari | Backend Developer                 | Docker Image and Push to Docker Hub                               |  hours      |
+| Sachin Bhandari | Backend Developer                 | Docker Image and Push to Docker Hub, docker compose, jenkins  |  13 hours      |
 | Olga Chitembo | Documentation                     | Project Documentation                                             | 2 hours     |
 | Ahmad Sarfaraz | Frontend Developer                | PowerPoint Presentation, UI improvements                          | 6 hours      |
 | Farah El Bajta | Frontend Developer / Scrum Master | Student enrollment UI, Qr code generator, Stdent attendance table | 30 hours    |
