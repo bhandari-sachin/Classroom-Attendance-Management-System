@@ -23,7 +23,7 @@ pipeline {
 
         stage('Checkout') {
             steps {
-                git branch: 'fullstack',
+                git branch: 'main',
                     url: 'https://github.com/bhandari-sachin/Classroom-Attendance-Management-System.git'
             }
         }
@@ -102,7 +102,7 @@ pipeline {
             }
         }
 
-        stage('Deploy with Docker Compose') {
+        stage('Deploy with  Docker Compose') {
             steps {
                 bat 'docker compose down'
                 bat 'docker compose pull'
