@@ -102,7 +102,7 @@ pipeline {
             }
         }
 
-        stage('Deploy with Docker Compose') {
+        stage('Deploy with  Docker Compose') {
             steps {
                 bat 'docker compose down'
                 bat 'docker compose pull'
