@@ -1,9 +1,11 @@
 package util;
 
 import com.lowagie.text.*;
+import com.lowagie.text.Font;
 import com.lowagie.text.pdf.*;
 import dto.*;
 
+import java.awt.*;
 import java.io.FileOutputStream;
 import java.util.List;
 
@@ -15,7 +17,6 @@ public class PDFReportExporter {
     // Student report for all classes in a year
     public static void studentYearReport(
             String file,
-            Long studentId,
             int year,
             List<StudentClassReportRow> rows
     ) throws Exception {
@@ -25,7 +26,7 @@ public class PDFReportExporter {
         doc.open();
 
         doc.add(new Paragraph("Student Attendance Report - " + year, title));
-        doc.add(new Paragraph("Student ID: " + studentId));
+        doc.add(new Paragraph("Student Code: " + rows.get(0).getStudentCode()));
         doc.add(Chunk.NEWLINE);
 
         PdfPTable table = new PdfPTable(5);
@@ -46,7 +47,6 @@ public class PDFReportExporter {
     // Teacher report for all students in a class
     public static void teacherClassReport(
             String file,
-            Long classId,
             List<TeacherStudentReportRow> rows
     ) throws Exception {
 
@@ -54,11 +54,34 @@ public class PDFReportExporter {
         PdfWriter.getInstance(doc, new FileOutputStream(file));
         doc.open();
 
-        doc.add(new Paragraph("Teacher Class Attendance Report", title));
-        doc.add(new Paragraph("Class ID: " + classId));
+        // fetch school name when implemented
+        Paragraph school = new Paragraph("School Name", header);
+        school.setAlignment(Element.ALIGN_LEFT);
+        doc.add(school);
+
+        Paragraph reportTitle = new Paragraph("Class Attendance Summary", title);
+        reportTitle.setAlignment(Element.ALIGN_CENTER);
+        doc.add(reportTitle);
+
+        doc.add(Chunk.NEWLINE);
+
+        PdfPTable infoTable = new PdfPTable(2);
+        infoTable.setWidthPercentage(40);
+
+        infoTable.addCell("Class:");
+        infoTable.addCell(rows.get(0).getClassName());
+
+        infoTable.addCell("Teacher:");
+        infoTable.addCell(rows.get(0).getTeacherName());
+
+        infoTable.addCell("Date Range:");
+        infoTable.addCell("year"); // to be implemented
+
+        doc.add(infoTable);
         doc.add(Chunk.NEWLINE);
 
         PdfPTable table = new PdfPTable(6);
+        table.setWidthPercentage(100);
         addHeader(table, "Student", "Present", "Absent", "Excused", "Total", "Rate");
 
         for (TeacherStudentReportRow r : rows) {
@@ -104,7 +127,12 @@ public class PDFReportExporter {
 
     private static void addHeader(PdfPTable table, String... titles) {
         for (String t : titles) {
+
             PdfPCell cell = new PdfPCell(new Phrase(t, header));
+
+            cell.setHorizontalAlignment(Element.ALIGN_CENTER);
+            cell.setBackgroundColor(Color.LIGHT_GRAY);
+
             table.addCell(cell);
         }
     }

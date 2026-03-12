@@ -641,16 +641,18 @@ public class AttendanceSQL {
 
         String sql = """
         SELECT c.name,
+               u.student_code,
                SUM(CASE WHEN a.status='PRESENT' THEN 1 ELSE 0 END),
                SUM(CASE WHEN a.status='ABSENT' THEN 1 ELSE 0 END),
                SUM(CASE WHEN a.status='EXCUSED' THEN 1 ELSE 0 END),
                COUNT(*)
         FROM attendance a
+        JOIN users u ON a.student_id = u.id
         JOIN sessions s ON a.session_id = s.id
         JOIN classes c ON s.class_id = c.id
         WHERE a.student_id = ?
           AND YEAR(s.session_date) = ?
-        GROUP BY c.name
+        GROUP BY c.name, u.student_code
     """;
 
         List<StudentClassReportRow> list = new ArrayList<>();
@@ -664,14 +666,19 @@ public class AttendanceSQL {
             ResultSet rs = stmt.executeQuery();
 
             while (rs.next()) {
-                int present = rs.getInt(2);
-                int total = rs.getInt(5);
+                String className = rs.getString(1);
+                String studentCode = rs.getString(2);
+                int present = rs.getInt(3);
+                int absent = rs.getInt(4);
+                int excused = rs.getInt(5);
+                int total = rs.getInt(6);
 
                 list.add(new StudentClassReportRow(
-                        rs.getString(1),
+                        className,
+                        studentCode,
                         present,
-                        rs.getInt(3),
-                        rs.getInt(4),
+                        absent,
+                        excused,
                         total == 0 ? 0 : (present * 100.0 / total)
                 ));
             }
@@ -686,7 +693,9 @@ public class AttendanceSQL {
     public List<TeacherStudentReportRow> getTeacherClassReport(Long teacherId, Long classId) {
 
         String sql = """
-        SELECT CONCAT(u.first_name,' ',u.last_name),
+        SELECT c.name,
+               CONCAT(t.first_name,' ',t.last_name),
+               CONCAT(u.first_name,' ',u.last_name),
                SUM(CASE WHEN a.status='PRESENT' THEN 1 ELSE 0 END),
                SUM(CASE WHEN a.status='ABSENT' THEN 1 ELSE 0 END),
                SUM(CASE WHEN a.status='EXCUSED' THEN 1 ELSE 0 END),
@@ -695,9 +704,10 @@ public class AttendanceSQL {
         JOIN users u ON a.student_id = u.id
         JOIN sessions s ON a.session_id = s.id
         JOIN classes c ON s.class_id = c.id
+        JOIN users t ON c.teacher_id = t.id
         WHERE c.teacher_id = ?
           AND c.id = ?
-        GROUP BY u.id
+        GROUP BY c.name, t.first_name, t.last_name, u.id
     """;
 
         List<TeacherStudentReportRow> list = new ArrayList<>();
@@ -711,14 +721,21 @@ public class AttendanceSQL {
             ResultSet rs = stmt.executeQuery();
 
             while (rs.next()) {
-                int present = rs.getInt(2);
-                int total = rs.getInt(5);
+                String className = rs.getString(1);
+                String teacherName = rs.getString(2);
+                String studentName = rs.getString(3);
+                int present = rs.getInt(4);
+                int absent = rs.getInt(5);
+                int excused = rs.getInt(6);
+                int total = rs.getInt(7);
 
                 list.add(new TeacherStudentReportRow(
-                        rs.getString(1),
+                        className,
+                        teacherName,
+                        studentName,
                         present,
-                        rs.getInt(3),
-                        rs.getInt(4),
+                        absent,
+                        excused,
                         total == 0 ? 0 : (present * 100.0 / total)
                 ));
             }

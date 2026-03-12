@@ -11,7 +11,7 @@ import java.io.OutputStreamWriter;
 import java.util.List;
 
 public class ReportService {
-    private final AttendanceSQL attendanceSQL = new AttendanceSQL();
+    private AttendanceSQL attendanceSQL = new AttendanceSQL();
     // CSV reports
     // attendance for student
     public void exportStudentReport(Long studentId, OutputStream outputStream) throws IOException {
@@ -42,7 +42,7 @@ public class ReportService {
         this.attendanceSQL = attendanceSQL;
     }
 
-    public List<StudentAttendanceSummary> studentYearReport(Long studentId, int year) {
+    public List<StudentClassReportRow> studentYearReport(Long studentId, int year) {
         return attendanceSQL.getStudentYearlyReport(studentId, year);
     }
 
