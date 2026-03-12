@@ -1,47 +1,60 @@
 package frontend;
 
+import javafx.beans.property.SimpleLongProperty;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.beans.property.StringProperty;
 
 public class StudentRow {
 
-    private Long studentId = null;
-    private final StringProperty studentName = new SimpleStringProperty();
-    private final StringProperty email = new SimpleStringProperty();
-    private final StringProperty status = new SimpleStringProperty();
-    private final StringProperty excuseReason = new SimpleStringProperty("");
+    private final SimpleLongProperty studentId = new SimpleLongProperty();
+    private final SimpleStringProperty studentName = new SimpleStringProperty();
+    private final SimpleStringProperty email = new SimpleStringProperty();
+    private final SimpleStringProperty status = new SimpleStringProperty();
+    private final SimpleStringProperty excuseReason = new SimpleStringProperty("");
 
-    //for dummy data
-    public StudentRow(String studentName, String email, String status) {
+    public StudentRow(long studentId, String studentName, String email, String status) {
+        this.studentId.set(studentId);
         this.studentName.set(studentName);
         this.email.set(email);
         this.status.set(status);
     }
 
-    //studentId
-    public StudentRow(Long studentId, String studentName, String email, String status) {
-        this.studentId = studentId;
-        this.studentName.set(studentName);
-        this.email.set(email);
-        this.status.set(status);
+    public long getStudentId() {
+        return studentId.get();
     }
 
-    public Long getStudentId() { return studentId; }
-    public void setStudentId(Long id) { this.studentId = id; }
+    public StringProperty studentNameProperty() {
+        return studentName;
+    }
 
-    public String getStudentName() { return studentName.get(); }
-    public void setStudentName(String v) { studentName.set(v); }
-    public StringProperty studentNameProperty() { return studentName; }
+    public StringProperty emailProperty() {
+        return email;
+    }
 
-    public String getEmail() { return email.get(); }
-    public void setEmail(String v) { email.set(v); }
-    public StringProperty emailProperty() { return email; }
+    public StringProperty statusProperty() {
+        return status;
+    }
 
-    public String getStatus() { return status.get(); }
-    public void setStatus(String v) { status.set(v); }
-    public StringProperty statusProperty() { return status; }
+    public void setStatus(String value) {
+        status.set(value);
+    }
 
-    public String getExcuseReason() { return excuseReason.get(); }
-    public void setExcuseReason(String v) { excuseReason.set(v == null ? "" : v); }
-    public StringProperty excuseReasonProperty() { return excuseReason; }
+    public void setExcuseReason(String value) {
+        excuseReason.set(value);
+    }
+    public String getStudentName() {
+        return studentName.get();
+    }
+
+    public String getEmail() {
+        return email.get();
+    }
+
+    public String getStatus() {
+        return status.get();
+    }
+
+    public String getExcuseReason() {
+        return excuseReason.get();
+    }
 }

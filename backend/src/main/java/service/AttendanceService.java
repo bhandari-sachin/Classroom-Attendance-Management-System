@@ -2,21 +2,16 @@ package service;
 
 import dto.AttendanceStats;
 import model.*;
-import config.SessionSQL;
 import config.AttendanceSQL;
 import dto.AttendanceView;
 
-import java.sql.SQLException;
-import java.time.LocalDate;
 import java.util.List;
 
 public class AttendanceService {
     private final AttendanceSQL attendanceSQL;
-    private final SessionSQL sessionSQL;
 
-    public AttendanceService(AttendanceSQL attendanceSQL, SessionSQL sessionSQL) {
+    public AttendanceService(AttendanceSQL attendanceSQL) {
         this.attendanceSQL = attendanceSQL;
-        this.sessionSQL = sessionSQL;
     }
 
     public void markPresent(Long studentId, Long sessionId) {
@@ -25,8 +20,8 @@ public class AttendanceService {
                 studentId,
                 sessionId,
                 AttendanceStatus.PRESENT,
-                MarkedBy.TEACHER,
-            null);
+                MarkedBy.TEACHER
+           );
         } else {
             attendanceSQL.save(new Attendance(
                     studentId,
@@ -43,8 +38,8 @@ public class AttendanceService {
                     studentId,
                     sessionId,
                     AttendanceStatus.ABSENT,
-                    MarkedBy.TEACHER,
-                    null);
+                    MarkedBy.TEACHER
+            );
         } else {
             attendanceSQL.save(new Attendance(
                     studentId,
@@ -55,40 +50,47 @@ public class AttendanceService {
         }
     }
 
-    public void markExcused(Long studentId, Long sessionId, String reason) {
+    public void markExcused(Long studentId, Long sessionId) {
         if (attendanceSQL.exists(studentId, sessionId)) {
             attendanceSQL.updateStatus(
                     studentId,
                     sessionId,
                     AttendanceStatus.EXCUSED,
-                    MarkedBy.TEACHER,
-                    reason
+                    MarkedBy.TEACHER
             );
         } else {
-            Attendance a = new Attendance(
+            attendanceSQL.save(new Attendance(
                     studentId,
                     sessionId,
                     AttendanceStatus.EXCUSED,
                     MarkedBy.TEACHER
-            );
-            a.setRemarks(reason);
-            attendanceSQL.save(a);
-
+            ));
         }
     }
+    public void markByCode(Long studentId, String code) {
 
-    public boolean submitAttendanceCode(Long studentId, Long sessionId, String code) throws SQLException {
+        Long sessionId = attendanceSQL.findSessionIdByCode(code);
+        if (sessionId == null) {
+            throw new IllegalArgumentException("Invalid attendance code");
+        }
 
-        Session session = sessionSQL.findById(sessionId);
+        if (attendanceSQL.exists(studentId, sessionId)) {
+            throw new IllegalArgumentException("Attendance already marked");
+        }
+
+        Attendance a = new Attendance(
+                studentId,
+                sessionId,
+                AttendanceStatus.PRESENT,
+                MarkedBy.QR
+        );
+
+        attendanceSQL.save(a);
+    }
+
+    public boolean submitAttendanceCode(Long studentId, Long sessionId, String code) {
+
         String correctCode = attendanceSQL.getSessionCode(sessionId);
-        if (session == null) {
-            return false;
-        }
-
-        if (!"ACTIVE".equals(session.getStatus())) {
-            return false;
-        }
-
         if (!code.equals(correctCode)) {
             return false;
         }
@@ -98,8 +100,8 @@ public class AttendanceService {
                     studentId,
                     sessionId,
                     AttendanceStatus.PRESENT,
-                    MarkedBy.QR,
-                    null);
+                    MarkedBy.QR
+            );
         } else {
             attendanceSQL.save(new Attendance(
                     studentId,
@@ -125,114 +127,24 @@ public class AttendanceService {
     ) {
         return attendanceSQL.filterAttendanceByStudent(classId, searchTerm);
     }
-
-    public AttendanceStats getOverallStats() {
+    public dto.AttendanceStats getOverallStats() {
         return attendanceSQL.getOverallStats();
     }
-
-    public AttendanceStats getStatsForClass(Long classId) {
-        return attendanceSQL.getStatsForClass(classId);
+    public AttendanceStats getStudentStats(long studentId) {
+        return attendanceSQL.getStudentStats(studentId);
     }
 
-    public AttendanceStats getStatsForStudent(Long studentId) {
-        return attendanceSQL.getStatsForStudent(studentId);
+
+
+    public List<dto.AttendanceView> getStudentAttendanceViews(Long studentId) {
+        return attendanceSQL.getStudentAttendanceViews(studentId);
+    }
+    public AttendanceStats getStudentStats(Long studentId, Long classId, String period) {
+        return attendanceSQL.getStudentStats(studentId, classId, period);
     }
 
-    public AttendanceStats getStudentOverallThisMonth(Long studentId) {
-        LocalDate now = LocalDate.now();
-        return attendanceSQL.getStatsForStudentByDate(
-                studentId,
-                now.withDayOfMonth(1),
-                now.withDayOfMonth(now.lengthOfMonth())
-        );
+    public List<dto.AttendanceView> getStudentAttendanceViews(Long studentId, Long classId, String period) {
+        return attendanceSQL.getStudentAttendanceViews(studentId, classId, period);
     }
 
-    public AttendanceStats getStudentOverallLastMonth(Long studentId) {
-        LocalDate now = LocalDate.now().minusMonths(1);
-        return attendanceSQL.getStatsForStudentByDate(
-                studentId,
-                now.withDayOfMonth(1),
-                now.withDayOfMonth(now.lengthOfMonth())
-        );
-    }
-
-    public AttendanceStats getStudentOverallThisYear(Long studentId) {
-        LocalDate now = LocalDate.now();
-        return attendanceSQL.getStatsForStudentByDate(
-                studentId,
-                now.withDayOfYear(1),
-                now.withDayOfYear(now.lengthOfYear())
-        );
-    }
-
-    public AttendanceStats getStatsThisMonth() {
-        LocalDate now = LocalDate.now();
-        LocalDate start = now.withDayOfMonth(1);
-        LocalDate end = now.withDayOfMonth(now.lengthOfMonth());
-
-        return attendanceSQL.getStatsByDateRange(start, end);
-    }
-
-    public AttendanceStats getStatsLastMonth() {
-        LocalDate now = LocalDate.now().minusMonths(1);
-        LocalDate start = now.withDayOfMonth(1);
-        LocalDate end = now.withDayOfMonth(now.lengthOfMonth());
-
-        return attendanceSQL.getStatsByDateRange(start, end);
-    }
-
-    public AttendanceStats getStatsThisYear() {
-        LocalDate now = LocalDate.now();
-        LocalDate start = now.withDayOfYear(1);
-        LocalDate end = now.withDayOfYear(now.lengthOfYear());
-
-        return attendanceSQL.getStatsByDateRange(start, end);
-    }
-
-    public AttendanceStats getClassStatsThisMonth(Long classId) {
-        LocalDate now = LocalDate.now();
-        LocalDate start = now.withDayOfMonth(1);
-        LocalDate end = now.withDayOfMonth(now.lengthOfMonth());
-
-        return attendanceSQL.getStatsForClassByDateRange(classId, start, end);
-    }
-
-    public AttendanceStats getClassStatsLastMonth(Long classId) {
-        LocalDate now = LocalDate.now().minusMonths(1);
-        LocalDate start = now.withDayOfMonth(1);
-        LocalDate end = now.withDayOfMonth(now.lengthOfMonth());
-
-        return attendanceSQL.getStatsForClassByDateRange(classId, start, end);
-    }
-
-    public AttendanceStats getClassStatsThisYear(Long classId) {
-        LocalDate now = LocalDate.now();
-        LocalDate start = now.withDayOfYear(1);
-        LocalDate end = now.withDayOfYear(now.lengthOfYear());
-
-        return attendanceSQL.getStatsForClassByDateRange(classId, start, end);
-    }
-    public AttendanceStats getStudentStatsThisMonth(Long studentId, Long classId) {
-        LocalDate now = LocalDate.now();
-        LocalDate start = now.withDayOfMonth(1);
-        LocalDate end = now.withDayOfMonth(now.lengthOfMonth());
-
-        return attendanceSQL.getStatsForStudentInClassByDate(studentId, classId, start, end);
-    }
-
-    public AttendanceStats getStudentStatsLastMonth(Long studentId, Long classId) {
-        LocalDate now = LocalDate.now().minusMonths(1);
-        LocalDate start = now.withDayOfMonth(1);
-        LocalDate end = now.withDayOfMonth(now.lengthOfMonth());
-
-        return attendanceSQL.getStatsForStudentInClassByDate(studentId, classId, start, end);
-    }
-
-    public AttendanceStats getStudentStatsThisYear(Long studentId, Long classId) {
-        LocalDate now = LocalDate.now();
-        LocalDate start = now.withDayOfYear(1);
-        LocalDate end = now.withDayOfYear(now.lengthOfYear());
-
-        return attendanceSQL.getStatsForStudentInClassByDate(studentId, classId, start, end);
-    }
 }
