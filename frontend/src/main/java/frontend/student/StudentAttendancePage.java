@@ -1,6 +1,7 @@
 package frontend.student;
 
 import frontend.AppLayout;
+import frontend.api.ReportApi;
 import frontend.api.StudentAttendanceApi;
 import frontend.auth.AppRouter;
 import frontend.auth.AuthState;
@@ -13,6 +14,9 @@ import javafx.scene.Group;
 import javafx.scene.Node;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
+import javafx.scene.control.Alert;
+import javafx.scene.control.Button;
+import javafx.scene.control.ButtonType;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.Separator;
@@ -20,7 +24,9 @@ import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.*;
 import javafx.scene.text.Font;
+import javafx.stage.FileChooser;
 
+import java.io.File;
 import java.util.List;
 import java.util.Map;
 
@@ -66,7 +72,35 @@ public class StudentAttendancePage {
 
         filters.getChildren().addAll(filterIcon, classFilter, timeFilter);
 
+        /* ================= EXPORT ================= */
+        ReportApi reportApi = new ReportApi(BASE_URL);
+
+        Button exportPdfBtn = new Button("⬇ Export PDF");
+        exportPdfBtn.getStyleClass().addAll("pill", "pill-blue");
+
+        exportPdfBtn.setOnAction(e -> {
+            FileChooser fc = new FileChooser();
+            fc.setTitle("Save Attendance Report");
+            fc.setInitialFileName("student-report.pdf");
+            fc.getExtensionFilters().add(new FileChooser.ExtensionFilter("PDF Files", "*.pdf"));
+            File dest = fc.showSaveDialog(scene.getWindow());
+            if (dest == null) return;
+            new Thread(() -> {
+                try {
+                    reportApi.exportStudentPdf(jwtStore, state, dest.getAbsolutePath());
+                    Platform.runLater(() -> new Alert(Alert.AlertType.INFORMATION,
+                            "PDF saved to:\n" + dest.getAbsolutePath(), ButtonType.OK).showAndWait());
+                } catch (Exception ex) {
+                    ex.printStackTrace();
+                    Platform.runLater(() -> new Alert(Alert.AlertType.ERROR,
+                            "Export failed: " + ex.getMessage(), ButtonType.OK).showAndWait());
+                }
+            }).start();
+        });
+
         /* ================= STATS ================= */
+        HBox exportRow = new HBox(exportPdfBtn);
+        exportRow.setAlignment(Pos.CENTER_RIGHT);
         GridPane stats = new GridPane();
         stats.setHgap(14);
         stats.setVgap(14);
@@ -121,6 +155,7 @@ public class StudentAttendancePage {
                 title,
                 subtitle,
                 filters,
+                exportRow,
                 stats,
                 new Separator(),
                 recordsTitle,

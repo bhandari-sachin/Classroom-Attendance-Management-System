@@ -124,30 +124,6 @@ public class AttendanceSQL {
         return attendanceList;
     }
 
-    // Fetch attendance for all classes
-    public List<Attendance> findAll() {
-        List<Attendance> attendanceList = new ArrayList<>();
-        String sql = "SELECT * FROM attendance";
-        try (Connection conn = DatabaseConnection.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
-
-            ResultSet rs = stmt.executeQuery();
-
-            while (rs.next()) {
-                Attendance attendance = new Attendance(
-                        rs.getLong("student_id"),
-                        rs.getLong("session_id"),
-                        AttendanceStatus.valueOf(rs.getString("status")),
-                        MarkedBy.valueOf(rs.getString("marked_by"))
-                );
-                attendanceList.add(attendance);
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        return attendanceList;
-    }
-
     // Filter attendance records by student details
     public List<AttendanceView> filterAttendanceByStudent(
             Long classId,

@@ -22,4 +22,6 @@ public class ReportService {
     public List<AttendanceReportRow> getAllStudents(){
         return attendanceSQL.getAllStudentsStats();
     }
+
+    // implement more filters in future
 }

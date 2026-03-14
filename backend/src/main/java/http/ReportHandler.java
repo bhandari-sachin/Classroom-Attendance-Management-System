@@ -44,9 +44,14 @@ public class ReportHandler implements HttpHandler {
                 return;
             }
 
-            // /api/reports/export/student?format=pdf
-            if (!"pdf".equals(format)) {
-                HttpUtil.json(ex, 400, Map.of("error", "Invalid format. Only 'pdf' is supported."));
+            // /api/reports/export/student?format=pdf  (students: PDF only)
+            if (path.endsWith("/student")) {
+                Auth.requireRole(jwt, "STUDENT");
+                if (!"pdf".equals(format)) {
+                    HttpUtil.json(ex, 400, Map.of("error", "Students may only export PDF reports."));
+                    return;
+                }
+                exportStudentReport(ex, jwt);
                 return;
             }
 
@@ -78,7 +83,7 @@ public class ReportHandler implements HttpHandler {
 
     private void exportStudentReport(HttpExchange ex, DecodedJWT jwt) throws Exception {
 
-        Long studentId = ((Number) jwt.getClaim("id")).longValue();
+        Long studentId = jwt.getClaim("id").asLong();
         int year = java.time.Year.now().getValue();
 
         var rows = attendanceSQL.getStudentYearlyReport(studentId, year);
@@ -92,7 +97,7 @@ public class ReportHandler implements HttpHandler {
 
     private void exportTeacherReport(HttpExchange ex, DecodedJWT jwt, Map<String, String> queryParams, String format) throws Exception {
 
-        Long teacherId = ((Number) jwt.getClaim("id")).longValue();
+        Long teacherId = jwt.getClaim("id").asLong();
         Long classId = parseRequiredLong(queryParams, "classId");
 
         var rows = attendanceSQL.getTeacherClassReport(teacherId, classId);
