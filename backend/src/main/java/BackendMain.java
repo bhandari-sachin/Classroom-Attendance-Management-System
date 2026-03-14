@@ -60,6 +60,10 @@ public class BackendMain {
         server.createContext("/api/teacher/attendance/mark",
                 new TeacherMarkAttendanceHandler(jwtService, attendanceService));
 
+        // ===== REPORT EXPORT =====
+        server.createContext("/api/reports/export", new ReportHandler(jwtService, attendanceSQL));
+
+
         // ===== QR / ATTENDANCE CODE =====
         server.createContext("/api/teacher/session/start", new StartSessionHandler(jwtService, sessionService));
 
