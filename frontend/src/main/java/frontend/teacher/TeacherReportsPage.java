@@ -1,6 +1,7 @@
 package frontend.teacher;
 
 import frontend.AppLayout;
+import frontend.api.ReportApi;
 import frontend.api.TeacherApi;
 import frontend.auth.AppRouter;
 import frontend.auth.AuthState;
@@ -14,7 +15,9 @@ import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
+import javafx.stage.FileChooser;
 
+import java.io.File;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -86,6 +89,7 @@ public class TeacherReportsPage {
         String teacherName = (state.getName() == null || state.getName().isBlank()) ? "Name" : state.getName();
         String backendUrl = System.getenv().getOrDefault("BACKEND_URL", "http://localhost:8081");
         TeacherApi api = new TeacherApi(backendUrl);
+        ReportApi reportApi = new ReportApi(backendUrl);
 
         VBox page = new VBox(14);
         page.setPadding(new Insets(22));
@@ -112,7 +116,15 @@ public class TeacherReportsPage {
         Button load = new Button("Load Report");
         load.getStyleClass().addAll("pill", "pill-green");
 
-        selects.getChildren().addAll(classBox, sessionBox, load);
+        MenuButton exportBtn = new MenuButton("Export");
+        exportBtn.getStyleClass().addAll("pill", "pill-blue");
+        exportBtn.setDisable(true); // enabled after a report is loaded
+
+        MenuItem exportPdf = new MenuItem("Export as PDF");
+        MenuItem exportCsv = new MenuItem("Export as CSV");
+        exportBtn.getItems().addAll(exportPdf, exportCsv);
+
+        selects.getChildren().addAll(classBox, sessionBox, load, exportBtn);
 
         // Stats line
         HBox stats = new HBox(10);
@@ -182,7 +194,12 @@ public class TeacherReportsPage {
         // When class changes -> load sessions
         classBox.setOnAction(e -> {
             ClassItem c = classBox.getValue();
-            if (c == null) return;
+            if (c == null) {
+                exportBtn.setDisable(true);
+                return;
+            }
+
+            exportBtn.setDisable(false);
 
             resetReportUI.run();
             sessionBox.getItems().clear();
@@ -274,6 +291,46 @@ public class TeacherReportsPage {
                         load.setDisable(false);
                         new Alert(Alert.AlertType.ERROR, "Report failed: " + ex.getMessage(), ButtonType.OK).showAndWait();
                     });
+                }
+            }).start();
+        });
+
+        exportPdf.setOnAction(e -> {
+            ClassItem c = classBox.getValue();
+            if (c == null) return;
+            FileChooser fc = new FileChooser();
+            fc.setTitle("Save PDF Report");
+            fc.setInitialFileName("teacher-report.pdf");
+            fc.getExtensionFilters().add(new FileChooser.ExtensionFilter("PDF Files", "*.pdf"));
+            File dest = fc.showSaveDialog(scene.getWindow());
+            if (dest == null) return;
+            new Thread(() -> {
+                try {
+                    reportApi.exportTeacherReport(jwtStore, state, c.id, "pdf", dest.getAbsolutePath());
+                    Platform.runLater(() -> new Alert(Alert.AlertType.INFORMATION, "PDF saved to:\n" + dest.getAbsolutePath(), ButtonType.OK).showAndWait());
+                } catch (Exception ex2) {
+                    ex2.printStackTrace();
+                    Platform.runLater(() -> new Alert(Alert.AlertType.ERROR, "Export failed: " + ex2.getMessage(), ButtonType.OK).showAndWait());
+                }
+            }).start();
+        });
+
+        exportCsv.setOnAction(e -> {
+            ClassItem c = classBox.getValue();
+            if (c == null) return;
+            FileChooser fc = new FileChooser();
+            fc.setTitle("Save CSV Report");
+            fc.setInitialFileName("teacher-report.csv");
+            fc.getExtensionFilters().add(new FileChooser.ExtensionFilter("CSV Files", "*.csv"));
+            File dest = fc.showSaveDialog(scene.getWindow());
+            if (dest == null) return;
+            new Thread(() -> {
+                try {
+                    reportApi.exportTeacherReport(jwtStore, state, c.id, "csv", dest.getAbsolutePath());
+                    Platform.runLater(() -> new Alert(Alert.AlertType.INFORMATION, "CSV saved to:\n" + dest.getAbsolutePath(), ButtonType.OK).showAndWait());
+                } catch (Exception ex2) {
+                    ex2.printStackTrace();
+                    Platform.runLater(() -> new Alert(Alert.AlertType.ERROR, "Export failed: " + ex2.getMessage(), ButtonType.OK).showAndWait());
                 }
             }).start();
         });

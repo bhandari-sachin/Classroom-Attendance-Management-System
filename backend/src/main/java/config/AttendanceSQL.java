@@ -1,5 +1,8 @@
 package config;
 
+import dto.AttendanceReportRow;
+import dto.StudentClassReportRow;
+import dto.TeacherStudentReportRow;
 import model.Attendance;
 import model.AttendanceStatus;
 import dto.AttendanceView;
@@ -631,6 +634,155 @@ public class AttendanceSQL {
                     " AND YEAR(" + alias + ".session_date) = YEAR(CURDATE()) ";
             default -> "";
         };
+    }
+
+    // exporting stats
+    public List<StudentClassReportRow> getStudentYearlyReport(Long studentId, int year) {
+
+        String sql = """
+        SELECT c.name,
+               u.student_code,
+               SUM(CASE WHEN a.status='PRESENT' THEN 1 ELSE 0 END),
+               SUM(CASE WHEN a.status='ABSENT' THEN 1 ELSE 0 END),
+               SUM(CASE WHEN a.status='EXCUSED' THEN 1 ELSE 0 END),
+               COUNT(*)
+        FROM attendance a
+        JOIN users u ON a.student_id = u.id
+        JOIN sessions s ON a.session_id = s.id
+        JOIN classes c ON s.class_id = c.id
+        WHERE a.student_id = ?
+          AND YEAR(s.session_date) = ?
+        GROUP BY c.name, u.student_code
+    """;
+
+        List<StudentClassReportRow> list = new ArrayList<>();
+
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setLong(1, studentId);
+            stmt.setInt(2, year);
+
+            ResultSet rs = stmt.executeQuery();
+
+            while (rs.next()) {
+                String className = rs.getString(1);
+                String studentCode = rs.getString(2);
+                int present = rs.getInt(3);
+                int absent = rs.getInt(4);
+                int excused = rs.getInt(5);
+                int total = rs.getInt(6);
+
+                list.add(new StudentClassReportRow(
+                        className,
+                        studentCode,
+                        present,
+                        absent,
+                        excused,
+                        total == 0 ? 0 : (present * 100.0 / total)
+                ));
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return list;
+    }
+
+    public List<TeacherStudentReportRow> getTeacherClassReport(Long teacherId, Long classId) {
+
+        String sql = """
+        SELECT c.name,
+               CONCAT(t.first_name,' ',t.last_name),
+               CONCAT(u.first_name,' ',u.last_name),
+               SUM(CASE WHEN a.status='PRESENT' THEN 1 ELSE 0 END),
+               SUM(CASE WHEN a.status='ABSENT' THEN 1 ELSE 0 END),
+               SUM(CASE WHEN a.status='EXCUSED' THEN 1 ELSE 0 END),
+               COUNT(*)
+        FROM attendance a
+        JOIN users u ON a.student_id = u.id
+        JOIN sessions s ON a.session_id = s.id
+        JOIN classes c ON s.class_id = c.id
+        JOIN users t ON c.teacher_id = t.id
+        WHERE c.teacher_id = ?
+          AND c.id = ?
+        GROUP BY c.name, t.first_name, t.last_name, u.id
+    """;
+
+        List<TeacherStudentReportRow> list = new ArrayList<>();
+
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setLong(1, teacherId);
+            stmt.setLong(2, classId);
+
+            ResultSet rs = stmt.executeQuery();
+
+            while (rs.next()) {
+                String className = rs.getString(1);
+                String teacherName = rs.getString(2);
+                String studentName = rs.getString(3);
+                int present = rs.getInt(4);
+                int absent = rs.getInt(5);
+                int excused = rs.getInt(6);
+                int total = rs.getInt(7);
+
+                list.add(new TeacherStudentReportRow(
+                        className,
+                        teacherName,
+                        studentName,
+                        present,
+                        absent,
+                        excused,
+                        total == 0 ? 0 : (present * 100.0 / total)
+                ));
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return list;
+    }
+
+    public List<AttendanceReportRow> getAllStudentsStats() {
+
+        String sql = """
+        SELECT u.id,
+               u.first_name,
+               u.last_name,
+               SUM(CASE WHEN a.status='PRESENT' THEN 1 ELSE 0 END) present,
+               SUM(CASE WHEN a.status='ABSENT' THEN 1 ELSE 0 END) absent,
+               SUM(CASE WHEN a.status='EXCUSED' THEN 1 ELSE 0 END) excused,
+               COUNT(*) total
+        FROM users u
+        LEFT JOIN attendance a ON u.id = a.student_id
+        WHERE u.user_type = 'STUDENT'
+        GROUP BY u.id
+    """;
+
+        List<AttendanceReportRow> list = new ArrayList<>();
+        try(Connection conn = DatabaseConnection.getConnection();
+            PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            ResultSet rs = stmt.executeQuery();
+
+            while(rs.next()) {
+                list.add(new AttendanceReportRow(
+                        rs.getLong("id"),
+                        rs.getString("first_name"),
+                        rs.getString("last_name"),
+                        rs.getInt("present"),
+                        rs.getInt("absent"),
+                        rs.getInt("excused"),
+                        rs.getInt("total")
+                ));
+            }
+        } catch (Exception e){ e.printStackTrace(); }
+
+        return list;
     }
 
 }

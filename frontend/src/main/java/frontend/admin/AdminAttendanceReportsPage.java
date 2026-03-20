@@ -2,6 +2,7 @@ package frontend.admin;
 
 import frontend.ReportRow;
 import frontend.api.AdminApi;
+import frontend.api.ReportApi;
 import frontend.auth.AppRouter;
 import frontend.auth.AuthState;
 import frontend.auth.JwtStore;
@@ -11,7 +12,9 @@ import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
+import javafx.stage.FileChooser;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -105,6 +108,50 @@ public class AdminAttendanceReportsPage {
         table.getColumns().addAll(cStudent, cDate, cStatus);
 
         AdminApi api = new AdminApi("http://localhost:8081", jwtStore);
+        ReportApi reportApi = new ReportApi(System.getenv().getOrDefault("BACKEND_URL", "http://localhost:8081"));
+
+        MenuButton exportBtn = new MenuButton("⬇ Export");
+        exportBtn.getStyleClass().addAll("pill", "pill-blue");
+
+        MenuItem exportPdf = new MenuItem("Export as PDF");
+        MenuItem exportCsv = new MenuItem("Export as CSV");
+        exportBtn.getItems().addAll(exportPdf, exportCsv);
+
+        exportPdf.setOnAction(e -> {
+            FileChooser fc = new FileChooser();
+            fc.setTitle("Save PDF Report");
+            fc.setInitialFileName("admin-report.pdf");
+            fc.getExtensionFilters().add(new FileChooser.ExtensionFilter("PDF Files", "*.pdf"));
+            File dest = fc.showSaveDialog(scene.getWindow());
+            if (dest == null) return;
+            new Thread(() -> {
+                try {
+                    reportApi.exportAdminReport(jwtStore, state, "pdf", dest.getAbsolutePath());
+                    Platform.runLater(() -> new Alert(Alert.AlertType.INFORMATION, "PDF saved:\n" + dest.getAbsolutePath(), ButtonType.OK).showAndWait());
+                } catch (Exception ex) {
+                    ex.printStackTrace();
+                    Platform.runLater(() -> new Alert(Alert.AlertType.ERROR, "Export failed: " + ex.getMessage(), ButtonType.OK).showAndWait());
+                }
+            }).start();
+        });
+
+        exportCsv.setOnAction(e -> {
+            FileChooser fc = new FileChooser();
+            fc.setTitle("Save CSV Report");
+            fc.setInitialFileName("admin-report.csv");
+            fc.getExtensionFilters().add(new FileChooser.ExtensionFilter("CSV Files", "*.csv"));
+            File dest = fc.showSaveDialog(scene.getWindow());
+            if (dest == null) return;
+            new Thread(() -> {
+                try {
+                    reportApi.exportAdminReport(jwtStore, state, "csv", dest.getAbsolutePath());
+                    Platform.runLater(() -> new Alert(Alert.AlertType.INFORMATION, "CSV saved:\n" + dest.getAbsolutePath(), ButtonType.OK).showAndWait());
+                } catch (Exception ex) {
+                    ex.printStackTrace();
+                    Platform.runLater(() -> new Alert(Alert.AlertType.ERROR, "Export failed: " + ex.getMessage(), ButtonType.OK).showAndWait());
+                }
+            }).start();
+        });
 
         Runnable loadReport = () -> {
             ClassItem selectedClass = classFilter.getValue();
@@ -216,6 +263,7 @@ public class AdminAttendanceReportsPage {
                 title,
                 subtitle,
                 filters,
+                exportBtn,
                 error,
                 stats,
                 tableTitle,
