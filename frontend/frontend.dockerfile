@@ -23,7 +23,7 @@ RUN apt-get update && apt-get install -y \
     libgtk-3-0 \
     libgl1 \
     libglib2.0-0 \
-    libasound2 \
+    libasound2t64 \
     libpulse0 \
     wget \
     unzip \
