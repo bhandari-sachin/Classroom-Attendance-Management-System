@@ -11,6 +11,8 @@ import java.util.Optional;
 
 public class LoginPage extends StackPane {
 
+    private final HelperClass helper = new HelperClass();
+
     public LoginPage(AppRouter router, AuthService authService, JwtStore jwtStore) {
 
         setPadding(new Insets(24));
@@ -20,28 +22,27 @@ public class LoginPage extends StackPane {
         card.setPadding(new Insets(22));
         card.getStyleClass().add("card");
 
-        Label title = new Label("Welcome back");
+        Label title = new Label(helper.getMessage("auth.login.title"));
         title.getStyleClass().add("title");
 
-        Label sub = new Label("Log in to continue");
+        Label sub = new Label(helper.getMessage("auth.login.subtitle"));
         sub.getStyleClass().add("subtitle");
 
         TextField email = new TextField();
-        email.setPromptText("Email");
+        email.setPromptText(helper.getMessage("login.email.placeholder"));
 
         PasswordField password = new PasswordField();
-        password.setPromptText("Password");
+        password.setPromptText(helper.getMessage("login.password.placeholder"));
 
         Label error = new Label();
         error.getStyleClass().add("error");
         error.setManaged(false);
         error.setVisible(false);
 
-        Button loginBtn = new Button("Log in");
+        Button loginBtn = new Button(helper.getMessage("login.button.submit"));
         loginBtn.getStyleClass().add("primary-btn");
         loginBtn.setMaxWidth(Double.MAX_VALUE);
 
-        //  REAL LOGIN (BACKEND)
         loginBtn.setOnAction(e -> {
             error.setVisible(false);
             error.setManaged(false);
@@ -50,7 +51,7 @@ public class LoginPage extends StackPane {
             String pw = password.getText();
 
             if (em.isBlank() || pw.isBlank()) {
-                showError(error, "Please enter email and password.");
+                showError(error, helper.getMessage("login.error.empty_fields"));
                 return;
             }
 
@@ -67,16 +68,17 @@ public class LoginPage extends StackPane {
 
                 } catch (Exception ex) {
                     Platform.runLater(() -> {
-                        showError(error, "Login failed: " + cleanMessage(ex.getMessage()));
+                        showError(
+                                error,
+                                helper.getMessage("login.error.failed") + " " + cleanMessage(ex.getMessage())
+                        );
                         loginBtn.setDisable(false);
                     });
                 }
             }).start();
         });
 
-
-
-        Button goSignup = new Button("I don't have an account");
+        Button goSignup = new Button(helper.getMessage("login.button.signup"));
         goSignup.getStyleClass().add("link-button");
         goSignup.setOnAction(e -> router.go("signup"));
 
@@ -93,7 +95,6 @@ public class LoginPage extends StackPane {
         StackPane.setAlignment(card, Pos.CENTER);
         getChildren().add(card);
 
-        // auto redirect if already logged in
         Optional<AuthState> existing = jwtStore.load();
         existing.ifPresent(state -> router.go(RoleRedirect.routeFor(state.getRole())));
     }
@@ -104,8 +105,8 @@ public class LoginPage extends StackPane {
         error.setManaged(true);
     }
 
-    private static String cleanMessage(String msg) {
-        if (msg == null || msg.isBlank()) return "Unknown error";
+    private String cleanMessage(String msg) {
+        if (msg == null || msg.isBlank()) return helper.getMessage("login.error.unknown");
         return msg.length() > 200 ? msg.substring(0, 200) + "..." : msg;
     }
 }

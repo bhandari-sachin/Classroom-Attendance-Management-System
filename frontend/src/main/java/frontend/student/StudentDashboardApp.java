@@ -5,6 +5,7 @@ import frontend.api.StudentAttendanceApi;
 import frontend.auth.AppRouter;
 import frontend.auth.AuthState;
 import frontend.auth.JwtStore;
+import frontend.ui.HelperClass;
 import javafx.application.Platform;
 import javafx.concurrent.Task;
 import javafx.geometry.Insets;
@@ -20,31 +21,28 @@ import java.util.Map;
 
 public class StudentDashboardApp {
 
-    //private static final String BASE_URL = "http://localhost:8081";
-    private static final String BASE_URL =
-            System.getenv().getOrDefault("BACKEND_URL", "http://localhost:8081");
+    private static final String BASE_URL = System.getenv().getOrDefault("BACKEND_URL", "http://localhost:8081");
+    private final HelperClass helper = new HelperClass();
 
     public Parent build(Scene scene, AppRouter router, JwtStore jwtStore, AuthState state) {
-
         String studentName = (state.getName() == null || state.getName().isBlank())
-                ? "Name"
+                ? helper.getMessage("student.name.placeholder")
                 : state.getName();
 
         VBox page = new VBox(16);
         page.setPadding(new Insets(26));
         page.getStyleClass().add("page");
 
-        // Header
-        Label title = new Label("Welcome back, " + studentName + "!");
+        Label title = new Label(
+                helper.getMessage("student.dashboard.title").replace("{name}", studentName)
+        );
         title.getStyleClass().add("dash-title");
 
-        Label subtitle = new Label("Here’s your attendance overview for this month");
+        Label subtitle = new Label(helper.getMessage("student.dashboard.subtitle"));
         subtitle.getStyleClass().add("dash-subtitle");
 
-        // Action card (Mark attendance)
         Button markAttendance = attendanceCard(router);
 
-        // ======= STATS (updatable labels) =======
         Label presentValue = new Label("0");
         Label absentValue = new Label("0");
         Label excusedValue = new Label("0");
@@ -52,17 +50,16 @@ public class StudentDashboardApp {
 
         GridPane stats = statsGrid(presentValue, absentValue, excusedValue, rateValue);
 
-        // Classes header row
         HBox classesHeader = new HBox(10);
         classesHeader.setAlignment(Pos.CENTER_LEFT);
 
-        Label classesTitle = new Label("Your classes");
+        Label classesTitle = new Label(helper.getMessage("student.dashboard.classes.title"));
         classesTitle.getStyleClass().add("section-title");
 
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
-        Button viewAll = new Button("View All Attendance  →");
+        Button viewAll = new Button(helper.getMessage("student.dashboard.viewAll"));
         viewAll.getStyleClass().add("link-button");
         viewAll.setOnAction(e -> router.go("student-attendance"));
 
@@ -80,20 +77,18 @@ public class StudentDashboardApp {
                 classesCard
         );
 
-        // ✅ Load real stats from backend
         loadStudentSummary(jwtStore, state, presentValue, absentValue, excusedValue, rateValue);
 
         return AppLayout.wrapWithSidebar(
                 studentName,
-                "Student Panel",
-                "Dashboard",
-                "Mark Attendance",
-                "My Attendance",
-                "Email",
+                helper.getMessage("student.panel.title"),
+                helper.getMessage("student.nav.dashboard"),
+                helper.getMessage("student.nav.markAttendance"),
+                helper.getMessage("student.nav.myAttendance"),
+                helper.getMessage("student.nav.email"),
                 page,
                 "dashboard",
                 new AppLayout.Navigator() {
-
                     @Override public void goDashboard() { router.go("student-dashboard"); }
                     @Override public void goTakeAttendance() { router.go("student-mark"); }
                     @Override public void goReports() { router.go("student-attendance"); }
@@ -106,15 +101,14 @@ public class StudentDashboardApp {
         );
     }
 
-    // ===== backend loading =====
-
-    private void loadStudentSummary(JwtStore jwtStore,
-                                    AuthState state,
-                                    Label presentValue,
-                                    Label absentValue,
-                                    Label excusedValue,
-                                    Label rateValue) {
-
+    private void loadStudentSummary(
+            JwtStore jwtStore,
+            AuthState state,
+            Label presentValue,
+            Label absentValue,
+            Label excusedValue,
+            Label rateValue
+    ) {
         StudentAttendanceApi api = new StudentAttendanceApi(BASE_URL);
 
         Task<Map<String, Object>> task = new Task<>() {
@@ -127,9 +121,9 @@ public class StudentDashboardApp {
             protected void succeeded() {
                 Map<String, Object> s = getValue();
                 int present = num(s.get("presentCount"));
-                int absent  = num(s.get("absentCount"));
+                int absent = num(s.get("absentCount"));
                 int excused = num(s.get("excusedCount"));
-                double rate = dbl(s.get("attendanceRate")); // backend returns percent already
+                double rate = dbl(s.get("attendanceRate"));
 
                 Platform.runLater(() -> {
                     presentValue.setText(String.valueOf(present));
@@ -155,16 +149,22 @@ public class StudentDashboardApp {
     private static int num(Object v) {
         if (v == null) return 0;
         if (v instanceof Number n) return n.intValue();
-        try { return Integer.parseInt(String.valueOf(v)); } catch (Exception e) { return 0; }
+        try {
+            return Integer.parseInt(String.valueOf(v));
+        } catch (Exception e) {
+            return 0;
+        }
     }
 
     private static double dbl(Object v) {
         if (v == null) return 0;
         if (v instanceof Number n) return n.doubleValue();
-        try { return Double.parseDouble(String.valueOf(v)); } catch (Exception e) { return 0; }
+        try {
+            return Double.parseDouble(String.valueOf(v));
+        } catch (Exception e) {
+            return 0;
+        }
     }
-
-    // ===== UI blocks / helpers =====
 
     private Button attendanceCard(AppRouter router) {
         Button btn = new Button();
@@ -178,10 +178,11 @@ public class StudentDashboardApp {
         icon.getStyleClass().add("attendance-icon");
 
         VBox texts = new VBox(2);
-        Label big = new Label("Mark Attendance");
+
+        Label big = new Label(helper.getMessage("student.dashboard.markAttendance.title"));
         big.getStyleClass().add("attendance-title");
 
-        Label small = new Label("Scan the QR code to check in");
+        Label small = new Label(helper.getMessage("student.dashboard.markAttendance.subtitle"));
         small.getStyleClass().add("attendance-subtitle");
 
         texts.getChildren().addAll(big, small);
@@ -193,8 +194,8 @@ public class StudentDashboardApp {
         arrow.getStyleClass().add("attendance-arrow");
 
         box.getChildren().addAll(icon, texts, spacer, arrow);
-        btn.setGraphic(box);
 
+        btn.setGraphic(box);
         btn.setOnAction(e -> router.go("student-mark"));
         return btn;
     }
@@ -215,10 +216,10 @@ public class StudentDashboardApp {
 
         grid.getColumnConstraints().addAll(c1, c2);
 
-        grid.add(statCardWithBadge("Present", presentValue, "This month", "#3BAA66", "✓"), 0, 0);
-        grid.add(statCardWithBadge("Absent",  absentValue,  "This month", "#E05A5A", "✕"), 1, 0);
-        grid.add(statCardWithBadge("Excused", excusedValue, "This month", "#E09A3B", "⏱"), 0, 1);
-        grid.add(statCardWithBadge("Rate",    rateValue,    "This month", "#5AA6E0", "%"), 1, 1);
+        grid.add(statCardWithBadge(helper.getMessage("student.dashboard.stats.present"), presentValue, helper.getMessage("student.dashboard.stats.hint"), "#3BAA66", "✓"), 0, 0);
+        grid.add(statCardWithBadge(helper.getMessage("student.dashboard.stats.absent"), absentValue, helper.getMessage("student.dashboard.stats.hint"), "#E05A5A", "✕"), 1, 0);
+        grid.add(statCardWithBadge(helper.getMessage("student.dashboard.stats.excused"), excusedValue, helper.getMessage("student.dashboard.stats.hint"), "#E09A3B", "⏱"), 0, 1);
+        grid.add(statCardWithBadge(helper.getMessage("student.dashboard.rate"), rateValue, helper.getMessage("student.dashboard.stats.hint"), "#5AA6E0", "%"), 1, 1);
 
         return grid;
     }
@@ -226,18 +227,13 @@ public class StudentDashboardApp {
     private VBox statCardWithBadge(String label, Label valueLabel, String hint, String colorHex, String iconChar) {
         VBox card = new VBox(6);
         card.setPadding(new Insets(14));
-        card.setStyle(
-                "-fx-background-color: white;" +
-                        "-fx-background-radius: 12;" +
-                        "-fx-border-color: #ECEFF2;" +
-                        "-fx-border-radius: 12;"
-        );
+        card.getStyleClass().addAll("dashboard-card", "student-stat-card");
 
         HBox top = new HBox();
         top.setAlignment(Pos.CENTER_LEFT);
 
         Label lbl = new Label(label);
-        lbl.setStyle("-fx-font-size: 13px; -fx-font-weight: 700; -fx-text-fill: #4B5563;");
+        lbl.getStyleClass().add("dashboard-card-label");
 
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
@@ -245,10 +241,7 @@ public class StudentDashboardApp {
         StackPane badge = new StackPane();
         badge.setMinSize(28, 28);
         badge.setMaxSize(28, 28);
-        badge.setStyle(
-                "-fx-background-color: " + colorHex + ";" +
-                        "-fx-background-radius: 10;"
-        );
+        badge.setStyle("-fx-background-color: " + colorHex + "; -fx-background-radius: 10;");
 
         Label icon = new Label(iconChar);
         icon.setStyle("-fx-text-fill: white; -fx-font-size: 14px; -fx-font-weight: 900;");
@@ -256,10 +249,10 @@ public class StudentDashboardApp {
 
         top.getChildren().addAll(lbl, spacer, badge);
 
-        valueLabel.setStyle("-fx-font-size: 28px; -fx-font-weight: 900;");
+        valueLabel.getStyleClass().add("dashboard-card-value");
 
         Label small = new Label(hint);
-        small.setStyle("-fx-font-size: 11px; -fx-text-fill: #9CA3AF;");
+        small.getStyleClass().add("dashboard-card-hint");
 
         card.getChildren().addAll(top, valueLabel, small);
         return card;
@@ -274,10 +267,10 @@ public class StudentDashboardApp {
         Label cal = new Label("📅");
         cal.getStyleClass().add("empty-icon");
 
-        Label t = new Label("No classes yet");
+        Label t = new Label(helper.getMessage("student.dashboard.classes.empty"));
         t.getStyleClass().add("empty-title");
 
-        Label s = new Label("You haven’t been enrolled in any classes yet.");
+        Label s = new Label(helper.getMessage("student.dashboard.classes.empty.subtitle"));
         s.getStyleClass().add("empty-subtitle");
 
         card.getChildren().addAll(cal, t, s);

@@ -6,6 +6,7 @@ import frontend.api.TeacherApi;
 import frontend.auth.AppRouter;
 import frontend.auth.AuthState;
 import frontend.auth.JwtStore;
+import frontend.ui.HelperClass;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -51,6 +52,7 @@ public class TeacherReportsPage {
     }
 
     private final ObservableList<ReportRow> tableRows = FXCollections.observableArrayList();
+    private final HelperClass helper = new HelperClass();
 
     @SuppressWarnings("unchecked")
     private static Map<String, Object> asMap(Object o) {
@@ -86,7 +88,10 @@ public class TeacherReportsPage {
 
     public Parent build(Scene scene, AppRouter router, JwtStore jwtStore, AuthState state) {
 
-        String teacherName = (state.getName() == null || state.getName().isBlank()) ? "Name" : state.getName();
+        String teacherName = (state.getName() == null || state.getName().isBlank())
+                ? helper.getMessage("teacher.fallback.name")
+                : state.getName();
+
         String backendUrl = System.getenv().getOrDefault("BACKEND_URL", "http://localhost:8081");
         TeacherApi api = new TeacherApi(backendUrl);
         ReportApi reportApi = new ReportApi(backendUrl);
@@ -95,45 +100,43 @@ public class TeacherReportsPage {
         page.setPadding(new Insets(22));
         page.getStyleClass().add("page");
 
-        Label title = new Label("Reports");
+        Label title = new Label(helper.getMessage("teacher.reports.title"));
         title.getStyleClass().add("title");
 
-        Label subtitle = new Label("Session reports (attendance stats + list)");
+        Label subtitle = new Label(helper.getMessage("teacher.reports.subtitle"));
         subtitle.getStyleClass().add("subtitle");
 
-        // Selectors
         HBox selects = new HBox(10);
         selects.setAlignment(Pos.CENTER_LEFT);
 
         ComboBox<ClassItem> classBox = new ComboBox<>();
-        classBox.setPromptText("Select class");
+        classBox.setPromptText(helper.getMessage("teacher.reports.select.class"));
         classBox.setMaxWidth(340);
 
         ComboBox<SessionItem> sessionBox = new ComboBox<>();
-        sessionBox.setPromptText("Select session");
+        sessionBox.setPromptText(helper.getMessage("teacher.reports.select.session"));
         sessionBox.setMaxWidth(340);
 
-        Button load = new Button("Load Report");
+        Button load = new Button(helper.getMessage("teacher.reports.load"));
         load.getStyleClass().addAll("pill", "pill-green");
 
-        MenuButton exportBtn = new MenuButton("Export");
+        MenuButton exportBtn = new MenuButton(helper.getMessage("common.export"));
         exportBtn.getStyleClass().addAll("pill", "pill-blue");
-        exportBtn.setDisable(true); // enabled after a report is loaded
+        exportBtn.setDisable(true);
 
-        MenuItem exportPdf = new MenuItem("Export as PDF");
-        MenuItem exportCsv = new MenuItem("Export as CSV");
+        MenuItem exportPdf = new MenuItem(helper.getMessage("common.export.pdf"));
+        MenuItem exportCsv = new MenuItem(helper.getMessage("common.export.csv"));
         exportBtn.getItems().addAll(exportPdf, exportCsv);
 
         selects.getChildren().addAll(classBox, sessionBox, load, exportBtn);
 
-        // Stats line
         HBox stats = new HBox(10);
         stats.setAlignment(Pos.CENTER_LEFT);
 
-        Label present = new Label("Present: —");
-        Label absent  = new Label("Absent: —");
-        Label excused = new Label("Excused: —");
-        Label rate    = new Label("Rate: —");
+        Label present = new Label(helper.getMessage("teacher.reports.stats.present").replace("{count}", "—"));
+        Label absent  = new Label(helper.getMessage("teacher.reports.stats.absent").replace("{count}", "—"));
+        Label excused = new Label(helper.getMessage("teacher.reports.stats.excused").replace("{count}", "—"));
+        Label rate    = new Label(helper.getMessage("teacher.reports.stats.rate").replace("{rate}", "—"));
 
         present.getStyleClass().add("subtitle");
         absent.getStyleClass().add("subtitle");
@@ -142,34 +145,31 @@ public class TeacherReportsPage {
 
         stats.getChildren().addAll(present, absent, excused, rate);
 
-        // Table
         TableView<ReportRow> table = new TableView<>(tableRows);
         table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
         table.setPrefHeight(340);
 
-        TableColumn<ReportRow, String> colName = new TableColumn<>("Student");
+        TableColumn<ReportRow, String> colName = new TableColumn<>(helper.getMessage("teacher.reports.table.student"));
         colName.setCellValueFactory(d -> new javafx.beans.property.SimpleStringProperty(d.getValue().getName()));
 
-        TableColumn<ReportRow, String> colEmail = new TableColumn<>("Email");
+        TableColumn<ReportRow, String> colEmail = new TableColumn<>(helper.getMessage("teacher.reports.table.email"));
         colEmail.setCellValueFactory(d -> new javafx.beans.property.SimpleStringProperty(d.getValue().getEmail()));
 
-        TableColumn<ReportRow, String> colStatus = new TableColumn<>("Status");
+        TableColumn<ReportRow, String> colStatus = new TableColumn<>(helper.getMessage("teacher.reports.table.status"));
         colStatus.setCellValueFactory(d -> new javafx.beans.property.SimpleStringProperty(d.getValue().getStatus()));
 
         table.getColumns().setAll(colName, colEmail, colStatus);
 
         page.getChildren().addAll(title, subtitle, selects, stats, table);
 
-        // Helper to reset UI when switching
         Runnable resetReportUI = () -> {
-            present.setText("Present: —");
-            absent.setText("Absent: —");
-            excused.setText("Excused: —");
-            rate.setText("Rate: —");
+            present.setText(helper.getMessage("teacher.reports.stats.present").replace("{count}", "—"));
+            absent.setText(helper.getMessage("teacher.reports.stats.absent").replace("{count}", "—"));
+            excused.setText(helper.getMessage("teacher.reports.stats.excused").replace("{count}", "—"));
+            rate.setText(helper.getMessage("teacher.reports.stats.rate").replace("{rate}", "—"));
             tableRows.clear();
         };
 
-        // Load classes on open
         new Thread(() -> {
             try {
                 List<Map<String, Object>> list = api.getMyClasses(jwtStore, state);
@@ -186,12 +186,15 @@ public class TeacherReportsPage {
             } catch (Exception ex) {
                 ex.printStackTrace();
                 Platform.runLater(() ->
-                        new Alert(Alert.AlertType.ERROR, "Failed to load classes: " + ex.getMessage(), ButtonType.OK).showAndWait()
+                        new Alert(
+                                Alert.AlertType.ERROR,
+                                helper.getMessage("teacher.reports.error.loadClasses").replace("{error}", ex.getMessage()),
+                                ButtonType.OK
+                        ).showAndWait()
                 );
             }
         }).start();
 
-        // When class changes -> load sessions
         classBox.setOnAction(e -> {
             ClassItem c = classBox.getValue();
             if (c == null) {
@@ -200,7 +203,6 @@ public class TeacherReportsPage {
             }
 
             exportBtn.setDisable(false);
-
             resetReportUI.run();
             sessionBox.getItems().clear();
             sessionBox.setValue(null);
@@ -211,15 +213,16 @@ public class TeacherReportsPage {
 
                     var items = sessions.stream().map(s -> {
                         long sid = Long.parseLong(String.valueOf(s.get("id")));
-
-                        // backend might return: date / sessionDate / session_date
                         String date = pick(s, "date", "sessionDate", "session_date");
-
-                        // backend might return: code / qrCode / qr_token
                         String code = pick(s, "code", "qrCode", "qr_token", "qrToken");
 
-                        String label = (date.isBlank() ? "Session " + sid : date) +
-                                (code.isBlank() ? "" : " (code: " + code + ")");
+                        String label = (date.isBlank()
+                                ? helper.getMessage("teacher.reports.session.default").replace("{id}", String.valueOf(sid))
+                                : date)
+                                + (code.isBlank()
+                                ? ""
+                                : " " + helper.getMessage("teacher.reports.session.code").replace("{code}", code));
+
                         return new SessionItem(sid, label);
                     }).toList();
 
@@ -228,20 +231,22 @@ public class TeacherReportsPage {
                 } catch (Exception ex) {
                     ex.printStackTrace();
                     Platform.runLater(() ->
-                            new Alert(Alert.AlertType.ERROR, "Failed to load sessions: " + ex.getMessage(), ButtonType.OK).showAndWait()
+                            new Alert(
+                                    Alert.AlertType.ERROR,
+                                    helper.getMessage("teacher.reports.error.loadSessions").replace("{error}", ex.getMessage()),
+                                    ButtonType.OK
+                            ).showAndWait()
                     );
                 }
             }).start();
         });
 
-        // When session changes -> clear old report
         sessionBox.setOnAction(e -> resetReportUI.run());
 
-        // Load report
         load.setOnAction(e -> {
             SessionItem sItem = sessionBox.getValue();
             if (sItem == null) {
-                new Alert(Alert.AlertType.WARNING, "Select a session first.", ButtonType.OK).showAndWait();
+                new Alert(Alert.AlertType.WARNING, helper.getMessage("teacher.reports.alert.selectSession"), ButtonType.OK).showAndWait();
                 return;
             }
 
@@ -252,9 +257,6 @@ public class TeacherReportsPage {
                 try {
                     Map<String, Object> res = api.getSessionReport(jwtStore, state, sItem.id);
 
-                    // supports either:
-                    // 1) { report: { stats: {...}, rows: [...] } }
-                    // 2) { stats: {...}, rows: [...] }
                     Map<String, Object> report = res.containsKey("report")
                             ? asMap(res.get("report"))
                             : res;
@@ -268,10 +270,10 @@ public class TeacherReportsPage {
                     double r = asDouble(st.get("rate"));
 
                     Platform.runLater(() -> {
-                        present.setText("Present: " + p);
-                        absent.setText("Absent: " + a);
-                        excused.setText("Excused: " + ex);
-                        rate.setText(String.format("Rate: %.1f%%", r));
+                        present.setText(helper.getMessage("teacher.reports.stats.present").replace("{count}", String.valueOf(p)));
+                        absent.setText(helper.getMessage("teacher.reports.stats.absent").replace("{count}", String.valueOf(a)));
+                        excused.setText(helper.getMessage("teacher.reports.stats.excused").replace("{count}", String.valueOf(ex)));
+                        rate.setText(helper.getMessage("teacher.reports.stats.rate").replace("{rate}", String.format("%.1f", r)));
 
                         for (var row : rows) {
                             String fn = pick(row, "firstName", "first_name");
@@ -289,7 +291,11 @@ public class TeacherReportsPage {
                     ex.printStackTrace();
                     Platform.runLater(() -> {
                         load.setDisable(false);
-                        new Alert(Alert.AlertType.ERROR, "Report failed: " + ex.getMessage(), ButtonType.OK).showAndWait();
+                        new Alert(
+                                Alert.AlertType.ERROR,
+                                helper.getMessage("teacher.reports.error.loadReport") + " " + ex.getMessage(),
+                                ButtonType.OK
+                        ).showAndWait();
                     });
                 }
             }).start();
@@ -298,19 +304,29 @@ public class TeacherReportsPage {
         exportPdf.setOnAction(e -> {
             ClassItem c = classBox.getValue();
             if (c == null) return;
+
             FileChooser fc = new FileChooser();
-            fc.setTitle("Save PDF Report");
-            fc.setInitialFileName("teacher-report.pdf");
+            fc.setTitle(helper.getMessage("teacher.reports.filechooser.pdf.title"));
+            fc.setInitialFileName(helper.getMessage("teacher.reports.filechooser.pdf.name"));
             fc.getExtensionFilters().add(new FileChooser.ExtensionFilter("PDF Files", "*.pdf"));
             File dest = fc.showSaveDialog(scene.getWindow());
             if (dest == null) return;
+
             new Thread(() -> {
                 try {
                     reportApi.exportTeacherReport(jwtStore, state, c.id, "pdf", dest.getAbsolutePath());
-                    Platform.runLater(() -> new Alert(Alert.AlertType.INFORMATION, "PDF saved to:\n" + dest.getAbsolutePath(), ButtonType.OK).showAndWait());
+                    Platform.runLater(() -> new Alert(
+                            Alert.AlertType.INFORMATION,
+                            helper.getMessage("teacher.reports.export.success.pdf") + "\n" + dest.getAbsolutePath(),
+                            ButtonType.OK
+                    ).showAndWait());
                 } catch (Exception ex2) {
                     ex2.printStackTrace();
-                    Platform.runLater(() -> new Alert(Alert.AlertType.ERROR, "Export failed: " + ex2.getMessage(), ButtonType.OK).showAndWait());
+                    Platform.runLater(() -> new Alert(
+                            Alert.AlertType.ERROR,
+                            helper.getMessage("teacher.reports.error.export") + " " + ex2.getMessage(),
+                            ButtonType.OK
+                    ).showAndWait());
                 }
             }).start();
         });
@@ -318,30 +334,40 @@ public class TeacherReportsPage {
         exportCsv.setOnAction(e -> {
             ClassItem c = classBox.getValue();
             if (c == null) return;
+
             FileChooser fc = new FileChooser();
-            fc.setTitle("Save CSV Report");
-            fc.setInitialFileName("teacher-report.csv");
+            fc.setTitle(helper.getMessage("teacher.reports.filechooser.csv.title"));
+            fc.setInitialFileName(helper.getMessage("teacher.reports.filechooser.csv.name"));
             fc.getExtensionFilters().add(new FileChooser.ExtensionFilter("CSV Files", "*.csv"));
             File dest = fc.showSaveDialog(scene.getWindow());
             if (dest == null) return;
+
             new Thread(() -> {
                 try {
                     reportApi.exportTeacherReport(jwtStore, state, c.id, "csv", dest.getAbsolutePath());
-                    Platform.runLater(() -> new Alert(Alert.AlertType.INFORMATION, "CSV saved to:\n" + dest.getAbsolutePath(), ButtonType.OK).showAndWait());
+                    Platform.runLater(() -> new Alert(
+                            Alert.AlertType.INFORMATION,
+                            helper.getMessage("teacher.reports.export.success.csv") + "\n" + dest.getAbsolutePath(),
+                            ButtonType.OK
+                    ).showAndWait());
                 } catch (Exception ex2) {
                     ex2.printStackTrace();
-                    Platform.runLater(() -> new Alert(Alert.AlertType.ERROR, "Export failed: " + ex2.getMessage(), ButtonType.OK).showAndWait());
+                    Platform.runLater(() -> new Alert(
+                            Alert.AlertType.ERROR,
+                            helper.getMessage("teacher.reports.error.export") + " " + ex2.getMessage(),
+                            ButtonType.OK
+                    ).showAndWait());
                 }
             }).start();
         });
 
         return AppLayout.wrapWithSidebar(
                 teacherName,
-                "Teacher Panel",
-                "Dashboard",
-                "Take Attendance",
-                "Reports",
-                "Email",
+                helper.getMessage("teacher.sidebar.title"),
+                helper.getMessage("teacher.sidebar.menu.dashboard"),
+                helper.getMessage("teacher.sidebar.menu.take_attendance"),
+                helper.getMessage("teacher.sidebar.menu.reports"),
+                helper.getMessage("teacher.sidebar.menu.email"),
                 page,
                 "third",
                 new AppLayout.Navigator() {

@@ -11,6 +11,8 @@ import java.util.Optional;
 
 public class SignupPage extends StackPane {
 
+    private final HelperClass helper = new HelperClass();
+
     public SignupPage(AppRouter router, AuthService authService, JwtStore jwtStore) {
 
         VBox card = new VBox(10);
@@ -18,36 +20,63 @@ public class SignupPage extends StackPane {
         card.setMaxWidth(420);
         card.setPadding(new Insets(22));
 
-        Label title = new Label("Create account");
+        Label title = new Label(helper.getMessage("signup.title"));
         title.getStyleClass().add("title");
 
-        Label sub = new Label("Sign up to start using the system");
+        Label sub = new Label(helper.getMessage("signup.subtitle"));
         sub.getStyleClass().add("subtitle");
 
         TextField firstName = new TextField();
-        firstName.setPromptText("First name");
+        firstName.setPromptText(helper.getMessage("signup.firstname.placeholder"));
 
         TextField lastName = new TextField();
-        lastName.setPromptText("Last name");
+        lastName.setPromptText(helper.getMessage("signup.lastname.placeholder"));
 
         TextField email = new TextField();
-        email.setPromptText("Email");
+        email.setPromptText(helper.getMessage("signup.email.placeholder"));
 
         PasswordField password = new PasswordField();
-        password.setPromptText("Password");
+        password.setPromptText(helper.getMessage("signup.password.placeholder"));
 
         ComboBox<Role> role = new ComboBox<>();
         role.getItems().addAll(Role.STUDENT, Role.TEACHER);
         role.setValue(Role.STUDENT);
         role.setMaxWidth(Double.MAX_VALUE);
 
-        Label studentCodeLabel = new Label("Student code");
+        role.setCellFactory(listView -> new ListCell<>() {
+            @Override
+            protected void updateItem(Role item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                } else {
+                    setText(item == Role.STUDENT
+                            ? helper.getMessage("signup.role.student")
+                            : helper.getMessage("signup.role.teacher"));
+                }
+            }
+        });
+
+        role.setButtonCell(new ListCell<>() {
+            @Override
+            protected void updateItem(Role item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                } else {
+                    setText(item == Role.STUDENT
+                            ? helper.getMessage("signup.role.student")
+                            : helper.getMessage("signup.role.teacher"));
+                }
+            }
+        });
+
+        Label studentCodeLabel = new Label(helper.getMessage("signup.studentcode.label"));
         studentCodeLabel.getStyleClass().add("field-label");
 
         TextField studentCode = new TextField();
-        studentCode.setPromptText("e.g. 123456");
+        studentCode.setPromptText(helper.getMessage("signup.studentcode.placeholder"));
 
-        // Only show studentCode for STUDENT
         studentCodeLabel.visibleProperty().bind(role.valueProperty().isEqualTo(Role.STUDENT));
         studentCode.visibleProperty().bind(role.valueProperty().isEqualTo(Role.STUDENT));
         studentCodeLabel.managedProperty().bind(studentCodeLabel.visibleProperty());
@@ -63,11 +92,11 @@ public class SignupPage extends StackPane {
         info.setVisible(false);
         info.setManaged(false);
 
-        Button signupBtn = new Button("Sign up");
+        Button signupBtn = new Button(helper.getMessage("signup.button.submit"));
         signupBtn.getStyleClass().add("primary-btn");
         signupBtn.setMaxWidth(Double.MAX_VALUE);
 
-        Button goLogin = new Button("I already have an account");
+        Button goLogin = new Button(helper.getMessage("signup.button.login"));
         goLogin.getStyleClass().add("link-button");
         goLogin.setOnAction(e -> router.go("login"));
 
@@ -83,19 +112,19 @@ public class SignupPage extends StackPane {
             String sc = studentCode.getText().trim();
 
             if (fn.isBlank() || ln.isBlank() || em.isBlank() || pw.isBlank()) {
-                showMsg(error, "Please fill in all required fields.");
+                showMsg(error, helper.getMessage("signup.error.required_fields"));
                 return;
             }
             if (!em.contains("@")) {
-                showMsg(error, "Please enter a valid email.");
+                showMsg(error, helper.getMessage("signup.error.invalid_email"));
                 return;
             }
             if (pw.length() < 6) {
-                showMsg(error, "Password must be at least 6 characters.");
+                showMsg(error, helper.getMessage("signup.error.password_short"));
                 return;
             }
             if (r == Role.STUDENT && sc.isBlank()) {
-                showMsg(error, "Student code is required for students.");
+                showMsg(error, helper.getMessage("signup.error.student_code_required"));
                 return;
             }
 
@@ -107,13 +136,13 @@ public class SignupPage extends StackPane {
 
                     Platform.runLater(() -> {
                         signupBtn.setDisable(false);
-                        showMsg(info, "Account created. Please login.");
+                        showMsg(info, helper.getMessage("signup.success.created"));
                         router.go("login");
                     });
                 } catch (Exception ex) {
                     Platform.runLater(() -> {
                         signupBtn.setDisable(false);
-                        showMsg(error, "Signup failed: " + ex.getMessage());
+                        showMsg(error, helper.getMessage("signup.error.failed") + " " + ex.getMessage());
                     });
                 }
             }).start();
@@ -121,11 +150,11 @@ public class SignupPage extends StackPane {
 
         card.getChildren().addAll(
                 title, sub,
-                field("First name", firstName),
-                field("Last name", lastName),
-                field("Email", email),
-                field("Password", password),
-                field("Role", role),
+                field(helper.getMessage("signup.firstname.label"), firstName),
+                field(helper.getMessage("signup.lastname.label"), lastName),
+                field(helper.getMessage("signup.email.label"), email),
+                field(helper.getMessage("signup.password.label"), password),
+                field(helper.getMessage("signup.role.label"), role),
                 studentCodeLabel, studentCode,
                 error,
                 info,
@@ -136,7 +165,6 @@ public class SignupPage extends StackPane {
         StackPane.setAlignment(card, Pos.CENTER);
         getChildren().add(card);
 
-        // Auto redirect if already logged in
         Optional<AuthState> existing = jwtStore.load();
         existing.ifPresent(state -> router.go(RoleRedirect.routeFor(state.getRole())));
     }

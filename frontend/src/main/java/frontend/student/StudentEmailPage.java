@@ -6,6 +6,7 @@ import frontend.api.StudentTeacherApi;
 import frontend.auth.AppRouter;
 import frontend.auth.AuthState;
 import frontend.auth.JwtStore;
+import frontend.ui.HelperClass;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -23,56 +24,54 @@ import java.util.Map;
 
 public class StudentEmailPage {
 
-    //private static final String BASE_URL = "http://localhost:8081";
     private static final String BASE_URL =
             System.getenv().getOrDefault("BACKEND_URL", "http://localhost:8081");
 
-    // ✅ now real data, starts empty
     private final ObservableList<TeacherRow> rows = FXCollections.observableArrayList();
+    private final HelperClass helper = new HelperClass();
 
     public Parent build(Scene scene, AppRouter router, JwtStore jwtStore, AuthState state) {
 
         String studentName = (state.getName() == null || state.getName().isBlank())
-                ? "Name"
+                ? helper.getMessage("student.name.placeholder")
                 : state.getName();
 
         VBox page = new VBox(14);
         page.setPadding(new Insets(22));
         page.getStyleClass().add("page");
 
-        Label title = new Label("Email");
+        Label title = new Label(helper.getMessage("student.email.title"));
         title.getStyleClass().add("title");
 
-        Label info = new Label("Your teacher emails.");
+        Label info = new Label(helper.getMessage("student.email.subtitle"));
         info.getStyleClass().add("subtitle");
 
-        Label status = new Label("Loading…");
+        Label status = new Label(helper.getMessage("student.email.status.loading"));
         status.getStyleClass().add("subtitle");
 
         TableView<TeacherRow> table = new TableView<>(rows);
         table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
         table.setPrefHeight(320);
 
-        TableColumn<TeacherRow, String> colName = new TableColumn<>("Teacher");
+        TableColumn<TeacherRow, String> colName = new TableColumn<>(helper.getMessage("student.email.table.teacher"));
         colName.setCellValueFactory(d -> d.getValue().teacherNameProperty());
 
-        TableColumn<TeacherRow, String> colEmail = new TableColumn<>("Email");
+        TableColumn<TeacherRow, String> colEmail = new TableColumn<>(helper.getMessage("student.email.table.email"));
         colEmail.setCellValueFactory(d -> d.getValue().emailProperty());
 
         table.getColumns().addAll(colName, colEmail);
 
         page.getChildren().addAll(title, info, status, table);
 
-        // ✅ fetch from backend
         loadTeachers(jwtStore, state, status);
 
         return AppLayout.wrapWithSidebar(
                 studentName,
-                "Student Panel",
-                "Dashboard",
-                "Mark Attendance",
-                "My Attendance",
-                "Email",
+                helper.getMessage("student.panel.title"),
+                helper.getMessage("student.nav.dashboard"),
+                helper.getMessage("student.nav.markAttendance"),
+                helper.getMessage("student.nav.myAttendance"),
+                helper.getMessage("student.nav.email"),
                 page,
                 "fourth",
                 new AppLayout.Navigator() {
@@ -115,7 +114,7 @@ public class StudentEmailPage {
             protected void failed() {
                 Throwable e = getException();
                 Platform.runLater(() -> statusLabel.setText(
-                        "Failed to load teachers: " + (e == null ? "" : e.getMessage())
+                        helper.getMessage("student.email.status.error") + " " + (e == null ? "" : e.getMessage())
                 ));
                 if (e != null) e.printStackTrace();
             }

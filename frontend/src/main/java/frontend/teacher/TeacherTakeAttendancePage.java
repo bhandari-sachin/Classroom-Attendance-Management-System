@@ -6,6 +6,7 @@ import frontend.api.TeacherApi;
 import frontend.auth.AppRouter;
 import frontend.auth.AuthState;
 import frontend.auth.JwtStore;
+import frontend.ui.HelperClass;
 import javafx.application.Platform;
 import javafx.beans.binding.Bindings;
 import javafx.collections.FXCollections;
@@ -27,6 +28,7 @@ import java.util.Map;
 public class TeacherTakeAttendancePage {
 
     private final ObservableList<StudentRow> rows = FXCollections.observableArrayList();
+    private final HelperClass helper = new HelperClass();
 
     private static class ClassItem {
         final long id;
@@ -44,38 +46,36 @@ public class TeacherTakeAttendancePage {
     }
 
     public Parent build(Scene scene, AppRouter router, JwtStore jwtStore, AuthState state) {
-
         String teacherName = (state.getName() == null || state.getName().isBlank())
-                ? "Name"
+                ? helper.getMessage("teacher.fallback.name")
                 : state.getName();
+
         String backendUrl = System.getenv().getOrDefault("BACKEND_URL", "http://localhost:8081");
         TeacherApi api = new TeacherApi(backendUrl);
-
         final long[] currentSessionId = { -1L };
 
         VBox page = new VBox(16);
         page.setPadding(new Insets(22));
         page.getStyleClass().add("page");
 
-        Label title = new Label("Take Attendance");
+        Label title = new Label(helper.getMessage("teacher.attendance.title"));
         title.getStyleClass().add("title");
 
-        Label subtitle = new Label("Select class and generate QR code");
+        Label subtitle = new Label(helper.getMessage("teacher.attendance.subtitle"));
         subtitle.getStyleClass().add("subtitle");
 
-        Label selectClass = new Label("Select class");
+        Label selectClass = new Label(helper.getMessage("teacher.attendance.selectClass"));
         selectClass.getStyleClass().add("section-title");
 
         ComboBox<ClassItem> classBox = new ComboBox<>();
-        classBox.setPromptText("Choose a class");
+        classBox.setPromptText(helper.getMessage("teacher.attendance.class.prompt"));
         classBox.setMaxWidth(320);
 
-        // ---- QR / code card ----
         VBox qrCard = new VBox(12);
         qrCard.getStyleClass().add("card");
         qrCard.setPadding(new Insets(16));
 
-        Label qrTitle = new Label("Attendance QR Code");
+        Label qrTitle = new Label(helper.getMessage("teacher.attendance.qr.title"));
         qrTitle.getStyleClass().add("section-title");
 
         ImageView qrImageView = new ImageView();
@@ -89,7 +89,7 @@ public class TeacherTakeAttendancePage {
         qrArea.setPrefWidth(180);
         qrArea.getStyleClass().add("qr-area");
 
-        Label manualTitle = new Label("Manual Code");
+        Label manualTitle = new Label(helper.getMessage("teacher.attendance.manual.title"));
         manualTitle.getStyleClass().add("small-title");
 
         Label manualCode = new Label("—");
@@ -99,19 +99,19 @@ public class TeacherTakeAttendancePage {
         manualBox.setAlignment(Pos.CENTER);
         manualBox.getStyleClass().add("manual-box");
 
-        Button generate = new Button("Generate Code");
+        Button generate = new Button(helper.getMessage("teacher.attendance.generate"));
         generate.getStyleClass().addAll("pill", "pill-green");
         generate.setMaxWidth(Double.MAX_VALUE);
 
         generate.setOnAction(e -> {
             ClassItem selected = classBox.getValue();
             if (selected == null) {
-                new Alert(Alert.AlertType.WARNING, "Please select a class first.", ButtonType.OK).showAndWait();
+                new Alert(Alert.AlertType.WARNING, helper.getMessage("teacher.attendance.selectClassFirst"), ButtonType.OK).showAndWait();
                 return;
             }
 
             generate.setDisable(true);
-            manualCode.setText("Generating...");
+            manualCode.setText(helper.getMessage("teacher.attendance.generating"));
             qrImageView.setImage(null);
             currentSessionId[0] = -1L;
 
@@ -119,7 +119,6 @@ public class TeacherTakeAttendancePage {
                 try {
                     Map<String, Object> res = api.createSession(jwtStore, state, selected.id);
                     String code = api.extractCode(res);
-
                     Number sessionIdNum = (Number) res.get("sessionId");
                     if (sessionIdNum != null) {
                         currentSessionId[0] = sessionIdNum.longValue();
@@ -130,8 +129,7 @@ public class TeacherTakeAttendancePage {
 
                         if (code != null && !code.isBlank()) {
                             try {
-                                BufferedImage bufferedImage =
-                                        QRCodeImageUtil.generateQRCodeImage(code, 180, 180);
+                                BufferedImage bufferedImage = QRCodeImageUtil.generateQRCodeImage(code, 180, 180);
                                 qrImageView.setImage(SwingFXUtils.toFXImage(bufferedImage, null));
                             } catch (Exception qrEx) {
                                 qrEx.printStackTrace();
@@ -140,16 +138,17 @@ public class TeacherTakeAttendancePage {
 
                         generate.setDisable(false);
                     });
-
                 } catch (Exception ex) {
                     ex.printStackTrace();
                     Platform.runLater(() -> {
                         manualCode.setText("—");
                         qrImageView.setImage(null);
                         generate.setDisable(false);
-                        new Alert(Alert.AlertType.ERROR,
-                                "Generate failed: " + ex.getMessage(),
-                                ButtonType.OK).showAndWait();
+                        new Alert(
+                                Alert.AlertType.ERROR,
+                                helper.getMessage("teacher.attendance.generateFailed") + " " + ex.getMessage(),
+                                ButtonType.OK
+                        ).showAndWait();
                     });
                 }
             }).start();
@@ -157,23 +156,25 @@ public class TeacherTakeAttendancePage {
 
         qrCard.getChildren().addAll(qrTitle, qrArea, manualBox, generate);
 
-        // ---- Students header + mark all ----
         Label studentsTitle = new Label();
         studentsTitle.getStyleClass().add("section-title");
-        studentsTitle.textProperty().bind(Bindings.size(rows).asString("Students (%d)"));
+        studentsTitle.textProperty().bind(
+                Bindings.createStringBinding(
+                        () -> helper.getMessage("teacher.attendance.students.title")
+                                .replace("{count}", String.valueOf(rows.size())),
+                        rows
+                )
+        );
 
-        Button markAllPresentBtn = new Button("Mark All Present");
+        Button markAllPresentBtn = new Button(helper.getMessage("teacher.attendance.markAll"));
         markAllPresentBtn.getStyleClass().addAll("pill", "pill-green");
 
         markAllPresentBtn.setOnAction(e -> {
             if (currentSessionId[0] <= 0) {
-                new Alert(Alert.AlertType.WARNING, "Please generate a session first.", ButtonType.OK).showAndWait();
+                new Alert(Alert.AlertType.WARNING, helper.getMessage("teacher.attendance.generateSessionFirst"), ButtonType.OK).showAndWait();
                 return;
             }
-
-            if (rows.isEmpty()) {
-                return;
-            }
+            if (rows.isEmpty()) return;
 
             markAllPresentBtn.setDisable(true);
 
@@ -189,14 +190,15 @@ public class TeacherTakeAttendancePage {
                         }
                         markAllPresentBtn.setDisable(false);
                     });
-
                 } catch (Exception ex) {
                     ex.printStackTrace();
                     Platform.runLater(() -> {
                         markAllPresentBtn.setDisable(false);
-                        new Alert(Alert.AlertType.ERROR,
-                                "Failed to mark all present: " + ex.getMessage(),
-                                ButtonType.OK).showAndWait();
+                        new Alert(
+                                Alert.AlertType.ERROR,
+                                helper.getMessage("teacher.attendance.markAllFailed") + " " + ex.getMessage(),
+                                ButtonType.OK
+                        ).showAndWait();
                     });
                 }
             }).start();
@@ -204,31 +206,27 @@ public class TeacherTakeAttendancePage {
 
         Region studentsSpacer = new Region();
         HBox.setHgrow(studentsSpacer, Priority.ALWAYS);
-
         HBox studentsHeader = new HBox(10, studentsTitle, studentsSpacer, markAllPresentBtn);
         studentsHeader.setAlignment(Pos.CENTER_LEFT);
 
-        // ---- Students table ----
         TableView<StudentRow> table = new TableView<>(rows);
         table.getStyleClass().add("students-table");
         table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
         table.setFixedCellSize(36);
         table.setPrefHeight(300);
 
-        TableColumn<StudentRow, String> colName = new TableColumn<>("Student");
+        TableColumn<StudentRow, String> colName = new TableColumn<>(helper.getMessage("teacher.attendance.table.student"));
         colName.setCellValueFactory(d -> d.getValue().studentNameProperty());
 
-        TableColumn<StudentRow, String> colEmail = new TableColumn<>("Email");
+        TableColumn<StudentRow, String> colEmail = new TableColumn<>(helper.getMessage("teacher.attendance.table.email"));
         colEmail.setCellValueFactory(d -> d.getValue().emailProperty());
 
-        TableColumn<StudentRow, String> colStatus = new TableColumn<>("Status");
+        TableColumn<StudentRow, String> colStatus = new TableColumn<>(helper.getMessage("teacher.attendance.table.status"));
         colStatus.setCellValueFactory(d -> d.getValue().statusProperty());
 
-        TableColumn<StudentRow, Void> colActions = new TableColumn<>("Actions");
+        TableColumn<StudentRow, Void> colActions = new TableColumn<>(helper.getMessage("teacher.attendance.actions"));
         colActions.setCellFactory(col -> new TableCell<>() {
-
             private final Button presentBtn = new Button("✓");
-
             private final Button absentBtn = new Button("✕");
             private final Button excusedBtn = new Button("◔");
             private final HBox box = new HBox(8, presentBtn, absentBtn, excusedBtn);
@@ -238,8 +236,10 @@ public class TeacherTakeAttendancePage {
 
                 presentBtn.setMinSize(30, 30);
                 presentBtn.setPrefSize(30, 30);
+
                 absentBtn.setMinSize(30, 30);
                 absentBtn.setPrefSize(30, 30);
+
                 excusedBtn.setMinSize(30, 30);
                 excusedBtn.setPrefSize(30, 30);
 
@@ -276,7 +276,7 @@ public class TeacherTakeAttendancePage {
                 StudentRow row = getTableView().getItems().get(getIndex());
 
                 if (currentSessionId[0] <= 0) {
-                    new Alert(Alert.AlertType.WARNING, "Please generate a session first.", ButtonType.OK).showAndWait();
+                    new Alert(Alert.AlertType.WARNING, helper.getMessage("teacher.attendance.generateSessionFirst"), ButtonType.OK).showAndWait();
                     return;
                 }
 
@@ -296,16 +296,17 @@ public class TeacherTakeAttendancePage {
                             excusedBtn.setDisable(false);
                             table.refresh();
                         });
-
                     } catch (Exception ex) {
                         ex.printStackTrace();
                         Platform.runLater(() -> {
                             presentBtn.setDisable(false);
                             absentBtn.setDisable(false);
                             excusedBtn.setDisable(false);
-                            new Alert(Alert.AlertType.ERROR,
-                                    "Failed to update attendance: " + ex.getMessage(),
-                                    ButtonType.OK).showAndWait();
+                            new Alert(
+                                    Alert.AlertType.ERROR,
+                                    helper.getMessage("teacher.attendance.updateFailed") + " " + ex.getMessage(),
+                                    ButtonType.OK
+                            ).showAndWait();
                         });
                     }
                 }).start();
@@ -330,7 +331,6 @@ public class TeacherTakeAttendancePage {
 
         page.getChildren().addAll(title, subtitle, selectClass, classBox, qrCard, studentsHeader, table);
 
-        // ---- Load classes on open ----
         new Thread(() -> {
             try {
                 List<Map<String, Object>> list = api.getMyClasses(jwtStore, state);
@@ -343,18 +343,18 @@ public class TeacherTakeAttendancePage {
                 }).toList();
 
                 Platform.runLater(() -> classBox.getItems().setAll(items));
-
             } catch (Exception ex) {
                 ex.printStackTrace();
                 Platform.runLater(() ->
-                        new Alert(Alert.AlertType.ERROR,
-                                "Failed to load classes: " + ex.getMessage(),
-                                ButtonType.OK).showAndWait()
+                        new Alert(
+                                Alert.AlertType.ERROR,
+                                helper.getMessage("teacher.attendance.loadClassesFailed") + " " + ex.getMessage(),
+                                ButtonType.OK
+                        ).showAndWait()
                 );
             }
         }).start();
 
-        // ---- When class selected, load students ----
         classBox.setOnAction(e -> {
             ClassItem selected = classBox.getValue();
             if (selected == null) return;
@@ -362,9 +362,8 @@ public class TeacherTakeAttendancePage {
             currentSessionId[0] = -1L;
             manualCode.setText("—");
             qrImageView.setImage(null);
-
             rows.clear();
-            rows.add(new StudentRow(-1L, "Loading...", "-", "—"));
+            rows.add(new StudentRow(-1L, helper.getMessage("teacher.attendance.loading.students"), "-", "—"));
 
             new Thread(() -> {
                 try {
@@ -372,26 +371,25 @@ public class TeacherTakeAttendancePage {
 
                     Platform.runLater(() -> {
                         rows.clear();
-
                         for (var s : students) {
                             long studentId = Long.parseLong(String.valueOf(s.get("id")));
                             String fn = String.valueOf(s.get("firstName"));
                             String ln = String.valueOf(s.get("lastName"));
                             String email = String.valueOf(s.get("email"));
-
                             StudentRow row = new StudentRow(studentId, fn + " " + ln, email, "—");
                             row.setExcuseReason("");
                             rows.add(row);
                         }
                     });
-
                 } catch (Exception ex) {
                     ex.printStackTrace();
                     Platform.runLater(() -> {
                         rows.clear();
-                        new Alert(Alert.AlertType.ERROR,
-                                "Failed to load students: " + ex.getMessage(),
-                                ButtonType.OK).showAndWait();
+                        new Alert(
+                                Alert.AlertType.ERROR,
+                                helper.getMessage("teacher.attendance.error.loadStudents") + " " + ex.getMessage(),
+                                ButtonType.OK
+                        ).showAndWait();
                     });
                 }
             }).start();
@@ -399,11 +397,11 @@ public class TeacherTakeAttendancePage {
 
         return AppLayout.wrapWithSidebar(
                 teacherName,
-                "Teacher Panel",
-                "Dashboard",
-                "Take Attendance",
-                "Reports",
-                "Email",
+                helper.getMessage("teacher.sidebar.title"),
+                helper.getMessage("teacher.sidebar.menu.dashboard"),
+                helper.getMessage("teacher.sidebar.menu.take_attendance"),
+                helper.getMessage("teacher.sidebar.menu.reports"),
+                helper.getMessage("teacher.sidebar.menu.email"),
                 page,
                 "second",
                 new AppLayout.Navigator() {

@@ -5,6 +5,7 @@ import frontend.StudentRow;
 import frontend.auth.AppRouter;
 import frontend.auth.AuthState;
 import frontend.auth.JwtStore;
+import frontend.ui.HelperClass;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Parent;
@@ -16,6 +17,8 @@ import javafx.scene.layout.*;
 
 public class TeacherExcuseReasonPage {
 
+    private final HelperClass helper = new HelperClass();
+
     public Parent build(
             Scene scene,
             AppRouter router,
@@ -26,20 +29,24 @@ public class TeacherExcuseReasonPage {
     ) {
 
         String teacherName = (state.getName() == null || state.getName().isBlank())
-                ? "Name"
+                ? helper.getMessage("teacher.fallback.name")
                 : state.getName();
 
         VBox page = new VBox(12);
         page.setPadding(new Insets(22));
         page.getStyleClass().add("page");
 
-        Label title = new Label("Excuse Reason");
+        Label title = new Label(helper.getMessage("teacher.excuse.title"));
         title.getStyleClass().add("title");
 
-        Label who = new Label("Student: " + student.getStudentName() + " (" + student.getEmail() + ")");
+        Label who = new Label(
+                helper.getMessage("teacher.excuse.student")
+                        .replace("{name}", student.getStudentName())
+                        .replace("{email}", student.getEmail())
+        );
         who.getStyleClass().add("subtitle");
 
-        Label hint = new Label("Write the reason why this student is excused:");
+        Label hint = new Label(helper.getMessage("teacher.excuse.hint"));
         hint.getStyleClass().add("section-title");
 
         TextArea reason = new TextArea();
@@ -47,10 +54,9 @@ public class TeacherExcuseReasonPage {
         reason.setPrefRowCount(6);
         reason.setText(student.getExcuseReason());
 
-        Button save = new Button("Save");
-        Button cancel = new Button("Cancel");
+        Button save = new Button(helper.getMessage("teacher.excuse.save"));
+        Button cancel = new Button(helper.getMessage("teacher.excuse.cancel"));
 
-        // Keep your pill styles if you have them
         save.getStyleClass().addAll("pill", "pill-green");
         cancel.getStyleClass().addAll("pill");
 
@@ -72,16 +78,16 @@ public class TeacherExcuseReasonPage {
 
         return AppLayout.wrapWithSidebar(
                 teacherName,
-                "Teacher Panel",
-                "Dashboard",
-                "Take Attendance",
-                "Reports",
-                "Email",
+                helper.getMessage("teacher.sidebar.title"),
+                helper.getMessage("teacher.sidebar.menu.dashboard"),
+                helper.getMessage("teacher.sidebar.menu.take_attendance"),
+                helper.getMessage("teacher.sidebar.menu.reports"),
+                helper.getMessage("teacher.sidebar.menu.email"),
                 page,
-                "second", // ✅ Take Attendance section
+                "second",
                 new AppLayout.Navigator() {
                     @Override public void goDashboard() { router.go("teacher-dashboard"); }
-                    @Override public void goTakeAttendance() { onDoneBack.run(); } // stay consistent with flow
+                    @Override public void goTakeAttendance() { onDoneBack.run(); }
                     @Override public void goReports() { router.go("teacher-reports"); }
                     @Override public void goEmail() { router.go("teacher-email"); }
                     @Override public void logout() {

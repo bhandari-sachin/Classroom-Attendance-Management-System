@@ -7,6 +7,7 @@ import frontend.auth.AuthState;
 import frontend.auth.JwtStore;
 import frontend.dto.AdminUsersResponseDto;
 import frontend.dto.AdminUserDto;
+import frontend.ui.HelperClass;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -21,17 +22,20 @@ import javafx.scene.layout.*;
 public class AdminManageUsersPage {
 
     public Parent build(Scene scene, AppRouter router, JwtStore jwtStore, AuthState state) {
+        HelperClass helper = new HelperClass();
 
-        String adminName = (state.getName() == null || state.getName().isBlank()) ? "Name" : state.getName();
+        String adminName = (state.getName() == null || state.getName().isBlank())
+                ? helper.getMessage("teacher.fallback.name")
+                : state.getName();
 
         VBox content = new VBox(14);
         content.getStyleClass().add("content");
         content.setPadding(new Insets(18));
 
-        Label title = new Label("Manage Users");
+        Label title = new Label(helper.getMessage("admin.users.title"));
         title.getStyleClass().add("title");
 
-        Label subtitle = new Label("View and manage students, teachers, and their enrollments");
+        Label subtitle = new Label(helper.getMessage("admin.users.subtitle"));
         subtitle.getStyleClass().add("subtitle");
 
         // Summary row (dynamic)
@@ -43,13 +47,18 @@ public class AdminManageUsersPage {
         filters.setAlignment(Pos.CENTER_LEFT);
 
         TextField search = new TextField();
-        search.setPromptText("Search by name or email...");
+        search.setPromptText(helper.getMessage("admin.users.search.placeholder"));
         search.getStyleClass().add("search-field");
         HBox.setHgrow(search, Priority.ALWAYS);
 
         ComboBox<String> type = new ComboBox<>();
-        type.getItems().addAll("All Types", "Student", "Teacher", "Admin");
-        type.setValue("All Types");
+        type.getItems().addAll(
+                helper.getMessage("admin.users.filter.allTypes"),
+                helper.getMessage("admin.users.filter.student"),
+                helper.getMessage("admin.users.filter.teacher"),
+                helper.getMessage("admin.users.filter.admin")
+        );
+        type.setValue(helper.getMessage("admin.users.filter.allTypes"));
         type.getStyleClass().add("filter-combo");
 
         filters.getChildren().addAll(search, type);
@@ -73,9 +82,9 @@ public class AdminManageUsersPage {
                         || safe(r.enrolledProperty().get()).contains(q);
 
                 boolean matchType = true;
-                if ("Student".equalsIgnoreCase(t)) matchType = "STUDENT".equalsIgnoreCase(r.typeProperty().get());
-                if ("Teacher".equalsIgnoreCase(t)) matchType = "TEACHER".equalsIgnoreCase(r.typeProperty().get());
-                if ("Admin".equalsIgnoreCase(t)) matchType = "ADMIN".equalsIgnoreCase(r.typeProperty().get());
+                if (helper.getMessage("admin.users.filter.student").equalsIgnoreCase(t)) matchType = "STUDENT".equalsIgnoreCase(r.typeProperty().get());
+                if (helper.getMessage("admin.users.filter.teacher").equalsIgnoreCase(t)) matchType = "TEACHER".equalsIgnoreCase(r.typeProperty().get());
+                if (helper.getMessage("admin.users.filter.admin").equalsIgnoreCase(t))   matchType = "ADMIN".equalsIgnoreCase(r.typeProperty().get());
 
                 return matchText && matchType;
             });
@@ -101,16 +110,14 @@ public class AdminManageUsersPage {
 
                     Platform.runLater(() -> {
                         summary.getChildren().setAll(
-                                AdminUI.smallSummaryCard("Students", String.valueOf(data.students), "🎓", "accent-green"),
-                                AdminUI.smallSummaryCard("Teachers", String.valueOf(data.teachers), "👥", "accent-purple"),
-                                AdminUI.smallSummaryCard("Admins", String.valueOf(data.admins), "🛡", "accent-orange")
+                                AdminUI.smallSummaryCard(helper.getMessage("admin.users.summary.students"), String.valueOf(data.students), "🎓", "accent-green"),
+                                AdminUI.smallSummaryCard(helper.getMessage("admin.users.summary.teachers"), String.valueOf(data.teachers), "👥", "accent-purple"),
+                                AdminUI.smallSummaryCard(helper.getMessage("admin.users.summary.admins"),   String.valueOf(data.admins),   "🛡", "accent-orange")
                         );
 
                         rows.clear();
                         if (data.users != null) {
                             for (AdminUserDto u : data.users) {
-                                // Your AdminUI table expects:
-                                // User column is a single string; your old sample used "Name\nemail"
                                 String userCell = (u.name == null ? "" : u.name) + "\n" + (u.email == null ? "" : u.email);
                                 rows.add(new UserRow(
                                         userCell,
@@ -126,7 +133,7 @@ public class AdminManageUsersPage {
                 } catch (Exception e) {
                     e.printStackTrace();
                     Platform.runLater(() -> {
-                        loadError.setText("Failed to load users: " + e.getMessage());
+                        loadError.setText(helper.getMessage("admin.users.loadError") + " " + e.getMessage());
                         loadError.setVisible(true);
                         loadError.setManaged(true);
                     });
@@ -144,11 +151,11 @@ public class AdminManageUsersPage {
 
         return AdminAppLayout.wrapWithSidebar(
                 adminName,
-                "Admin Panel",
-                "Dashboard",
-                "Manage Classes",
-                "Manage Users",
-                "Attendance Reports",
+                helper.getMessage("teacher.sidebar.title"),
+                helper.getMessage("admin.dashboard.title"),
+                helper.getMessage("admin.classes.title"),
+                helper.getMessage("admin.users.title"),
+                helper.getMessage("admin.reports.title"),
                 scroll,
                 "third",
                 new AdminAppLayout.Navigator() {

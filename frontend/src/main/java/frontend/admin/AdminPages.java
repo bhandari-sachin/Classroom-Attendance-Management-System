@@ -4,30 +4,36 @@ import frontend.api.AdminApi;
 import frontend.auth.AppRouter;
 import frontend.auth.AuthState;
 import frontend.auth.JwtStore;
+import frontend.ui.HelperClass;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.Label;
 import javafx.scene.control.ScrollPane;
-import javafx.scene.layout.*;
+import javafx.scene.layout.ColumnConstraints;
+import javafx.scene.layout.GridPane;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.Pane;
+import javafx.scene.layout.Priority;
+import javafx.scene.layout.VBox;
 
 import java.util.List;
 import java.util.Map;
 
 public class AdminPages {
 
-    // ===== Dashboard content =====
     public static Parent dashboardPage(Scene scene, AppRouter router, JwtStore jwtStore, AuthState state) {
+        HelperClass helper = new HelperClass();
 
         VBox content = new VBox(18);
         content.getStyleClass().add("content");
         content.setPadding(new Insets(18));
 
-        Label title = new Label("Admin Dashboard");
+        Label title = new Label(helper.getMessage("admin.dashboard.title"));
         title.getStyleClass().add("title");
 
-        Label subtitle = new Label("Manage your school's attendance system");
+        Label subtitle = new Label(helper.getMessage("admin.dashboard.subtitle"));
         subtitle.getStyleClass().add("subtitle");
 
         GridPane statsGrid = new GridPane();
@@ -35,10 +41,10 @@ public class AdminPages {
         statsGrid.setHgap(14);
         statsGrid.setVgap(14);
 
-        Pane totalClassesCard = AdminUI.makeStatCard("Total Classes", "Loading...", "📘", "accent-purple");
-        Pane studentsCard = AdminUI.makeStatCard("Students", "Loading...", "🎓", "accent-green");
-        Pane teachersCard = AdminUI.makeStatCard("Teachers", "Loading...", "👥", "accent-orange");
-        Pane rateCard = AdminUI.makeStatCard("Monthly Rate", "Loading...", "📈", "accent-green");
+        Pane totalClassesCard = AdminUI.makeStatCard(helper.getMessage("admin.dashboard.stats.totalClasses"), helper.getMessage("common.status.loading"), "📘", "accent-purple");
+        Pane studentsCard     = AdminUI.makeStatCard(helper.getMessage("admin.dashboard.stats.students"),     helper.getMessage("common.status.loading"), "🎓", "accent-green");
+        Pane teachersCard     = AdminUI.makeStatCard(helper.getMessage("admin.dashboard.stats.teachers"),     helper.getMessage("common.status.loading"), "👥", "accent-orange");
+        Pane rateCard         = AdminUI.makeStatCard(helper.getMessage("admin.dashboard.stats.monthlyRate"),  helper.getMessage("common.status.loading"), "📈", "accent-green");
 
         statsGrid.add(totalClassesCard, 0, 0);
         statsGrid.add(studentsCard, 1, 0);
@@ -55,24 +61,33 @@ public class AdminPages {
 
         statsGrid.getColumnConstraints().addAll(c1, c2);
 
-        Label qaTitle = new Label("Quick Actions");
+        Label qaTitle = new Label(helper.getMessage("admin.dashboard.quickActions.title"));
         qaTitle.getStyleClass().add("section-title");
 
         HBox quickActions = new HBox(14);
         quickActions.getStyleClass().add("quick-actions");
 
-        Pane manageClasses = AdminUI.makeActionCard("Manage Classes", "Add, edit or remove classes", "📚", "qa-green");
+        Pane manageClasses = AdminUI.makeActionCard(
+                helper.getMessage("admin.dashboard.quickActions.manageClasses"),
+                helper.getMessage("admin.dashboard.quickActions.manageClasses.desc"),
+                "📚", "qa-green");
         manageClasses.setOnMouseClicked(e -> router.go("admin-classes"));
 
-        Pane manageUsers = AdminUI.makeActionCard("Manage Users", "Student registration and details", "👤", "qa-purple");
+        Pane manageUsers = AdminUI.makeActionCard(
+                helper.getMessage("admin.dashboard.quickActions.manageUsers"),
+                helper.getMessage("admin.dashboard.quickActions.manageUsers.desc"),
+                "👤", "qa-purple");
         manageUsers.setOnMouseClicked(e -> router.go("admin-users"));
 
-        Pane reports = AdminUI.makeActionCard("Attendance Reports", "View comprehensive reports", "🧾", "qa-green");
+        Pane reports = AdminUI.makeActionCard(
+                helper.getMessage("admin.dashboard.quickActions.reports"),
+                helper.getMessage("admin.dashboard.quickActions.reports.desc"),
+                "🧾", "qa-green");
         reports.setOnMouseClicked(e -> router.go("admin-reports"));
 
         quickActions.getChildren().addAll(manageClasses, manageUsers, reports);
 
-        Label rcTitle = new Label("Recent classes");
+        Label rcTitle = new Label(helper.getMessage("admin.dashboard.recentClasses.title"));
         rcTitle.getStyleClass().add("section-title");
 
         GridPane recentGrid = new GridPane();
@@ -89,7 +104,7 @@ public class AdminPages {
 
         recentGrid.getColumnConstraints().addAll(r1, r2);
 
-        Label loadingClasses = new Label("Loading classes...");
+        Label loadingClasses = new Label(helper.getMessage("admin.dashboard.recentClasses.loading"));
         loadingClasses.getStyleClass().add("subtitle");
         recentGrid.add(loadingClasses, 0, 0);
 
@@ -113,6 +128,7 @@ public class AdminPages {
 
                 double attendanceRate = 0.0;
                 Object rateObj = stats.get("attendanceRate");
+
                 if (rateObj instanceof Number n) {
                     attendanceRate = n.doubleValue();
                 } else if (rateObj != null) {
@@ -133,7 +149,7 @@ public class AdminPages {
                     recentGrid.getChildren().clear();
 
                     if (classes == null || classes.isEmpty()) {
-                        Label empty = new Label("No classes found");
+                        Label empty = new Label(helper.getMessage("admin.dashboard.recentClasses.none"));
                         empty.getStyleClass().add("subtitle");
                         recentGrid.add(empty, 0, 0);
                         return;
@@ -146,30 +162,28 @@ public class AdminPages {
                         String className = String.valueOf(c.getOrDefault("name", "Unnamed class"));
                         String code = String.valueOf(c.getOrDefault("classCode", "—"));
                         String teacherEmail = String.valueOf(c.getOrDefault("teacherEmail", "—"));
-
                         String semester = String.valueOf(c.getOrDefault("semester", ""));
                         String academicYear = String.valueOf(c.getOrDefault("academicYear", ""));
                         String schedule = (semester + " " + academicYear).trim();
+
                         if (schedule.isBlank()) {
-                            schedule = "No schedule";
+                            schedule = helper.getMessage("admin.dashboard.recentClasses.noSchedule");
                         }
 
                         Pane card = AdminUI.makeClassCard(className, code, teacherEmail, schedule);
                         recentGrid.add(card, i % 2, i / 2);
                     }
                 });
-
             } catch (Exception e) {
                 e.printStackTrace();
-
                 Platform.runLater(() -> {
-                    setStatCardValue(totalClassesCard, "Error");
-                    setStatCardValue(studentsCard, "Error");
-                    setStatCardValue(teachersCard, "Error");
-                    setStatCardValue(rateCard, "Error");
+                    setStatCardValue(totalClassesCard, helper.getMessage("common.status.failed"));
+                    setStatCardValue(studentsCard, helper.getMessage("common.status.failed"));
+                    setStatCardValue(teachersCard, helper.getMessage("common.status.failed"));
+                    setStatCardValue(rateCard, helper.getMessage("common.status.failed"));
 
                     recentGrid.getChildren().clear();
-                    Label err = new Label("Failed to load dashboard data: " + e.getMessage());
+                    Label err = new Label(helper.getMessage("admin.dashboard.recentClasses.error") + " " + e.getMessage());
                     err.getStyleClass().add("subtitle");
                     recentGrid.add(err, 0, 0);
                 });
@@ -178,6 +192,7 @@ public class AdminPages {
 
         return scroll;
     }
+
     private static void setStatCardValue(Pane card, String value) {
         if (card instanceof VBox vbox && !vbox.getChildren().isEmpty()) {
             var top = vbox.getChildren().get(0);
