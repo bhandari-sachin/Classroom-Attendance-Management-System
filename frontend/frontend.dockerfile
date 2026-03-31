@@ -18,13 +18,15 @@ FROM eclipse-temurin:21-jdk
 
 WORKDIR /app
 
-# Install minimal JavaFX GUI dependencies
+# Install GUI libraries
 RUN apt-get update && apt-get install -y \
+    libx11-6 \
+    libxext6 \
+    libxrender1 \
+    libxtst6 \
+    libxi6 \
     libgtk-3-0 \
-    libgl1 \
-    libglib2.0-0 \
-    libasound2t64 \
-    libpulse0 \
+    mesa-utils \
     wget \
     unzip \
     && rm -rf /var/lib/apt/lists/*
@@ -39,11 +41,10 @@ RUN mkdir -p /javafx-sdk \
 # Copy fat JAR
 COPY --from=build /app/frontend/target/frontend.jar app.jar
 
-# WSLg will provide DISPLAY automatically → do NOT hardcode it
+# Set DISPLAY for Windows (Xming)
+ENV DISPLAY=host.docker.internal:0.0
+ENV LIBGL_ALWAYS_INDIRECT=1
 ENV BACKEND_URL=http://backend:8081
 
 # Run JavaFX app
-CMD ["java", \
-"--module-path", "/javafx-sdk/lib", \
-"--add-modules", "javafx.controls,javafx.graphics,javafx.base,javafx.swing", \
-"-jar", "app.jar"]
+CMD ["java", "--module-path", "/javafx-sdk/lib", "--add-modules", "javafx.controls,javafx.graphics,javafx.base,javafx.swing", "-jar", "app.jar"]
