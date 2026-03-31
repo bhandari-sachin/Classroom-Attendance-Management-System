@@ -1,0 +1,22 @@
+.root {
+    -fx-font-family: "Arial";
+}
+
+.label {
+    -fx-alignment: center-right;
+}
+
+.text-field,
+.password-field,
+.text-area {
+    -fx-alignment: center-right;
+}
+
+.table-column {
+    -fx-alignment: center-right;
+}
+
+.combo-box,
+.date-picker {
+    -fx-node-orientation: right-to-left;
+}
