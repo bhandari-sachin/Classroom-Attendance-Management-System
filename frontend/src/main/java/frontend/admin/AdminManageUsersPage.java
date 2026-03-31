@@ -5,8 +5,8 @@ import frontend.api.AdminApi;
 import frontend.auth.AppRouter;
 import frontend.auth.AuthState;
 import frontend.auth.JwtStore;
-import frontend.dto.AdminUsersResponseDto;
 import frontend.dto.AdminUserDto;
+import frontend.dto.AdminUsersResponseDto;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -15,48 +15,69 @@ import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
-import javafx.scene.control.*;
-import javafx.scene.layout.*;
+import javafx.scene.control.ComboBox;
+import javafx.scene.control.Label;
+import javafx.scene.control.ScrollPane;
+import javafx.scene.control.TableView;
+import javafx.scene.control.TextField;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
+import javafx.scene.layout.VBox;
+import util.I18n;
+import util.RtlUtil;
 
 public class AdminManageUsersPage {
 
     public Parent build(Scene scene, AppRouter router, JwtStore jwtStore, AuthState state) {
 
-        String adminName = (state.getName() == null || state.getName().isBlank()) ? "Name" : state.getName();
+        String adminName = (state.getName() == null || state.getName().isBlank())
+                ? I18n.t("student.name.placeholder")
+                : state.getName();
 
         VBox content = new VBox(14);
         content.getStyleClass().add("content");
         content.setPadding(new Insets(18));
+        RtlUtil.apply(content);
 
-        Label title = new Label("Manage Users");
+        Label title = new Label(I18n.t("admin.users.title"));
         title.getStyleClass().add("title");
 
-        Label subtitle = new Label("View and manage students, teachers, and their enrollments");
+        Label subtitle = new Label(I18n.t("admin.users.subtitle"));
         subtitle.getStyleClass().add("subtitle");
 
         // Summary row (dynamic)
         HBox summary = new HBox(12);
         summary.getStyleClass().add("summary-row");
+        RtlUtil.apply(summary);
 
         // Filters
         HBox filters = new HBox(10);
         filters.setAlignment(Pos.CENTER_LEFT);
+        RtlUtil.apply(filters);
 
         TextField search = new TextField();
-        search.setPromptText("Search by name or email...");
+        search.setPromptText(I18n.t("admin.users.search.placeholder"));
         search.getStyleClass().add("search-field");
         HBox.setHgrow(search, Priority.ALWAYS);
+        RtlUtil.apply(search);
 
         ComboBox<String> type = new ComboBox<>();
-        type.getItems().addAll("All Types", "Student", "Teacher", "Admin");
-        type.setValue("All Types");
+        type.getItems().addAll(
+                I18n.t("admin.users.filter.allTypes"),
+                I18n.t("admin.users.filter.student"),
+                I18n.t("admin.users.filter.teacher"),
+                I18n.t("admin.users.filter.admin")
+        );
+        type.setValue(I18n.t("admin.users.filter.allTypes"));
         type.getStyleClass().add("filter-combo");
+        RtlUtil.apply(type);
 
         filters.getChildren().addAll(search, type);
 
         // Table
         TableView<UserRow> table = AdminUI.buildUsersTable();
-        table.getItems().clear(); // remove demo rows
+        table.getItems().clear();
+        RtlUtil.apply(table);
 
         ObservableList<UserRow> rows = FXCollections.observableArrayList();
         FilteredList<UserRow> filtered = new FilteredList<>(rows, r -> true);
@@ -73,9 +94,16 @@ public class AdminManageUsersPage {
                         || safe(r.enrolledProperty().get()).contains(q);
 
                 boolean matchType = true;
-                if ("Student".equalsIgnoreCase(t)) matchType = "STUDENT".equalsIgnoreCase(r.typeProperty().get());
-                if ("Teacher".equalsIgnoreCase(t)) matchType = "TEACHER".equalsIgnoreCase(r.typeProperty().get());
-                if ("Admin".equalsIgnoreCase(t)) matchType = "ADMIN".equalsIgnoreCase(r.typeProperty().get());
+
+                if (I18n.t("admin.users.filter.student").equals(t)) {
+                    matchType = "STUDENT".equalsIgnoreCase(r.typeProperty().get());
+                }
+                if (I18n.t("admin.users.filter.teacher").equals(t)) {
+                    matchType = "TEACHER".equalsIgnoreCase(r.typeProperty().get());
+                }
+                if (I18n.t("admin.users.filter.admin").equals(t)) {
+                    matchType = "ADMIN".equalsIgnoreCase(r.typeProperty().get());
+                }
 
                 return matchText && matchType;
             });
@@ -101,20 +129,33 @@ public class AdminManageUsersPage {
 
                     Platform.runLater(() -> {
                         summary.getChildren().setAll(
-                                AdminUI.smallSummaryCard("Students", String.valueOf(data.students), "🎓", "accent-green"),
-                                AdminUI.smallSummaryCard("Teachers", String.valueOf(data.teachers), "👥", "accent-purple"),
-                                AdminUI.smallSummaryCard("Admins", String.valueOf(data.admins), "🛡", "accent-orange")
+                                AdminUI.smallSummaryCard(
+                                        I18n.t("admin.users.summary.students"),
+                                        String.valueOf(data.students),
+                                        "🎓",
+                                        "accent-green"
+                                ),
+                                AdminUI.smallSummaryCard(
+                                        I18n.t("admin.users.summary.teachers"),
+                                        String.valueOf(data.teachers),
+                                        "👥",
+                                        "accent-purple"
+                                ),
+                                AdminUI.smallSummaryCard(
+                                        I18n.t("admin.users.summary.admins"),
+                                        String.valueOf(data.admins),
+                                        "🛡",
+                                        "accent-orange"
+                                )
                         );
 
                         rows.clear();
                         if (data.users != null) {
                             for (AdminUserDto u : data.users) {
-                                // Your AdminUI table expects:
-                                // User column is a single string; your old sample used "Name\nemail"
                                 String userCell = (u.name == null ? "" : u.name) + "\n" + (u.email == null ? "" : u.email);
                                 rows.add(new UserRow(
                                         userCell,
-                                        u.role == null ? "" : u.role,
+                                        u.role == null ? "" : localizeRole(u.role),
                                         u.enrolled == null ? "-" : u.enrolled
                                 ));
                             }
@@ -126,7 +167,7 @@ public class AdminManageUsersPage {
                 } catch (Exception e) {
                     e.printStackTrace();
                     Platform.runLater(() -> {
-                        loadError.setText("Failed to load users: " + e.getMessage());
+                        loadError.setText(I18n.t("admin.users.loadError"));
                         loadError.setVisible(true);
                         loadError.setManaged(true);
                     });
@@ -141,14 +182,15 @@ public class AdminManageUsersPage {
         ScrollPane scroll = new ScrollPane(content);
         scroll.setFitToWidth(true);
         scroll.getStyleClass().add("scroll");
+        RtlUtil.apply(scroll);
 
         return AdminAppLayout.wrapWithSidebar(
                 adminName,
-                "Admin Panel",
-                "Dashboard",
-                "Manage Classes",
-                "Manage Users",
-                "Attendance Reports",
+                I18n.t("admin.dashboard.title"),
+                I18n.t("student.nav.dashboard"),
+                I18n.t("admin.classes.title"),
+                I18n.t("admin.users.title"),
+                I18n.t("admin.reports.title"),
                 scroll,
                 "third",
                 new AdminAppLayout.Navigator() {
@@ -160,9 +202,21 @@ public class AdminManageUsersPage {
                         jwtStore.clear();
                         router.go("login");
                     }
-                }
+                }, router
         );
     }
 
-    private static String safe(String s) { return s == null ? "" : s.toLowerCase(); }
+    private static String localizeRole(String role) {
+        if (role == null) return "";
+        return switch (role.toUpperCase()) {
+            case "STUDENT" -> I18n.t("admin.users.filter.student");
+            case "TEACHER" -> I18n.t("admin.users.filter.teacher");
+            case "ADMIN" -> I18n.t("admin.users.filter.admin");
+            default -> role;
+        };
+    }
+
+    private static String safe(String s) {
+        return s == null ? "" : s.toLowerCase();
+    }
 }

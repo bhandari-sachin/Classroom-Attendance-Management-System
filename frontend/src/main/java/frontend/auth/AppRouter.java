@@ -11,22 +11,34 @@ public class AppRouter {
 
     private final Scene scene;
     private final Map<String, Supplier<Parent>> routes = new HashMap<>();
+    private String currentRoute;
 
     public AppRouter(Scene scene) {
         this.scene = scene;
     }
 
-    public Scene getScene() {
-        return scene;
+    public void register(String route, Supplier<Parent> pageFactory) {
+        routes.put(route, pageFactory);
     }
 
-    public void register(String name, Supplier<Parent> viewFactory) {
-        routes.put(name, viewFactory);
+    public void go(String route) {
+        Supplier<Parent> pageFactory = routes.get(route);
+
+        if (pageFactory == null) {
+            throw new IllegalArgumentException("Route not found: " + route);
+        }
+
+        currentRoute = route;
+        scene.setRoot(pageFactory.get());
     }
 
-    public void go(String name) {
-        Supplier<Parent> f = routes.get(name);
-        if (f == null) throw new RuntimeException("Route not found: " + name);
-        scene.setRoot(f.get());
+    public void refresh() {
+        if (currentRoute != null) {
+            go(currentRoute);
+        }
+    }
+
+    public String getCurrentRoute() {
+        return currentRoute;
     }
 }

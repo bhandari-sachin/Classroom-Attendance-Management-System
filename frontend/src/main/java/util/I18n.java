@@ -1,29 +1,22 @@
 package util;
 
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.nio.charset.StandardCharsets;
 import java.util.Locale;
-import java.util.PropertyResourceBundle;
+import java.util.MissingResourceException;
 import java.util.ResourceBundle;
 
 public final class I18n {
 
-    private static Locale locale = new Locale("ar", "MA");
-    private static ResourceBundle bundle = loadBundle(locale);
+    private static Locale locale = Locale.ENGLISH;
+    private static ResourceBundle bundle = ResourceBundle.getBundle("MessagesBundle", locale);
 
-    private I18n() {}
-
-    public static void setLocale(String languageTag) {
-        locale = Locale.forLanguageTag(languageTag);
-        bundle = loadBundle(locale);
+    private I18n() {
     }
 
     public static String t(String key) {
         try {
             return bundle.getString(key);
-        } catch (Exception e) {
-            return "!" + key + "!";
+        } catch (MissingResourceException e) {
+            return key;
         }
     }
 
@@ -31,30 +24,28 @@ public final class I18n {
         return locale;
     }
 
-    public static boolean isRTL() {
+    public static boolean isArabic() {
         return "ar".equalsIgnoreCase(locale.getLanguage());
     }
-    private static ResourceBundle loadBundle(Locale locale) {
-        try {
-            String baseName = "MessagesBundle";
-            String bundleName = baseName + "_" + locale.toString();
-            String resourceName = bundleName + ".properties";
 
-            InputStream stream = I18n.class.getClassLoader().getResourceAsStream(resourceName);
+    public static boolean isRtl() {
+        return isArabic();
+    }
 
-            if (stream == null) {
-                // fallback to default
-                stream = I18n.class.getClassLoader().getResourceAsStream(baseName + ".properties");
-            }
+    public static void setLocale(Locale newLocale) {
+        locale = newLocale;
+        bundle = ResourceBundle.getBundle("MessagesBundle", locale);
+    }
 
-            if (stream == null) {
-                throw new RuntimeException("Bundle not found");
-            }
+    public static void setEnglish() {
+        setLocale(Locale.ENGLISH);
+    }
 
-            return new PropertyResourceBundle(new InputStreamReader(stream, StandardCharsets.UTF_8));
+    public static void setArabic() {
+        setLocale(Locale.forLanguageTag("ar-MA"));
+    }
 
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to load i18n bundle", e);
-        }
+    public static String currentLanguageCode() {
+        return isArabic() ? "العربية" : "English";
     }
 }

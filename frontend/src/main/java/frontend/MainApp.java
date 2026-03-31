@@ -4,7 +4,12 @@ import frontend.admin.AdminAttendanceReportsPage;
 import frontend.admin.AdminDashboardApp;
 import frontend.admin.AdminManageClassesPage;
 import frontend.admin.AdminManageUsersPage;
-import frontend.auth.*;
+import frontend.auth.AppRouter;
+import frontend.auth.AuthService;
+import frontend.auth.AuthState;
+import frontend.auth.JwtStore;
+import frontend.auth.Role;
+import frontend.auth.RoleRedirect;
 import frontend.student.StudentAttendancePage;
 import frontend.student.StudentDashboardApp;
 import frontend.student.StudentEmailPage;
@@ -19,6 +24,7 @@ import javafx.application.Application;
 import javafx.scene.Scene;
 import javafx.scene.layout.StackPane;
 import javafx.stage.Stage;
+import util.I18n;
 
 import java.util.Set;
 import java.util.function.Supplier;
@@ -31,7 +37,9 @@ public class MainApp extends Application {
         Scene scene = new Scene(new StackPane(), 1100, 700);
 
         var css = getClass().getResource("/app.css");
-        if (css != null) scene.getStylesheets().add(css.toExternalForm());
+        if (css != null) {
+            scene.getStylesheets().add(css.toExternalForm());
+        }
 
         JwtStore store = new JwtStore();
         String backendUrl = System.getenv().getOrDefault("BACKEND_URL", "http://localhost:8081");
@@ -93,13 +101,12 @@ public class MainApp extends Application {
                 () -> new TeacherEmailPage().build(scene, router, store, store.load().orElseThrow())
         ));
 
-        // Auto redirect based on stored JWT + role
         store.load().ifPresentOrElse(
                 s -> router.go(RoleRedirect.routeFor(s.getRole())),
                 () -> router.go("login")
         );
 
-        stage.setTitle("Frontend");
+        stage.setTitle(I18n.t("common.app.title"));
         stage.setScene(scene);
         stage.setMinWidth(900);
         stage.setMinHeight(650);

@@ -10,9 +10,23 @@ import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
-import javafx.scene.control.*;
-import javafx.scene.layout.*;
+import javafx.scene.control.Alert;
+import javafx.scene.control.ButtonType;
+import javafx.scene.control.ComboBox;
+import javafx.scene.control.Label;
+import javafx.scene.control.MenuButton;
+import javafx.scene.control.MenuItem;
+import javafx.scene.control.ScrollPane;
+import javafx.scene.control.TableColumn;
+import javafx.scene.control.TableView;
+import javafx.scene.control.TextField;
+import javafx.scene.layout.ColumnConstraints;
+import javafx.scene.layout.GridPane;
+import javafx.scene.layout.Priority;
+import javafx.scene.layout.VBox;
 import javafx.stage.FileChooser;
+import util.I18n;
+import util.RtlUtil;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -39,40 +53,62 @@ public class AdminAttendanceReportsPage {
     public Parent build(Scene scene, AppRouter router, JwtStore jwtStore, AuthState state) {
 
         String adminName = (state.getName() == null || state.getName().isBlank())
-                ? "Name"
+                ? I18n.t("student.name.placeholder")
                 : state.getName();
 
         VBox content = new VBox(14);
         content.getStyleClass().add("content");
         content.setPadding(new Insets(18));
+        RtlUtil.apply(content);
 
-        Label title = new Label("Attendance Reports");
+        Label title = new Label(I18n.t("admin.reports.title"));
         title.getStyleClass().add("title");
 
-        Label subtitle = new Label("Comprehensive attendance analytics and reports");
+        Label subtitle = new Label(I18n.t("admin.reports.subtitle"));
         subtitle.getStyleClass().add("subtitle");
 
         GridPane filters = new GridPane();
         filters.setHgap(12);
         filters.setVgap(8);
+        RtlUtil.apply(filters);
 
         ComboBox<ClassItem> classFilter = new ComboBox<>();
-        classFilter.setPromptText("Loading classes...");
+        classFilter.setPromptText(I18n.t("admin.reports.filter.class.loading"));
+        RtlUtil.apply(classFilter);
 
         ComboBox<String> timeFilter = new ComboBox<>();
-        timeFilter.getItems().addAll("ALL", "THIS_MONTH", "LAST_MONTH", "THIS_YEAR");
-        timeFilter.setValue("THIS_MONTH");
+        timeFilter.getItems().addAll(
+                I18n.t("admin.reports.filter.time.all"),
+                I18n.t("admin.reports.filter.time.thisMonth"),
+                I18n.t("admin.reports.filter.time.lastMonth"),
+                I18n.t("admin.reports.filter.time.thisYear")
+        );
+        timeFilter.setValue(I18n.t("admin.reports.filter.time.thisMonth"));
+        RtlUtil.apply(timeFilter);
 
         TextField studentSearch = new TextField();
-        studentSearch.setPromptText("Search by name...");
+        studentSearch.setPromptText(I18n.t("admin.reports.filter.search.placeholder"));
+        RtlUtil.apply(studentSearch);
 
-        filters.add(new VBox(new Label("Class"), classFilter), 0, 0);
-        filters.add(new VBox(new Label("Time Period"), timeFilter), 1, 0);
-        filters.add(new VBox(new Label("Search Student"), studentSearch), 2, 0);
+        filters.add(new VBox(
+                new Label(I18n.t("admin.reports.filter.class")),
+                classFilter
+        ), 0, 0);
+
+        filters.add(new VBox(
+                new Label(I18n.t("admin.reports.filter.time")),
+                timeFilter
+        ), 1, 0);
+
+        filters.add(new VBox(
+                new Label(I18n.t("admin.reports.filter.search")),
+                studentSearch
+        ), 2, 0);
 
         GridPane stats = new GridPane();
         stats.setHgap(12);
         stats.setVgap(12);
+        RtlUtil.apply(stats);
 
         ColumnConstraints c1 = new ColumnConstraints();
         c1.setHgrow(Priority.ALWAYS);
@@ -89,20 +125,21 @@ public class AdminAttendanceReportsPage {
         error.setVisible(false);
         error.setManaged(false);
 
-        Label tableTitle = new Label("Filtered Records");
+        Label tableTitle = new Label(I18n.t("admin.reports.table.title"));
         tableTitle.getStyleClass().add("section-title");
 
         TableView<ReportRow> table = new TableView<>();
         table.getStyleClass().add("table");
         table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
+        RtlUtil.apply(table);
 
-        TableColumn<ReportRow, String> cStudent = new TableColumn<>("Student");
+        TableColumn<ReportRow, String> cStudent = new TableColumn<>(I18n.t("admin.reports.table.student"));
         cStudent.setCellValueFactory(d -> d.getValue().studentProperty());
 
-        TableColumn<ReportRow, String> cDate = new TableColumn<>("Session Date");
+        TableColumn<ReportRow, String> cDate = new TableColumn<>(I18n.t("admin.reports.table.date"));
         cDate.setCellValueFactory(d -> d.getValue().dateProperty());
 
-        TableColumn<ReportRow, String> cStatus = new TableColumn<>("Status");
+        TableColumn<ReportRow, String> cStatus = new TableColumn<>(I18n.t("admin.reports.table.status"));
         cStatus.setCellValueFactory(d -> d.getValue().statusProperty());
 
         table.getColumns().addAll(cStudent, cDate, cStatus);
@@ -110,45 +147,66 @@ public class AdminAttendanceReportsPage {
         AdminApi api = new AdminApi("http://localhost:8081", jwtStore);
         ReportApi reportApi = new ReportApi(System.getenv().getOrDefault("BACKEND_URL", "http://localhost:8081"));
 
-        MenuButton exportBtn = new MenuButton("⬇ Export");
+        MenuButton exportBtn = new MenuButton(I18n.t("common.export"));
         exportBtn.getStyleClass().addAll("pill", "pill-blue");
+        RtlUtil.apply(exportBtn);
 
-        MenuItem exportPdf = new MenuItem("Export as PDF");
-        MenuItem exportCsv = new MenuItem("Export as CSV");
+        MenuItem exportPdf = new MenuItem(I18n.t("common.export.pdf"));
+        MenuItem exportCsv = new MenuItem(I18n.t("common.export.csv"));
         exportBtn.getItems().addAll(exportPdf, exportCsv);
 
         exportPdf.setOnAction(e -> {
             FileChooser fc = new FileChooser();
-            fc.setTitle("Save PDF Report");
-            fc.setInitialFileName("admin-report.pdf");
+            fc.setTitle(I18n.t("admin.reports.export.pdf.title"));
+            fc.setInitialFileName(I18n.t("admin.reports.export.pdf.filename"));
             fc.getExtensionFilters().add(new FileChooser.ExtensionFilter("PDF Files", "*.pdf"));
+
             File dest = fc.showSaveDialog(scene.getWindow());
             if (dest == null) return;
+
             new Thread(() -> {
                 try {
                     reportApi.exportAdminReport(jwtStore, state, "pdf", dest.getAbsolutePath());
-                    Platform.runLater(() -> new Alert(Alert.AlertType.INFORMATION, "PDF saved:\n" + dest.getAbsolutePath(), ButtonType.OK).showAndWait());
+                    Platform.runLater(() -> new Alert(
+                            Alert.AlertType.INFORMATION,
+                            I18n.t("admin.reports.export.success.pdf").replace("{path}", dest.getAbsolutePath()),
+                            ButtonType.OK
+                    ).showAndWait());
                 } catch (Exception ex) {
                     ex.printStackTrace();
-                    Platform.runLater(() -> new Alert(Alert.AlertType.ERROR, "Export failed: " + ex.getMessage(), ButtonType.OK).showAndWait());
+                    Platform.runLater(() -> new Alert(
+                            Alert.AlertType.ERROR,
+                            I18n.t("admin.reports.export.error").replace("{error}", ex.getMessage()),
+                            ButtonType.OK
+                    ).showAndWait());
                 }
             }).start();
         });
 
         exportCsv.setOnAction(e -> {
             FileChooser fc = new FileChooser();
-            fc.setTitle("Save CSV Report");
-            fc.setInitialFileName("admin-report.csv");
+            fc.setTitle(I18n.t("admin.reports.export.csv.title"));
+            fc.setInitialFileName(I18n.t("admin.reports.export.csv.filename"));
             fc.getExtensionFilters().add(new FileChooser.ExtensionFilter("CSV Files", "*.csv"));
+
             File dest = fc.showSaveDialog(scene.getWindow());
             if (dest == null) return;
+
             new Thread(() -> {
                 try {
                     reportApi.exportAdminReport(jwtStore, state, "csv", dest.getAbsolutePath());
-                    Platform.runLater(() -> new Alert(Alert.AlertType.INFORMATION, "CSV saved:\n" + dest.getAbsolutePath(), ButtonType.OK).showAndWait());
+                    Platform.runLater(() -> new Alert(
+                            Alert.AlertType.INFORMATION,
+                            I18n.t("admin.reports.export.success.csv").replace("{path}", dest.getAbsolutePath()),
+                            ButtonType.OK
+                    ).showAndWait());
                 } catch (Exception ex) {
                     ex.printStackTrace();
-                    Platform.runLater(() -> new Alert(Alert.AlertType.ERROR, "Export failed: " + ex.getMessage(), ButtonType.OK).showAndWait());
+                    Platform.runLater(() -> new Alert(
+                            Alert.AlertType.ERROR,
+                            I18n.t("admin.reports.export.error").replace("{error}", ex.getMessage()),
+                            ButtonType.OK
+                    ).showAndWait());
                 }
             }).start();
         });
@@ -161,13 +219,15 @@ public class AdminAttendanceReportsPage {
                 return;
             }
 
-            String period = timeFilter.getValue();
+            String period = mapUiPeriodToApiValue(timeFilter.getValue());
             String search = studentSearch.getText();
 
             new Thread(() -> {
                 try {
-                    error.setVisible(false);
-                    error.setManaged(false);
+                    Platform.runLater(() -> {
+                        error.setVisible(false);
+                        error.setManaged(false);
+                    });
 
                     List<Map<String, Object>> rows = api.getAttendanceReport(selectedClass.id, period, search);
 
@@ -183,11 +243,13 @@ public class AdminAttendanceReportsPage {
                         String studentName = (firstName + " " + lastName).trim();
 
                         String date = String.valueOf(r.getOrDefault("sessionDate", "—"));
-                        String status = String.valueOf(r.getOrDefault("status", "—"));
+                        String rawStatus = String.valueOf(r.getOrDefault("status", "—"));
 
-                        mappedRows.add(new ReportRow(studentName, date, status));
+                        String localizedStatus = localizeStatus(rawStatus);
 
-                        switch (status.toUpperCase()) {
+                        mappedRows.add(new ReportRow(studentName, date, localizedStatus));
+
+                        switch (rawStatus.toUpperCase()) {
                             case "PRESENT" -> present++;
                             case "ABSENT" -> absent++;
                             case "EXCUSED" -> excused++;
@@ -206,11 +268,56 @@ public class AdminAttendanceReportsPage {
 
                     Platform.runLater(() -> {
                         stats.getChildren().clear();
-                        stats.add(AdminUI.makeStatCard("Overall Attendance Rate", String.format("%.1f%%", finalRate), "📈", "accent-green"), 0, 0);
-                        stats.add(AdminUI.makeStatCard("Present", String.valueOf(finalPresent), "🟢", "accent-green"), 1, 0);
-                        stats.add(AdminUI.makeStatCard("Absent", String.valueOf(finalAbsent), "🔴", "accent-orange"), 0, 1);
-                        stats.add(AdminUI.makeStatCard("Excused", String.valueOf(finalExcused), "🟠", "accent-purple"), 1, 1);
-                        stats.add(AdminUI.makeStatCard("Total Records", String.valueOf(finalTotal), "📄", "accent-purple"), 0, 2);
+
+                        stats.add(
+                                AdminUI.makeStatCard(
+                                        I18n.t("admin.reports.stats.rate"),
+                                        String.format("%.1f%%", finalRate),
+                                        "📈",
+                                        "accent-green"
+                                ),
+                                0, 0
+                        );
+
+                        stats.add(
+                                AdminUI.makeStatCard(
+                                        I18n.t("admin.reports.stats.present"),
+                                        String.valueOf(finalPresent),
+                                        "🟢",
+                                        "accent-green"
+                                ),
+                                1, 0
+                        );
+
+                        stats.add(
+                                AdminUI.makeStatCard(
+                                        I18n.t("admin.reports.stats.absent"),
+                                        String.valueOf(finalAbsent),
+                                        "🔴",
+                                        "accent-orange"
+                                ),
+                                0, 1
+                        );
+
+                        stats.add(
+                                AdminUI.makeStatCard(
+                                        I18n.t("admin.reports.stats.excused"),
+                                        String.valueOf(finalExcused),
+                                        "🟠",
+                                        "accent-purple"
+                                ),
+                                1, 1
+                        );
+
+                        stats.add(
+                                AdminUI.makeStatCard(
+                                        I18n.t("admin.reports.stats.total"),
+                                        String.valueOf(finalTotal),
+                                        "📄",
+                                        "accent-purple"
+                                ),
+                                0, 2
+                        );
 
                         table.getItems().setAll(finalMappedRows);
                     });
@@ -218,7 +325,7 @@ public class AdminAttendanceReportsPage {
                 } catch (Exception e) {
                     e.printStackTrace();
                     Platform.runLater(() -> {
-                        error.setText("Failed to load attendance report.");
+                        error.setText(I18n.t("admin.reports.error.loadReport"));
                         error.setVisible(true);
                         error.setManaged(true);
                     });
@@ -243,6 +350,8 @@ public class AdminAttendanceReportsPage {
 
                 Platform.runLater(() -> {
                     classFilter.getItems().setAll(items);
+                    classFilter.setPromptText(I18n.t("admin.reports.filter.class"));
+
                     if (!items.isEmpty()) {
                         classFilter.setValue(items.get(0));
                         loadReport.run();
@@ -252,7 +361,7 @@ public class AdminAttendanceReportsPage {
             } catch (Exception e) {
                 e.printStackTrace();
                 Platform.runLater(() -> {
-                    error.setText("Failed to load classes.");
+                    error.setText(I18n.t("admin.reports.error.loadClasses"));
                     error.setVisible(true);
                     error.setManaged(true);
                 });
@@ -273,14 +382,15 @@ public class AdminAttendanceReportsPage {
         ScrollPane scroll = new ScrollPane(content);
         scroll.setFitToWidth(true);
         scroll.getStyleClass().add("scroll");
+        RtlUtil.apply(scroll);
 
         return AdminAppLayout.wrapWithSidebar(
                 adminName,
-                "Admin Panel",
-                "Dashboard",
-                "Manage Classes",
-                "Attendance Reports",
-                "Manage Users",
+                I18n.t("admin.dashboard.title"),
+                I18n.t("student.nav.dashboard"),
+                I18n.t("admin.classes.title"),
+                I18n.t("admin.reports.title"),
+                I18n.t("admin.users.title"),
                 scroll,
                 "third",
                 new AdminAppLayout.Navigator() {
@@ -292,7 +402,38 @@ public class AdminAttendanceReportsPage {
                         jwtStore.clear();
                         router.go("login");
                     }
-                }
+                },
+                router
         );
+    }
+
+    private static String mapUiPeriodToApiValue(String uiValue) {
+        if (uiValue == null) return "THIS_MONTH";
+
+        if (uiValue.equals(I18n.t("admin.reports.filter.time.all"))) {
+            return "ALL";
+        }
+        if (uiValue.equals(I18n.t("admin.reports.filter.time.thisMonth"))) {
+            return "THIS_MONTH";
+        }
+        if (uiValue.equals(I18n.t("admin.reports.filter.time.lastMonth"))) {
+            return "LAST_MONTH";
+        }
+        if (uiValue.equals(I18n.t("admin.reports.filter.time.thisYear"))) {
+            return "THIS_YEAR";
+        }
+
+        return "THIS_MONTH";
+    }
+
+    private static String localizeStatus(String rawStatus) {
+        if (rawStatus == null) return "—";
+
+        return switch (rawStatus.toUpperCase()) {
+            case "PRESENT" -> I18n.t("common.attendance.present");
+            case "ABSENT" -> I18n.t("common.attendance.absent");
+            case "EXCUSED" -> I18n.t("common.attendance.excused");
+            default -> rawStatus;
+        };
     }
 }

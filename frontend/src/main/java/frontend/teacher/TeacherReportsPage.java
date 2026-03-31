@@ -7,15 +7,27 @@ import frontend.auth.AppRouter;
 import frontend.auth.AuthState;
 import frontend.auth.JwtStore;
 import javafx.application.Platform;
+import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
-import javafx.scene.control.*;
-import javafx.scene.layout.*;
+import javafx.scene.control.Alert;
+import javafx.scene.control.Button;
+import javafx.scene.control.ButtonType;
+import javafx.scene.control.ComboBox;
+import javafx.scene.control.Label;
+import javafx.scene.control.MenuButton;
+import javafx.scene.control.MenuItem;
+import javafx.scene.control.TableColumn;
+import javafx.scene.control.TableView;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.VBox;
 import javafx.stage.FileChooser;
+import util.I18n;
+import util.RtlUtil;
 
 import java.io.File;
 import java.util.Collections;
@@ -27,27 +39,55 @@ public class TeacherReportsPage {
     private static class ClassItem {
         final long id;
         final String label;
-        ClassItem(long id, String label) { this.id = id; this.label = label; }
-        @Override public String toString() { return label; }
+
+        ClassItem(long id, String label) {
+            this.id = id;
+            this.label = label;
+        }
+
+        @Override
+        public String toString() {
+            return label;
+        }
     }
 
     private static class SessionItem {
         final long id;
         final String label;
-        SessionItem(long id, String label) { this.id = id; this.label = label; }
-        @Override public String toString() { return label; }
+
+        SessionItem(long id, String label) {
+            this.id = id;
+            this.label = label;
+        }
+
+        @Override
+        public String toString() {
+            return label;
+        }
     }
 
     private static class ReportRow {
         final String name;
         final String email;
         final String status;
+
         ReportRow(String name, String email, String status) {
-            this.name = name; this.email = email; this.status = status;
+            this.name = name;
+            this.email = email;
+            this.status = status;
         }
-        public String getName() { return name; }
-        public String getEmail() { return email; }
-        public String getStatus() { return status; }
+
+        public String getName() {
+            return name;
+        }
+
+        public String getEmail() {
+            return email;
+        }
+
+        public String getStatus() {
+            return status;
+        }
     }
 
     private final ObservableList<ReportRow> tableRows = FXCollections.observableArrayList();
@@ -86,7 +126,10 @@ public class TeacherReportsPage {
 
     public Parent build(Scene scene, AppRouter router, JwtStore jwtStore, AuthState state) {
 
-        String teacherName = (state.getName() == null || state.getName().isBlank()) ? "Name" : state.getName();
+        String teacherName = (state.getName() == null || state.getName().isBlank())
+                ? I18n.t("teacher.fallback.name")
+                : state.getName();
+
         String backendUrl = System.getenv().getOrDefault("BACKEND_URL", "http://localhost:8081");
         TeacherApi api = new TeacherApi(backendUrl);
         ReportApi reportApi = new ReportApi(backendUrl);
@@ -94,46 +137,49 @@ public class TeacherReportsPage {
         VBox page = new VBox(14);
         page.setPadding(new Insets(22));
         page.getStyleClass().add("page");
+        RtlUtil.apply(page);
 
-        Label title = new Label("Reports");
+        Label title = new Label(I18n.t("teacher.reports.title"));
         title.getStyleClass().add("title");
 
-        Label subtitle = new Label("Session reports (attendance stats + list)");
+        Label subtitle = new Label(I18n.t("teacher.reports.subtitle"));
         subtitle.getStyleClass().add("subtitle");
 
-        // Selectors
         HBox selects = new HBox(10);
         selects.setAlignment(Pos.CENTER_LEFT);
+        RtlUtil.apply(selects);
 
         ComboBox<ClassItem> classBox = new ComboBox<>();
-        classBox.setPromptText("Select class");
+        classBox.setPromptText(I18n.t("teacher.reports.select.class"));
         classBox.setMaxWidth(340);
+        RtlUtil.apply(classBox);
 
         ComboBox<SessionItem> sessionBox = new ComboBox<>();
-        sessionBox.setPromptText("Select session");
+        sessionBox.setPromptText(I18n.t("teacher.reports.select.session"));
         sessionBox.setMaxWidth(340);
+        RtlUtil.apply(sessionBox);
 
-        Button load = new Button("Load Report");
+        Button load = new Button(I18n.t("teacher.reports.load"));
         load.getStyleClass().addAll("pill", "pill-green");
 
-        MenuButton exportBtn = new MenuButton("Export");
+        MenuButton exportBtn = new MenuButton(I18n.t("common.export"));
         exportBtn.getStyleClass().addAll("pill", "pill-blue");
-        exportBtn.setDisable(true); // enabled after a report is loaded
+        exportBtn.setDisable(true);
 
-        MenuItem exportPdf = new MenuItem("Export as PDF");
-        MenuItem exportCsv = new MenuItem("Export as CSV");
+        MenuItem exportPdf = new MenuItem(I18n.t("common.export.pdf"));
+        MenuItem exportCsv = new MenuItem(I18n.t("common.export.csv"));
         exportBtn.getItems().addAll(exportPdf, exportCsv);
 
         selects.getChildren().addAll(classBox, sessionBox, load, exportBtn);
 
-        // Stats line
         HBox stats = new HBox(10);
         stats.setAlignment(Pos.CENTER_LEFT);
+        RtlUtil.apply(stats);
 
-        Label present = new Label("Present: —");
-        Label absent  = new Label("Absent: —");
-        Label excused = new Label("Excused: —");
-        Label rate    = new Label("Rate: —");
+        Label present = new Label(I18n.t("teacher.reports.stats.present").replace("{count}", "—"));
+        Label absent = new Label(I18n.t("teacher.reports.stats.absent").replace("{count}", "—"));
+        Label excused = new Label(I18n.t("teacher.reports.stats.excused").replace("{count}", "—"));
+        Label rate = new Label(I18n.t("teacher.reports.stats.rate").replace("{rate}", "—"));
 
         present.getStyleClass().add("subtitle");
         absent.getStyleClass().add("subtitle");
@@ -142,42 +188,40 @@ public class TeacherReportsPage {
 
         stats.getChildren().addAll(present, absent, excused, rate);
 
-        // Table
         TableView<ReportRow> table = new TableView<>(tableRows);
         table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
         table.setPrefHeight(340);
+        RtlUtil.apply(table);
 
-        TableColumn<ReportRow, String> colName = new TableColumn<>("Student");
-        colName.setCellValueFactory(d -> new javafx.beans.property.SimpleStringProperty(d.getValue().getName()));
+        TableColumn<ReportRow, String> colName = new TableColumn<>(I18n.t("teacher.reports.table.student"));
+        colName.setCellValueFactory(d -> new SimpleStringProperty(d.getValue().getName()));
 
-        TableColumn<ReportRow, String> colEmail = new TableColumn<>("Email");
-        colEmail.setCellValueFactory(d -> new javafx.beans.property.SimpleStringProperty(d.getValue().getEmail()));
+        TableColumn<ReportRow, String> colEmail = new TableColumn<>(I18n.t("teacher.reports.table.email"));
+        colEmail.setCellValueFactory(d -> new SimpleStringProperty(d.getValue().getEmail()));
 
-        TableColumn<ReportRow, String> colStatus = new TableColumn<>("Status");
-        colStatus.setCellValueFactory(d -> new javafx.beans.property.SimpleStringProperty(d.getValue().getStatus()));
+        TableColumn<ReportRow, String> colStatus = new TableColumn<>(I18n.t("teacher.reports.table.status"));
+        colStatus.setCellValueFactory(d -> new SimpleStringProperty(d.getValue().getStatus()));
 
         table.getColumns().setAll(colName, colEmail, colStatus);
 
         page.getChildren().addAll(title, subtitle, selects, stats, table);
 
-        // Helper to reset UI when switching
         Runnable resetReportUI = () -> {
-            present.setText("Present: —");
-            absent.setText("Absent: —");
-            excused.setText("Excused: —");
-            rate.setText("Rate: —");
+            present.setText(I18n.t("teacher.reports.stats.present").replace("{count}", "—"));
+            absent.setText(I18n.t("teacher.reports.stats.absent").replace("{count}", "—"));
+            excused.setText(I18n.t("teacher.reports.stats.excused").replace("{count}", "—"));
+            rate.setText(I18n.t("teacher.reports.stats.rate").replace("{rate}", "—"));
             tableRows.clear();
         };
 
-        // Load classes on open
         new Thread(() -> {
             try {
                 List<Map<String, Object>> list = api.getMyClasses(jwtStore, state);
 
                 var items = list.stream().map(m -> {
                     long id = Long.parseLong(String.valueOf(m.get("id")));
-                    String classCode = String.valueOf(m.get("classCode"));
-                    String name2 = String.valueOf(m.get("name"));
+                    String classCode = String.valueOf(m.getOrDefault("classCode", "—"));
+                    String name2 = String.valueOf(m.getOrDefault("name", I18n.t("teacher.dashboard.classes.unnamed")));
                     return new ClassItem(id, classCode + " — " + name2);
                 }).toList();
 
@@ -186,12 +230,15 @@ public class TeacherReportsPage {
             } catch (Exception ex) {
                 ex.printStackTrace();
                 Platform.runLater(() ->
-                        new Alert(Alert.AlertType.ERROR, "Failed to load classes: " + ex.getMessage(), ButtonType.OK).showAndWait()
+                        new Alert(
+                                Alert.AlertType.ERROR,
+                                I18n.t("teacher.reports.error.loadClasses").replace("{error}", ex.getMessage()),
+                                ButtonType.OK
+                        ).showAndWait()
                 );
             }
         }).start();
 
-        // When class changes -> load sessions
         classBox.setOnAction(e -> {
             ClassItem c = classBox.getValue();
             if (c == null) {
@@ -212,14 +259,17 @@ public class TeacherReportsPage {
                     var items = sessions.stream().map(s -> {
                         long sid = Long.parseLong(String.valueOf(s.get("id")));
 
-                        // backend might return: date / sessionDate / session_date
                         String date = pick(s, "date", "sessionDate", "session_date");
-
-                        // backend might return: code / qrCode / qr_token
                         String code = pick(s, "code", "qrCode", "qr_token", "qrToken");
 
-                        String label = (date.isBlank() ? "Session " + sid : date) +
-                                (code.isBlank() ? "" : " (code: " + code + ")");
+                        String sessionLabel = date.isBlank()
+                                ? I18n.t("teacher.reports.session.default").replace("{id}", String.valueOf(sid))
+                                : date;
+
+                        String label = sessionLabel + (code.isBlank()
+                                ? ""
+                                : " " + I18n.t("teacher.reports.session.code").replace("{code}", code));
+
                         return new SessionItem(sid, label);
                     }).toList();
 
@@ -228,20 +278,26 @@ public class TeacherReportsPage {
                 } catch (Exception ex) {
                     ex.printStackTrace();
                     Platform.runLater(() ->
-                            new Alert(Alert.AlertType.ERROR, "Failed to load sessions: " + ex.getMessage(), ButtonType.OK).showAndWait()
+                            new Alert(
+                                    Alert.AlertType.ERROR,
+                                    I18n.t("teacher.reports.error.loadSessions").replace("{error}", ex.getMessage()),
+                                    ButtonType.OK
+                            ).showAndWait()
                     );
                 }
             }).start();
         });
 
-        // When session changes -> clear old report
         sessionBox.setOnAction(e -> resetReportUI.run());
 
-        // Load report
         load.setOnAction(e -> {
             SessionItem sItem = sessionBox.getValue();
             if (sItem == null) {
-                new Alert(Alert.AlertType.WARNING, "Select a session first.", ButtonType.OK).showAndWait();
+                new Alert(
+                        Alert.AlertType.WARNING,
+                        I18n.t("teacher.reports.alert.selectSession"),
+                        ButtonType.OK
+                ).showAndWait();
                 return;
             }
 
@@ -252,9 +308,6 @@ public class TeacherReportsPage {
                 try {
                     Map<String, Object> res = api.getSessionReport(jwtStore, state, sItem.id);
 
-                    // supports either:
-                    // 1) { report: { stats: {...}, rows: [...] } }
-                    // 2) { stats: {...}, rows: [...] }
                     Map<String, Object> report = res.containsKey("report")
                             ? asMap(res.get("report"))
                             : res;
@@ -268,18 +321,23 @@ public class TeacherReportsPage {
                     double r = asDouble(st.get("rate"));
 
                     Platform.runLater(() -> {
-                        present.setText("Present: " + p);
-                        absent.setText("Absent: " + a);
-                        excused.setText("Excused: " + ex);
-                        rate.setText(String.format("Rate: %.1f%%", r));
+                        present.setText(I18n.t("teacher.reports.stats.present").replace("{count}", String.valueOf(p)));
+                        absent.setText(I18n.t("teacher.reports.stats.absent").replace("{count}", String.valueOf(a)));
+                        excused.setText(I18n.t("teacher.reports.stats.excused").replace("{count}", String.valueOf(ex)));
+                        rate.setText(I18n.t("teacher.reports.stats.rate").replace("{rate}", String.format("%.1f", r)));
 
                         for (var row : rows) {
                             String fn = pick(row, "firstName", "first_name");
                             String ln = pick(row, "lastName", "last_name");
                             String email = pick(row, "email");
-                            String status = pick(row, "status");
+                            String rawStatus = pick(row, "status");
                             String name = (fn + " " + ln).trim();
-                            tableRows.add(new ReportRow(name.isBlank() ? "—" : name, email, status));
+
+                            tableRows.add(new ReportRow(
+                                    name.isBlank() ? "—" : name,
+                                    email,
+                                    localizeStatus(rawStatus)
+                            ));
                         }
 
                         load.setDisable(false);
@@ -289,7 +347,11 @@ public class TeacherReportsPage {
                     ex.printStackTrace();
                     Platform.runLater(() -> {
                         load.setDisable(false);
-                        new Alert(Alert.AlertType.ERROR, "Report failed: " + ex.getMessage(), ButtonType.OK).showAndWait();
+                        new Alert(
+                                Alert.AlertType.ERROR,
+                                I18n.t("teacher.reports.error.loadReport"),
+                                ButtonType.OK
+                        ).showAndWait();
                     });
                 }
             }).start();
@@ -298,19 +360,29 @@ public class TeacherReportsPage {
         exportPdf.setOnAction(e -> {
             ClassItem c = classBox.getValue();
             if (c == null) return;
+
             FileChooser fc = new FileChooser();
-            fc.setTitle("Save PDF Report");
-            fc.setInitialFileName("teacher-report.pdf");
+            fc.setTitle(I18n.t("teacher.reports.filechooser.pdf.title"));
+            fc.setInitialFileName(I18n.t("teacher.reports.filechooser.pdf.name"));
             fc.getExtensionFilters().add(new FileChooser.ExtensionFilter("PDF Files", "*.pdf"));
             File dest = fc.showSaveDialog(scene.getWindow());
             if (dest == null) return;
+
             new Thread(() -> {
                 try {
                     reportApi.exportTeacherReport(jwtStore, state, c.id, "pdf", dest.getAbsolutePath());
-                    Platform.runLater(() -> new Alert(Alert.AlertType.INFORMATION, "PDF saved to:\n" + dest.getAbsolutePath(), ButtonType.OK).showAndWait());
+                    Platform.runLater(() -> new Alert(
+                            Alert.AlertType.INFORMATION,
+                            I18n.t("teacher.reports.export.success.pdf") + "\n" + dest.getAbsolutePath(),
+                            ButtonType.OK
+                    ).showAndWait());
                 } catch (Exception ex2) {
                     ex2.printStackTrace();
-                    Platform.runLater(() -> new Alert(Alert.AlertType.ERROR, "Export failed: " + ex2.getMessage(), ButtonType.OK).showAndWait());
+                    Platform.runLater(() -> new Alert(
+                            Alert.AlertType.ERROR,
+                            I18n.t("teacher.reports.error.export"),
+                            ButtonType.OK
+                    ).showAndWait());
                 }
             }).start();
         });
@@ -318,30 +390,41 @@ public class TeacherReportsPage {
         exportCsv.setOnAction(e -> {
             ClassItem c = classBox.getValue();
             if (c == null) return;
+
             FileChooser fc = new FileChooser();
-            fc.setTitle("Save CSV Report");
-            fc.setInitialFileName("teacher-report.csv");
+            fc.setTitle(I18n.t("teacher.reports.filechooser.csv.title"));
+            fc.setInitialFileName(I18n.t("teacher.reports.filechooser.csv.name"));
             fc.getExtensionFilters().add(new FileChooser.ExtensionFilter("CSV Files", "*.csv"));
             File dest = fc.showSaveDialog(scene.getWindow());
             if (dest == null) return;
+
             new Thread(() -> {
                 try {
                     reportApi.exportTeacherReport(jwtStore, state, c.id, "csv", dest.getAbsolutePath());
-                    Platform.runLater(() -> new Alert(Alert.AlertType.INFORMATION, "CSV saved to:\n" + dest.getAbsolutePath(), ButtonType.OK).showAndWait());
+                    Platform.runLater(() -> new Alert(
+                            Alert.AlertType.INFORMATION,
+                            I18n.t("teacher.reports.export.success.csv") + "\n" + dest.getAbsolutePath(),
+                            ButtonType.OK
+                    ).showAndWait());
                 } catch (Exception ex2) {
                     ex2.printStackTrace();
-                    Platform.runLater(() -> new Alert(Alert.AlertType.ERROR, "Export failed: " + ex2.getMessage(), ButtonType.OK).showAndWait());
+                    Platform.runLater(() -> new Alert(
+                            Alert.AlertType.ERROR,
+                            I18n.t("teacher.reports.error.export"),
+                            ButtonType.OK
+                    ).showAndWait());
                 }
             }).start();
         });
 
         return AppLayout.wrapWithSidebar(
                 teacherName,
-                "Teacher Panel",
-                "Dashboard",
-                "Take Attendance",
-                "Reports",
-                "Email",
+                I18n.t("teacher.sidebar.title"),
+                I18n.t("teacher.sidebar.menu.dashboard"),
+                I18n.t("teacher.sidebar.menu.take_attendance"),
+                I18n.t("teacher.sidebar.menu.reports"),
+                I18n.t("teacher.sidebar.menu.email"),
+                I18n.t("teacher.sidebar.logout"),
                 page,
                 "third",
                 new AppLayout.Navigator() {
@@ -349,8 +432,24 @@ public class TeacherReportsPage {
                     @Override public void goTakeAttendance() { router.go("teacher-take"); }
                     @Override public void goReports() { router.go("teacher-reports"); }
                     @Override public void goEmail() { router.go("teacher-email"); }
-                    @Override public void logout() { jwtStore.clear(); router.go("login"); }
-                }
+                    @Override public void logout() {
+                        jwtStore.clear();
+                        router.go("login");
+                    }
+                },
+                router,
+                I18n.isRtl()
         );
+    }
+
+    private static String localizeStatus(String rawStatus) {
+        if (rawStatus == null) return "—";
+
+        return switch (rawStatus.toUpperCase()) {
+            case "PRESENT" -> I18n.t("common.attendance.present");
+            case "ABSENT" -> I18n.t("common.attendance.absent");
+            case "EXCUSED" -> I18n.t("common.attendance.excused");
+            default -> rawStatus;
+        };
     }
 }

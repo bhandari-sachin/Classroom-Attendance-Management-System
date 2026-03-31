@@ -14,10 +14,15 @@ import javafx.scene.control.Alert;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.Label;
 import javafx.scene.control.Separator;
-import javafx.scene.layout.*;
+import javafx.scene.layout.ColumnConstraints;
+import javafx.scene.layout.GridPane;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
+import javafx.scene.layout.Region;
+import javafx.scene.layout.VBox;
+import util.I18n;
+import util.RtlUtil;
 
-import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
 
@@ -31,35 +36,39 @@ public class TeacherDashboardApp {
     public Parent build(Scene scene, AppRouter router, JwtStore jwtStore, AuthState state) {
 
         String teacherName = (state.getName() == null || state.getName().isBlank())
-                ? "Name"
+                ? I18n.t("teacher.fallback.name")
                 : state.getName();
+
         String backendUrl = System.getenv().getOrDefault("BACKEND_URL", "http://localhost:8081");
         TeacherApi api = new TeacherApi(backendUrl);
 
         VBox page = new VBox(16);
         page.setPadding(new Insets(26));
         page.getStyleClass().add("page");
+        RtlUtil.apply(page);
 
-        Label greeting = new Label("Good afternoon, " + teacherName + "!");
+        Label greeting = new Label(
+                I18n.t("teacher.dashboard.greeting").replace("{name}", teacherName)
+        );
         greeting.getStyleClass().add("dash-title");
 
-        String date = LocalDate.now().format(DateTimeFormatter.ofPattern("EEEE, MMMM d, yyyy"));
-        Label dateLabel = new Label(date);
-        dateLabel.getStyleClass().add("dash-subtitle");
+        Label subtitle = new Label(I18n.t("teacher.dashboard.title"));
+        subtitle.getStyleClass().add("dash-subtitle");
 
         HBox actionsRow = new HBox(14);
         actionsRow.getStyleClass().add("dash-actions");
+        RtlUtil.apply(actionsRow);
 
         VBox takeCard = bigActionCard(
-                "Take Attendance",
-                "Generate QR code for your class",
+                I18n.t("teacher.dashboard.takeAttendance.title"),
+                I18n.t("teacher.dashboard.takeAttendance.subtitle"),
                 "card-green",
                 () -> router.go("teacher-take")
         );
 
         VBox reportCard = bigActionCard(
-                "View Reports",
-                "Class Attendance Reports",
+                I18n.t("teacher.dashboard.reports.title"),
+                I18n.t("teacher.dashboard.reports.subtitle"),
                 "card-purple",
                 () -> router.go("teacher-reports")
         );
@@ -72,11 +81,12 @@ public class TeacherDashboardApp {
         stats.setHgap(14);
         stats.setVgap(14);
         stats.getStyleClass().add("dash-stats");
+        RtlUtil.apply(stats);
 
-        VBox myClassesCard = statCard("My Classes", totalClasses);
-        VBox totalStudentsCard = statCard("Total Students", totalStudents);
-        VBox presentTodayCard = statCard("Present Today", presentToday);
-        VBox absentTodayCard = statCard("Absent Today", absentToday);
+        VBox myClassesCard = statCard(I18n.t("teacher.dashboard.stats.classes"), totalClasses);
+        VBox totalStudentsCard = statCard(I18n.t("teacher.dashboard.stats.students"), totalStudents);
+        VBox presentTodayCard = statCard(I18n.t("teacher.dashboard.stats.present"), presentToday);
+        VBox absentTodayCard = statCard(I18n.t("teacher.dashboard.stats.absent"), absentToday);
 
         stats.add(myClassesCard, 0, 0);
         stats.add(totalStudentsCard, 1, 0);
@@ -93,22 +103,23 @@ public class TeacherDashboardApp {
 
         stats.getColumnConstraints().addAll(c1, c2);
 
-        Label classesTitle = new Label("My classes");
+        Label classesTitle = new Label(I18n.t("teacher.dashboard.classes.title"));
         classesTitle.getStyleClass().add("section-title");
 
         VBox classesContainer = new VBox(10);
         classesContainer.getStyleClass().add("classes-card");
         classesContainer.setPadding(new Insets(16));
         classesContainer.setMinHeight(170);
+        RtlUtil.apply(classesContainer);
 
-        Label loading = new Label("Loading classes...");
+        Label loading = new Label(I18n.t("teacher.dashboard.classes.loading"));
         loading.getStyleClass().add("empty-subtitle");
         classesContainer.setAlignment(Pos.CENTER);
         classesContainer.getChildren().add(loading);
 
         page.getChildren().addAll(
                 greeting,
-                dateLabel,
+                subtitle,
                 actionsRow,
                 stats,
                 new Separator(),
@@ -135,8 +146,9 @@ public class TeacherDashboardApp {
             } catch (Exception ex) {
                 ex.printStackTrace();
                 Platform.runLater(() ->
-                        new Alert(Alert.AlertType.ERROR,
-                                "Failed to load dashboard stats: " + ex.getMessage(),
+                        new Alert(
+                                Alert.AlertType.ERROR,
+                                I18n.t("teacher.dashboard.error.stats").replace("{error}", ex.getMessage()),
                                 ButtonType.OK
                         ).showAndWait()
                 );
@@ -156,10 +168,10 @@ public class TeacherDashboardApp {
                         Label icon = new Label("📅");
                         icon.getStyleClass().add("empty-icon");
 
-                        Label t = new Label("No classes Assigned");
+                        Label t = new Label(I18n.t("teacher.dashboard.classes.empty.title"));
                         t.getStyleClass().add("empty-title");
 
-                        Label s = new Label("You haven’t been assigned any classes yet.");
+                        Label s = new Label(I18n.t("teacher.dashboard.classes.empty.subtitle"));
                         s.getStyleClass().add("empty-subtitle");
 
                         classesContainer.getChildren().addAll(icon, t, s);
@@ -170,9 +182,9 @@ public class TeacherDashboardApp {
 
                     for (Map<String, Object> c : classes) {
                         String classCode = String.valueOf(c.getOrDefault("classCode", "—"));
-                        String name = String.valueOf(c.getOrDefault("name", "Unnamed Class"));
-                        String semester = String.valueOf(c.getOrDefault("semester", "—"));
-                        String academicYear = String.valueOf(c.getOrDefault("academicYear", "—"));
+                        String name = String.valueOf(c.getOrDefault("name", I18n.t("teacher.dashboard.classes.unnamed")));
+                        String semester = String.valueOf(c.getOrDefault("semester", ""));
+                        String academicYear = String.valueOf(c.getOrDefault("academicYear", ""));
                         String studentsCount = String.valueOf(c.getOrDefault("studentsCount", "0"));
 
                         classesContainer.getChildren().add(classRow(
@@ -191,7 +203,9 @@ public class TeacherDashboardApp {
                     classesContainer.getChildren().clear();
                     classesContainer.setAlignment(Pos.CENTER);
 
-                    Label err = new Label("Failed to load classes: " + ex.getMessage());
+                    Label err = new Label(
+                            I18n.t("teacher.dashboard.error.classes").replace("{error}", ex.getMessage())
+                    );
                     err.getStyleClass().add("empty-subtitle");
                     classesContainer.getChildren().add(err);
                 });
@@ -200,11 +214,12 @@ public class TeacherDashboardApp {
 
         return AppLayout.wrapWithSidebar(
                 teacherName,
-                "Teacher Panel",
-                "Dashboard",
-                "Take Attendance",
-                "Reports",
-                "Email",
+                I18n.t("teacher.sidebar.title"),
+                I18n.t("teacher.sidebar.menu.dashboard"),
+                I18n.t("teacher.sidebar.menu.take_attendance"),
+                I18n.t("teacher.sidebar.menu.reports"),
+                I18n.t("teacher.sidebar.menu.email"),
+                I18n.t("teacher.sidebar.logout"),
                 page,
                 "dashboard",
                 new AppLayout.Navigator() {
@@ -216,7 +231,9 @@ public class TeacherDashboardApp {
                         jwtStore.clear();
                         router.go("login");
                     }
-                }
+                },
+                router,
+                I18n.isRtl()
         );
     }
 
@@ -229,6 +246,7 @@ public class TeacherDashboardApp {
     private VBox bigActionCard(String title, String subtitle, String styleClass, Runnable action) {
         VBox card = new VBox(4);
         card.getStyleClass().addAll("big-card", styleClass);
+        RtlUtil.apply(card);
 
         Label t = new Label(title);
         t.getStyleClass().add("big-card-title");
@@ -245,9 +263,11 @@ public class TeacherDashboardApp {
         VBox card = new VBox(10);
         card.getStyleClass().add("stat-card");
         card.setPadding(new Insets(16));
+        RtlUtil.apply(card);
 
         HBox top = new HBox(8);
         top.setAlignment(Pos.CENTER_LEFT);
+        RtlUtil.apply(top);
 
         Label icon = new Label(resolveIcon(label));
         icon.setStyle("-fx-font-size: 18px;");
@@ -268,11 +288,17 @@ public class TeacherDashboardApp {
         VBox box = new VBox(4);
         box.getStyleClass().add("class-item");
         box.setPadding(new Insets(12));
+        RtlUtil.apply(box);
 
         Label title = new Label(classCode + " — " + name);
         title.getStyleClass().add("class-title");
 
-        Label meta = new Label("Semester: " + semester + " | Year: " + academicYear + " | Students: " + studentsCount);
+        String metaText = I18n.t("teacher.dashboard.classes.meta")
+                .replace("{semester}", semester == null ? "" : semester)
+                .replace("{year}", academicYear == null ? "" : academicYear)
+                .replace("{count}", studentsCount == null ? "0" : studentsCount);
+
+        Label meta = new Label(metaText);
         meta.getStyleClass().add("class-meta");
 
         box.getChildren().addAll(title, meta);
@@ -280,12 +306,18 @@ public class TeacherDashboardApp {
     }
 
     private String resolveIcon(String label) {
-        return switch (label) {
-            case "My Classes" -> "📚";
-            case "Total Students" -> "👥";
-            case "Present Today" -> "✅";
-            case "Absent Today" -> "❌";
-            default -> "📊";
-        };
+        if (label.equals(I18n.t("teacher.dashboard.stats.classes"))) {
+            return "📚";
+        }
+        if (label.equals(I18n.t("teacher.dashboard.stats.students"))) {
+            return "👥";
+        }
+        if (label.equals(I18n.t("teacher.dashboard.stats.present"))) {
+            return "✅";
+        }
+        if (label.equals(I18n.t("teacher.dashboard.stats.absent"))) {
+            return "❌";
+        }
+        return "📊";
     }
 }

@@ -13,8 +13,17 @@ import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
-import javafx.scene.control.*;
-import javafx.scene.layout.*;
+import javafx.scene.control.Alert;
+import javafx.scene.control.Button;
+import javafx.scene.control.ButtonType;
+import javafx.scene.control.ComboBox;
+import javafx.scene.control.Label;
+import javafx.scene.control.TableColumn;
+import javafx.scene.control.TableView;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.VBox;
+import util.I18n;
+import util.RtlUtil;
 
 import java.util.List;
 import java.util.Map;
@@ -41,7 +50,7 @@ public class TeacherEmailPage {
     public Parent build(Scene scene, AppRouter router, JwtStore jwtStore, AuthState state) {
 
         String teacherName = (state.getName() == null || state.getName().isBlank())
-                ? "Name"
+                ? I18n.t("teacher.fallback.name")
                 : state.getName();
 
         String backendUrl = System.getenv().getOrDefault("BACKEND_URL", "http://localhost:8081");
@@ -50,21 +59,24 @@ public class TeacherEmailPage {
         VBox page = new VBox(14);
         page.setPadding(new Insets(22));
         page.getStyleClass().add("page");
+        RtlUtil.apply(page);
 
-        Label title = new Label("Email");
+        Label title = new Label(I18n.t("teacher.email.title"));
         title.getStyleClass().add("title");
 
-        Label info = new Label("Select a class to view student emails.");
+        Label info = new Label(I18n.t("teacher.email.subtitle"));
         info.getStyleClass().add("subtitle");
 
         HBox top = new HBox(10);
         top.setAlignment(Pos.CENTER_LEFT);
+        RtlUtil.apply(top);
 
         ComboBox<ClassItem> classBox = new ComboBox<>();
-        classBox.setPromptText("Select class");
+        classBox.setPromptText(I18n.t("teacher.email.class_select.placeholder"));
         classBox.setMaxWidth(360);
+        RtlUtil.apply(classBox);
 
-        Button refresh = new Button("Refresh");
+        Button refresh = new Button(I18n.t("teacher.email.button.refresh"));
         refresh.getStyleClass().addAll("pill", "pill-green");
 
         top.getChildren().addAll(classBox, refresh);
@@ -72,11 +84,12 @@ public class TeacherEmailPage {
         TableView<StudentRow> table = new TableView<>(rows);
         table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
         table.setPrefHeight(340);
+        RtlUtil.apply(table);
 
-        TableColumn<StudentRow, String> colName = new TableColumn<>("Student");
+        TableColumn<StudentRow, String> colName = new TableColumn<>(I18n.t("teacher.email.table.column.student"));
         colName.setCellValueFactory(d -> d.getValue().studentNameProperty());
 
-        TableColumn<StudentRow, String> colEmail = new TableColumn<>("Email");
+        TableColumn<StudentRow, String> colEmail = new TableColumn<>(I18n.t("teacher.email.table.column.email"));
         colEmail.setCellValueFactory(d -> d.getValue().emailProperty());
 
         table.getColumns().addAll(colName, colEmail);
@@ -90,7 +103,7 @@ public class TeacherEmailPage {
                 return;
             }
 
-            rows.setAll(new StudentRow(-1L, "Loading...", "-", "—"));
+            rows.setAll(new StudentRow(-1L, I18n.t("teacher.email.loading.students"), "-", "—"));
 
             new Thread(() -> {
                 try {
@@ -101,11 +114,11 @@ public class TeacherEmailPage {
 
                         for (var s : students) {
                             long studentId = Long.parseLong(String.valueOf(s.get("id")));
-                            String fn = String.valueOf(s.get("firstName"));
-                            String ln = String.valueOf(s.get("lastName"));
-                            String email = String.valueOf(s.get("email"));
+                            String fn = String.valueOf(s.getOrDefault("firstName", ""));
+                            String ln = String.valueOf(s.getOrDefault("lastName", ""));
+                            String email = String.valueOf(s.getOrDefault("email", ""));
 
-                            rows.add(new StudentRow(studentId, fn + " " + ln, email, "—"));
+                            rows.add(new StudentRow(studentId, (fn + " " + ln).trim(), email, "—"));
                         }
                     });
 
@@ -115,7 +128,7 @@ public class TeacherEmailPage {
                         rows.clear();
                         new Alert(
                                 Alert.AlertType.ERROR,
-                                "Failed to load students: " + ex.getMessage(),
+                                I18n.t("teacher.email.error.students").replace("{reason}", ex.getMessage()),
                                 ButtonType.OK
                         ).showAndWait();
                     });
@@ -129,8 +142,8 @@ public class TeacherEmailPage {
 
                 var items = list.stream().map(m -> {
                     long id = Long.parseLong(String.valueOf(m.get("id")));
-                    String classCode = String.valueOf(m.get("classCode"));
-                    String name = String.valueOf(m.get("name"));
+                    String classCode = String.valueOf(m.getOrDefault("classCode", "—"));
+                    String name = String.valueOf(m.getOrDefault("name", I18n.t("teacher.dashboard.classes.unnamed")));
                     return new ClassItem(id, classCode + " — " + name);
                 }).toList();
 
@@ -141,7 +154,7 @@ public class TeacherEmailPage {
                 Platform.runLater(() ->
                         new Alert(
                                 Alert.AlertType.ERROR,
-                                "Failed to load classes: " + ex.getMessage(),
+                                I18n.t("teacher.email.error.classes").replace("{reason}", ex.getMessage()),
                                 ButtonType.OK
                         ).showAndWait()
                 );
@@ -153,11 +166,12 @@ public class TeacherEmailPage {
 
         return AppLayout.wrapWithSidebar(
                 teacherName,
-                "Teacher Panel",
-                "Dashboard",
-                "Take Attendance",
-                "Reports",
-                "Email",
+                I18n.t("teacher.sidebar.title"),
+                I18n.t("teacher.sidebar.menu.dashboard"),
+                I18n.t("teacher.sidebar.menu.take_attendance"),
+                I18n.t("teacher.sidebar.menu.reports"),
+                I18n.t("teacher.sidebar.menu.email"),
+                I18n.t("teacher.sidebar.logout"),
                 page,
                 "fourth",
                 new AppLayout.Navigator() {
@@ -169,7 +183,9 @@ public class TeacherEmailPage {
                         jwtStore.clear();
                         router.go("login");
                     }
-                }
+                },
+                router,
+                I18n.isRtl()
         );
     }
 }

@@ -5,12 +5,16 @@ import javafx.geometry.NodeOrientation;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.Parent;
+import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.Separator;
 import javafx.scene.layout.BorderPane;
+import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
+import util.I18n;
+import frontend.auth.AppRouter;
 
 import java.util.ResourceBundle;
 
@@ -46,12 +50,13 @@ public class AppLayout {
                 content,
                 activeKey,
                 nav,
+                null,
                 isRtl
         );
     }
 
     /**
-     * Custom labels (Teacher/Student/etc.) using bundle or passed strings.
+     * Old overload kept for compatibility.
      */
     public static Parent wrapWithSidebar(
             String name,
@@ -66,10 +71,71 @@ public class AppLayout {
             Navigator nav,
             boolean isRtl
     ) {
+        return wrapWithSidebar(
+                name,
+                roleLabel,
+                dashboardLabel,
+                secondLabel,
+                thirdLabel,
+                fourthLabel,
+                logoutLabel,
+                content,
+                activeKey,
+                nav,
+                null,
+                isRtl
+        );
+    }
+
+    /**
+     * Main overload with router support for language refresh.
+     */
+    public static Parent wrapWithSidebar(
+            String name,
+            String roleLabel,
+            String dashboardLabel,
+            String secondLabel,
+            String thirdLabel,
+            String fourthLabel,
+            String logoutLabel,
+            Node content,
+            String activeKey,
+            Navigator nav,
+            AppRouter router,
+            boolean isRtl
+    ) {
 
         BorderPane root = new BorderPane();
         root.getStyleClass().add("app-root");
-        root.setNodeOrientation(isRtl ? NodeOrientation.RIGHT_TO_LEFT : NodeOrientation.LEFT_TO_RIGHT);
+        root.setNodeOrientation(NodeOrientation.LEFT_TO_RIGHT);
+
+        // ===== TOP BAR =====
+        HBox topBar = new HBox();
+        topBar.setPadding(new Insets(12, 18, 0, 18));
+        topBar.setAlignment(Pos.CENTER_RIGHT);
+        topBar.setNodeOrientation(isRtl ? NodeOrientation.RIGHT_TO_LEFT : NodeOrientation.LEFT_TO_RIGHT);
+
+        ComboBox<String> languageSwitch = new ComboBox<>();
+        languageSwitch.getItems().addAll("English", "العربية");
+        languageSwitch.setValue(I18n.isArabic() ? "العربية" : "English");
+        languageSwitch.setPrefWidth(130);
+        languageSwitch.getStyleClass().add("lang-switch");
+
+        languageSwitch.setOnAction(e -> {
+            String selected = languageSwitch.getValue();
+
+            if ("العربية".equals(selected)) {
+                I18n.setArabic();
+            } else {
+                I18n.setEnglish();
+            }
+
+            if (router != null) {
+                router.refresh();
+            }
+        });
+
+        topBar.getChildren().add(languageSwitch);
 
         // ===== SIDEBAR =====
         VBox sidebar = new VBox(14);
@@ -116,11 +182,12 @@ public class AppLayout {
         sidebar.getChildren().addAll(nameLbl, role, sep, navBox, spacer, logout);
 
         // ===== CENTER CONTENT =====
-        VBox centerWrap = new VBox();
+        VBox centerWrap = new VBox(12);
         centerWrap.getStyleClass().add("content-wrap");
         centerWrap.setFillWidth(true);
+        centerWrap.setPadding(new Insets(0, 18, 18, 18));
         centerWrap.setNodeOrientation(isRtl ? NodeOrientation.RIGHT_TO_LEFT : NodeOrientation.LEFT_TO_RIGHT);
-        centerWrap.getChildren().add(content);
+        centerWrap.getChildren().addAll(topBar, content);
 
         if (content instanceof Region r) {
             r.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE);

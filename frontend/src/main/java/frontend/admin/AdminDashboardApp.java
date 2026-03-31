@@ -5,24 +5,25 @@ import frontend.auth.AuthState;
 import frontend.auth.JwtStore;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
+import util.I18n;
 
 public class AdminDashboardApp {
 
     public Parent build(Scene scene, AppRouter router, JwtStore jwtStore, AuthState state) {
 
         String adminName = (state.getName() == null || state.getName().isBlank())
-                ? "Name"
+                ? I18n.t("student.name.placeholder")
                 : state.getName();
 
         Parent scroll = AdminPages.dashboardPage(scene, router, jwtStore, state);
 
         return AdminAppLayout.wrapWithSidebar(
                 adminName,
-                "Admin Panel",
-                "Dashboard",
-                "Manage Classes",
-                "Manage Users",
-                "Attendance Reports",
+                I18n.t("admin.dashboard.title"),
+                I18n.t("student.nav.dashboard"),
+                I18n.t("admin.classes.title"),
+                I18n.t("admin.users.title"),
+                I18n.t("admin.reports.title"),
                 scroll,
                 "dashboard",
                 new AdminAppLayout.Navigator() {
@@ -34,7 +35,8 @@ public class AdminDashboardApp {
                         jwtStore.clear();
                         router.go("login");
                     }
-                }
+                },
+                router
         );
     }
 }
