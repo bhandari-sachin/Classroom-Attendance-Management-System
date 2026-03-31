@@ -53,9 +53,7 @@
     -topbar-bg: rgba(17,24,39,0.82);
 }
 
-.root {
-    -fx-background-color: -app-bg;
-}
+
 
 .label {
     -fx-text-fill: -text;
@@ -890,4 +888,8 @@
 .context-menu .radio-menu-item:checked .label,
 .context-menu .check-menu-item:checked .label {
     -fx-text-fill: -text;
+}
+.app-root {
+    -fx-background-color: -app-bg;
+    -fx-font-family: "Noto Sans Ethiopic";
 }

@@ -27,6 +27,9 @@ public class LoginPage extends StackPane {
 
         Label sub = new Label(helper.getMessage("auth.login.subtitle"));
         sub.getStyleClass().add("subtitle");
+        Label test = new Label("አማርኛ");
+        test.setStyle("-fx-font-family: 'Noto Sans Ethiopic'; -fx-font-size: 20px;");
+
 
         TextField email = new TextField();
         email.setPromptText(helper.getMessage("login.email.placeholder"));

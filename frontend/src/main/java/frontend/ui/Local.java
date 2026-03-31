@@ -7,6 +7,6 @@ public class Local {
 
     public static ResourceBundle getBundle(String lang) {
         Locale locale = Locale.forLanguageTag(lang);
-        return ResourceBundle.getBundle("messages", locale, new frontend.ui.UTF8Control());
+        return ResourceBundle.getBundle("messages", locale, new frontend.UTF8Control());
     }
 }
