@@ -893,3 +893,17 @@
     -fx-background-color: -app-bg;
     -fx-font-family: "Noto Sans Ethiopic";
 }
+.record-chip-present {
+    -fx-background-color: #dff3e6;
+    -fx-text-fill: #4CAF50;
+}
+
+.record-chip-absent {
+    -fx-background-color: #fbe4e4;
+    -fx-text-fill: #b23b3b;
+}
+
+.record-chip-excused {
+    -fx-background-color: #fff1dc;
+    -fx-text-fill: #b8741a;
+}

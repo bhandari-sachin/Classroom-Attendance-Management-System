@@ -43,9 +43,13 @@ public class TeacherReportsPage {
         final String name;
         final String email;
         final String status;
+
         ReportRow(String name, String email, String status) {
-            this.name = name; this.email = email; this.status = status;
+            this.name = name;
+            this.email = email;
+            this.status = status;
         }
+
         public String getName() { return name; }
         public String getEmail() { return email; }
         public String getStatus() { return status; }
@@ -157,6 +161,19 @@ public class TeacherReportsPage {
 
         TableColumn<ReportRow, String> colStatus = new TableColumn<>(helper.getMessage("teacher.reports.table.status"));
         colStatus.setCellValueFactory(d -> new javafx.beans.property.SimpleStringProperty(d.getValue().getStatus()));
+        colStatus.setCellFactory(col -> new TableCell<>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+
+                if (empty || item == null) {
+                    setText(null);
+                    return;
+                }
+
+                setText(localizeAttendanceStatus(item));
+            }
+        });
 
         table.getColumns().setAll(colName, colEmail, colStatus);
 
@@ -279,9 +296,9 @@ public class TeacherReportsPage {
                             String fn = pick(row, "firstName", "first_name");
                             String ln = pick(row, "lastName", "last_name");
                             String email = pick(row, "email");
-                            String status = pick(row, "status");
+                            String rawStatus = pick(row, "status");
                             String name = (fn + " " + ln).trim();
-                            tableRows.add(new ReportRow(name.isBlank() ? "—" : name, email, status));
+                            tableRows.add(new ReportRow(name.isBlank() ? "—" : name, email, rawStatus));
                         }
 
                         load.setDisable(false);
@@ -378,5 +395,18 @@ public class TeacherReportsPage {
                     @Override public void logout() { jwtStore.clear(); router.go("login"); }
                 }
         );
+    }
+
+    private String localizeAttendanceStatus(String status) {
+        if (status == null || status.isBlank() || "—".equals(status)) {
+            return "—";
+        }
+
+        return switch (status.trim().toUpperCase()) {
+            case "PRESENT" -> helper.getMessage("student.attendance.stats.present");
+            case "ABSENT" -> helper.getMessage("student.attendance.stats.absent");
+            case "EXCUSED" -> helper.getMessage("student.attendance.stats.excused");
+            default -> status;
+        };
     }
 }

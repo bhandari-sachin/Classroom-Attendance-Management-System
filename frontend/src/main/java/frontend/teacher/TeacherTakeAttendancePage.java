@@ -223,6 +223,19 @@ public class TeacherTakeAttendancePage {
 
         TableColumn<StudentRow, String> colStatus = new TableColumn<>(helper.getMessage("teacher.attendance.table.status"));
         colStatus.setCellValueFactory(d -> d.getValue().statusProperty());
+        colStatus.setCellFactory(col -> new TableCell<>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+
+                if (empty || item == null) {
+                    setText(null);
+                    return;
+                }
+
+                setText(localizeAttendanceStatus(item));
+            }
+        });
 
         TableColumn<StudentRow, Void> colActions = new TableColumn<>(helper.getMessage("teacher.attendance.actions"));
         colActions.setCellFactory(col -> new TableCell<>() {
@@ -415,5 +428,18 @@ public class TeacherTakeAttendancePage {
                     }
                 }
         );
+    }
+
+    private String localizeAttendanceStatus(String status) {
+        if (status == null || status.isBlank() || "—".equals(status)) {
+            return "—";
+        }
+
+        return switch (status.trim().toUpperCase()) {
+            case "PRESENT" -> helper.getMessage("student.attendance.stats.present");
+            case "ABSENT" -> helper.getMessage("student.attendance.stats.absent");
+            case "EXCUSED" -> helper.getMessage("student.attendance.stats.excused");
+            default -> status;
+        };
     }
 }

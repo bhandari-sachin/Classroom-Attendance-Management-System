@@ -253,8 +253,9 @@ public class StudentAttendancePage {
 
                     for (Map<String, Object> r : records) {
                         String date = String.valueOf(r.getOrDefault("sessionDate", "—"));
-                        String status = String.valueOf(r.getOrDefault("status", "—"));
-                        recordsCard.getChildren().add(recordRow(date, status));
+                        String rawStatus = String.valueOf(r.getOrDefault("status", "—"));
+                        String status = localizeAttendanceStatus(rawStatus);
+                        recordsCard.getChildren().add(recordRow(date, status, rawStatus));
                     }
                 });
             }
@@ -279,6 +280,17 @@ public class StudentAttendancePage {
         Thread t = new Thread(task);
         t.setDaemon(true);
         t.start();
+    }
+
+    private String localizeAttendanceStatus(String status) {
+        if (status == null || status.isBlank()) return "—";
+
+        return switch (status.trim().toUpperCase()) {
+            case "PRESENT" -> helper.getMessage("student.attendance.stats.present");
+            case "ABSENT" -> helper.getMessage("student.attendance.stats.absent");
+            case "EXCUSED" -> helper.getMessage("student.attendance.stats.excused");
+            default -> status;
+        };
     }
 
     private static int num(Object v) {
@@ -311,7 +323,7 @@ public class StudentAttendancePage {
         return box;
     }
 
-    private HBox recordRow(String date, String status) {
+    private HBox recordRow(String date, String status, String rawStatus) {
         HBox row = new HBox(10);
         row.setAlignment(Pos.CENTER_LEFT);
         row.setPadding(new Insets(10));
@@ -325,6 +337,14 @@ public class StudentAttendancePage {
 
         Label chip = new Label(status);
         chip.getStyleClass().add("record-chip");
+
+        String normalized = rawStatus == null ? "" : rawStatus.trim().toUpperCase();
+        switch (normalized) {
+            case "PRESENT" -> chip.getStyleClass().add("record-chip-present");
+            case "ABSENT" -> chip.getStyleClass().add("record-chip-absent");
+            case "EXCUSED" -> chip.getStyleClass().add("record-chip-excused");
+            default -> { }
+        }
 
         row.getChildren().addAll(d, spacer, chip);
         return row;

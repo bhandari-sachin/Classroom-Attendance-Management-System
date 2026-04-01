@@ -51,21 +51,26 @@ public class AdminManageUsersPage {
         search.getStyleClass().add("search-field");
         HBox.setHgrow(search, Priority.ALWAYS);
 
+        String allTypesLabel = helper.getMessage("admin.users.filter.allTypes");
+        String studentLabel = helper.getMessage("admin.users.filter.student");
+        String teacherLabel = helper.getMessage("admin.users.filter.teacher");
+        String adminLabel = helper.getMessage("admin.users.filter.admin");
+
         ComboBox<String> type = new ComboBox<>();
         type.getItems().addAll(
-                helper.getMessage("admin.users.filter.allTypes"),
-                helper.getMessage("admin.users.filter.student"),
-                helper.getMessage("admin.users.filter.teacher"),
-                helper.getMessage("admin.users.filter.admin")
+                allTypesLabel,
+                studentLabel,
+                teacherLabel,
+                adminLabel
         );
-        type.setValue(helper.getMessage("admin.users.filter.allTypes"));
+        type.setValue(allTypesLabel);
         type.getStyleClass().add("filter-combo");
 
         filters.getChildren().addAll(search, type);
 
         // Table
         TableView<UserRow> table = AdminUI.buildUsersTable();
-        table.getItems().clear(); // remove demo rows
+        table.getItems().clear();
 
         ObservableList<UserRow> rows = FXCollections.observableArrayList();
         FilteredList<UserRow> filtered = new FilteredList<>(rows, r -> true);
@@ -73,7 +78,7 @@ public class AdminManageUsersPage {
 
         Runnable applyFilter = () -> {
             String q = (search.getText() == null) ? "" : search.getText().trim().toLowerCase();
-            String t = type.getValue();
+            String selectedType = type.getValue();
 
             filtered.setPredicate(r -> {
                 boolean matchText = q.isBlank()
@@ -82,9 +87,14 @@ public class AdminManageUsersPage {
                         || safe(r.enrolledProperty().get()).contains(q);
 
                 boolean matchType = true;
-                if (helper.getMessage("admin.users.filter.student").equalsIgnoreCase(t)) matchType = "STUDENT".equalsIgnoreCase(r.typeProperty().get());
-                if (helper.getMessage("admin.users.filter.teacher").equalsIgnoreCase(t)) matchType = "TEACHER".equalsIgnoreCase(r.typeProperty().get());
-                if (helper.getMessage("admin.users.filter.admin").equalsIgnoreCase(t))   matchType = "ADMIN".equalsIgnoreCase(r.typeProperty().get());
+
+                if (studentLabel.equalsIgnoreCase(selectedType)) {
+                    matchType = studentLabel.equalsIgnoreCase(r.typeProperty().get());
+                } else if (teacherLabel.equalsIgnoreCase(selectedType)) {
+                    matchType = teacherLabel.equalsIgnoreCase(r.typeProperty().get());
+                } else if (adminLabel.equalsIgnoreCase(selectedType)) {
+                    matchType = adminLabel.equalsIgnoreCase(r.typeProperty().get());
+                }
 
                 return matchText && matchType;
             });
@@ -112,17 +122,21 @@ public class AdminManageUsersPage {
                         summary.getChildren().setAll(
                                 AdminUI.smallSummaryCard(helper.getMessage("admin.users.summary.students"), String.valueOf(data.students), "🎓", "accent-green"),
                                 AdminUI.smallSummaryCard(helper.getMessage("admin.users.summary.teachers"), String.valueOf(data.teachers), "👥", "accent-purple"),
-                                AdminUI.smallSummaryCard(helper.getMessage("admin.users.summary.admins"),   String.valueOf(data.admins),   "🛡", "accent-orange")
+                                AdminUI.smallSummaryCard(helper.getMessage("admin.users.summary.admins"), String.valueOf(data.admins), "🛡", "accent-orange")
                         );
 
                         rows.clear();
                         if (data.users != null) {
                             for (AdminUserDto u : data.users) {
                                 String userCell = (u.name == null ? "" : u.name) + "\n" + (u.email == null ? "" : u.email);
+
+                                String localizedRole = localizeRole(u.role, helper);
+                                String enrolledText = localizeEnrolled(u.enrolled, helper);
+
                                 rows.add(new UserRow(
                                         userCell,
-                                        u.role == null ? "" : u.role,
-                                        u.enrolled == null ? "-" : u.enrolled
+                                        localizedRole,
+                                        enrolledText
                                 ));
                             }
                         }
@@ -171,5 +185,25 @@ public class AdminManageUsersPage {
         );
     }
 
-    private static String safe(String s) { return s == null ? "" : s.toLowerCase(); }
+    private String localizeRole(String role, HelperClass helper) {
+        if (role == null) return "";
+
+        return switch (role.trim().toUpperCase()) {
+            case "STUDENT" -> helper.getMessage("admin.users.filter.student");
+            case "TEACHER" -> helper.getMessage("admin.users.filter.teacher");
+            case "ADMIN" -> helper.getMessage("admin.users.filter.admin");
+            default -> role;
+        };
+    }
+
+    private String localizeEnrolled(String enrolled, HelperClass helper) {
+        if (enrolled == null || enrolled.isBlank()) {
+            return helper.getMessage("common.status.noData");
+        }
+        return enrolled;
+    }
+
+    private static String safe(String s) {
+        return s == null ? "" : s.toLowerCase();
+    }
 }
