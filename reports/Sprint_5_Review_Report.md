@@ -66,8 +66,8 @@ During the sprint review demonstration, the following components were presented:
 
 | Team Member      | Role              | Tasks Worked On                                              | Estimated Time |
 |------------------|-------------------|--------------------------------------------------------------|----------------|
-| Sachin Bhandari  | Backend Developer | Backend integration, optimization                           | (fill)         |
-| Olga Chitembo    | Documentation     | Documentation updates, localization write-up                | (fill)         |
+| Sachin Bhandari  | Backend Developer | Backend integration, optimization                           | 8 Hours        |
+| Olga Chitembo    | Documentation     | Documentation updates, localization write-up                | 8 Hours        |
 | Ahmad Sarfaraz   | Frontend          | UI localization implementation, language switching          | 16 Hours       |
-| Farah El Bajta   | Frontend          | UI refinement, layout fixes, component updates              | (fill)         |
-| Melkamu Yehualla | Backend/Testing   | System testing, bug fixing                                  | (fill)         |
+| Farah El Bajta   | Frontend          | UI refinement, layout fixes, component updates              | 10 Hours       |
+| Melkamu Yehualla | Backend/Testing   | System testing, bug fixing                                  | 10 Hours       |
