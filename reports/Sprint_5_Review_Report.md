@@ -57,7 +57,7 @@ During the sprint review demonstration, the following components were presented:
 ## Postponed / Incomplete Use Cases
 
 - Dynamic content localization from backend APIs not fully implemented
-- Advanced localization features such as RTL (right-to-left) support not included
+- Advanced localization features such as RTL (right-to-left) support included
 - Further UI refinements may be required for complete consistency
 
 ---
