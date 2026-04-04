@@ -6,6 +6,7 @@ import frontend.api.TeacherApi;
 import frontend.auth.AppRouter;
 import frontend.auth.AuthState;
 import frontend.auth.JwtStore;
+import frontend.ui.HelperClass;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -37,11 +38,12 @@ public class TeacherEmailPage {
     }
 
     private final ObservableList<StudentRow> rows = FXCollections.observableArrayList();
+    private final HelperClass helper = new HelperClass();
 
     public Parent build(Scene scene, AppRouter router, JwtStore jwtStore, AuthState state) {
 
         String teacherName = (state.getName() == null || state.getName().isBlank())
-                ? "Name"
+                ? helper.getMessage("teacher.fallback.name")
                 : state.getName();
 
         String backendUrl = System.getenv().getOrDefault("BACKEND_URL", "http://localhost:8081");
@@ -51,20 +53,20 @@ public class TeacherEmailPage {
         page.setPadding(new Insets(22));
         page.getStyleClass().add("page");
 
-        Label title = new Label("Email");
+        Label title = new Label(helper.getMessage("teacher.email.title"));
         title.getStyleClass().add("title");
 
-        Label info = new Label("Select a class to view student emails.");
+        Label info = new Label(helper.getMessage("teacher.email.subtitle"));
         info.getStyleClass().add("subtitle");
 
         HBox top = new HBox(10);
         top.setAlignment(Pos.CENTER_LEFT);
 
         ComboBox<ClassItem> classBox = new ComboBox<>();
-        classBox.setPromptText("Select class");
+        classBox.setPromptText(helper.getMessage("teacher.email.class_select.placeholder"));
         classBox.setMaxWidth(360);
 
-        Button refresh = new Button("Refresh");
+        Button refresh = new Button(helper.getMessage("teacher.email.button.refresh"));
         refresh.getStyleClass().addAll("pill", "pill-green");
 
         top.getChildren().addAll(classBox, refresh);
@@ -73,10 +75,10 @@ public class TeacherEmailPage {
         table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
         table.setPrefHeight(340);
 
-        TableColumn<StudentRow, String> colName = new TableColumn<>("Student");
+        TableColumn<StudentRow, String> colName = new TableColumn<>(helper.getMessage("teacher.email.table.column.student"));
         colName.setCellValueFactory(d -> d.getValue().studentNameProperty());
 
-        TableColumn<StudentRow, String> colEmail = new TableColumn<>("Email");
+        TableColumn<StudentRow, String> colEmail = new TableColumn<>(helper.getMessage("teacher.email.table.column.email"));
         colEmail.setCellValueFactory(d -> d.getValue().emailProperty());
 
         table.getColumns().addAll(colName, colEmail);
@@ -90,7 +92,7 @@ public class TeacherEmailPage {
                 return;
             }
 
-            rows.setAll(new StudentRow(-1L, "Loading...", "-", "—"));
+            rows.setAll(new StudentRow(-1L, helper.getMessage("teacher.email.loading.students"), "-", "—"));
 
             new Thread(() -> {
                 try {
@@ -115,7 +117,7 @@ public class TeacherEmailPage {
                         rows.clear();
                         new Alert(
                                 Alert.AlertType.ERROR,
-                                "Failed to load students: " + ex.getMessage(),
+                                helper.getMessage("teacher.email.error.students").replace("{reason}", ex.getMessage()),
                                 ButtonType.OK
                         ).showAndWait();
                     });
@@ -141,7 +143,7 @@ public class TeacherEmailPage {
                 Platform.runLater(() ->
                         new Alert(
                                 Alert.AlertType.ERROR,
-                                "Failed to load classes: " + ex.getMessage(),
+                                helper.getMessage("teacher.email.error.classes").replace("{reason}", ex.getMessage()),
                                 ButtonType.OK
                         ).showAndWait()
                 );
@@ -153,11 +155,11 @@ public class TeacherEmailPage {
 
         return AppLayout.wrapWithSidebar(
                 teacherName,
-                "Teacher Panel",
-                "Dashboard",
-                "Take Attendance",
-                "Reports",
-                "Email",
+                helper.getMessage("teacher.sidebar.title"),
+                helper.getMessage("teacher.sidebar.menu.dashboard"),
+                helper.getMessage("teacher.sidebar.menu.take_attendance"),
+                helper.getMessage("teacher.sidebar.menu.reports"),
+                helper.getMessage("teacher.sidebar.menu.email"),
                 page,
                 "fourth",
                 new AppLayout.Navigator() {

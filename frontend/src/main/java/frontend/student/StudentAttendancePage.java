@@ -6,6 +6,7 @@ import frontend.api.StudentAttendanceApi;
 import frontend.auth.AppRouter;
 import frontend.auth.AuthState;
 import frontend.auth.JwtStore;
+import frontend.ui.HelperClass;
 import javafx.application.Platform;
 import javafx.concurrent.Task;
 import javafx.geometry.Insets;
@@ -32,28 +33,27 @@ import java.util.Map;
 
 public class StudentAttendancePage {
 
-    // backend base url (same port as BackendMain)
-    //private static final String BASE_URL = "http://localhost:8081";
     private static final String BASE_URL =
             System.getenv().getOrDefault("BACKEND_URL", "http://localhost:8081");
+
+    private final HelperClass helper = new HelperClass();
 
     public Parent build(Scene scene, AppRouter router, JwtStore jwtStore, AuthState state) {
 
         String studentName = (state.getName() == null || state.getName().isBlank())
-                ? "Name"
+                ? helper.getMessage("student.name.placeholder")
                 : state.getName();
 
         VBox page = new VBox(16);
         page.setPadding(new Insets(26));
         page.getStyleClass().add("page");
 
-        Label title = new Label("My Attendance");
+        Label title = new Label(helper.getMessage("student.attendance.title"));
         title.getStyleClass().add("dash-title");
 
-        Label subtitle = new Label("View your attendance history and statistics");
+        Label subtitle = new Label(helper.getMessage("student.attendance.subtitle"));
         subtitle.getStyleClass().add("dash-subtitle");
 
-        /* ================= FILTERS ================= */
         HBox filters = new HBox(10);
         filters.setAlignment(Pos.CENTER_LEFT);
 
@@ -61,46 +61,65 @@ public class StudentAttendancePage {
         filterIcon.getStyleClass().add("filter-icon");
 
         ComboBox<String> classFilter = new ComboBox<>();
-        classFilter.getItems().addAll("All Classes", "OOP1", "Databases", "Web Dev");
-        classFilter.setValue("All Classes");
+        classFilter.getItems().addAll(
+                helper.getMessage("student.attendance.filter.all"),
+                "OOP1",
+                "Databases",
+                "Web Dev"
+        );
+        classFilter.setValue(helper.getMessage("student.attendance.filter.all"));
         classFilter.getStyleClass().add("filter-combo");
 
         ComboBox<String> timeFilter = new ComboBox<>();
-        timeFilter.getItems().addAll("This Month", "Last Month", "This Year");
-        timeFilter.setValue("This Month");
+        timeFilter.getItems().addAll(
+                helper.getMessage("student.attendance.filter.time.thisMonth"),
+                helper.getMessage("student.attendance.filter.lastMonth"),
+                helper.getMessage("student.attendance.filter.thisYear")
+        );
+        timeFilter.setValue(helper.getMessage("student.attendance.filter.time.thisMonth"));
         timeFilter.getStyleClass().add("filter-combo");
 
         filters.getChildren().addAll(filterIcon, classFilter, timeFilter);
 
-        /* ================= EXPORT ================= */
         ReportApi reportApi = new ReportApi(BASE_URL);
 
-        Button exportPdfBtn = new Button("⬇ Export PDF");
+        Button exportPdfBtn = new Button(helper.getMessage("common.export.pdf"));
         exportPdfBtn.getStyleClass().addAll("pill", "pill-blue");
 
         exportPdfBtn.setOnAction(e -> {
             FileChooser fc = new FileChooser();
-            fc.setTitle("Save Attendance Report");
-            fc.setInitialFileName("student-report.pdf");
-            fc.getExtensionFilters().add(new FileChooser.ExtensionFilter("PDF Files", "*.pdf"));
+            fc.setTitle(helper.getMessage("student.attendance.export.file.title"));
+            fc.setInitialFileName(helper.getMessage("student.attendance.export.file.name"));
+            fc.getExtensionFilters().add(
+                    new FileChooser.ExtensionFilter("PDF Files", "*.pdf")
+            );
             File dest = fc.showSaveDialog(scene.getWindow());
             if (dest == null) return;
+
             new Thread(() -> {
                 try {
                     reportApi.exportStudentPdf(jwtStore, state, dest.getAbsolutePath());
-                    Platform.runLater(() -> new Alert(Alert.AlertType.INFORMATION,
-                            "PDF saved to:\n" + dest.getAbsolutePath(), ButtonType.OK).showAndWait());
+                    Platform.runLater(() -> new Alert(
+                            Alert.AlertType.INFORMATION,
+                            helper.getMessage("student.attendance.export.success")
+                                    .replace("{path}", dest.getAbsolutePath()),
+                            ButtonType.OK
+                    ).showAndWait());
                 } catch (Exception ex) {
                     ex.printStackTrace();
-                    Platform.runLater(() -> new Alert(Alert.AlertType.ERROR,
-                            "Export failed: " + ex.getMessage(), ButtonType.OK).showAndWait());
+                    Platform.runLater(() -> new Alert(
+                            Alert.AlertType.ERROR,
+                            helper.getMessage("student.attendance.export.error")
+                                    .replace("{error}", ex.getMessage()),
+                            ButtonType.OK
+                    ).showAndWait());
                 }
             }).start();
         });
 
-        /* ================= STATS ================= */
         HBox exportRow = new HBox(exportPdfBtn);
         exportRow.setAlignment(Pos.CENTER_RIGHT);
+
         GridPane stats = new GridPane();
         stats.setHgap(14);
         stats.setVgap(14);
@@ -116,21 +135,20 @@ public class StudentAttendancePage {
 
         stats.getColumnConstraints().addAll(c1, c2);
 
-        // Labels we can update after API call
         Label rateValue = new Label("0%");
         rateValue.getStyleClass().add("rate-value");
 
-        VBox rateCard = rateCardWithValue("Attendance Rate", rateValue);
+        VBox rateCard = rateCardWithValue(helper.getMessage("student.attendance.stats.rate"), rateValue);
 
         Label presentValue = new Label("0");
         Label absentValue = new Label("0");
         Label excusedValue = new Label("0");
         Label totalDaysValue = new Label("0");
 
-        VBox presentCard = smallStatCardWithValue("Present", presentValue, "#3BAA66", "check");
-        VBox absentCard  = smallStatCardWithValue("Absent",  absentValue,  "#E05A5A", "x");
-        VBox excusedCard = smallStatCardWithValue("Excused", excusedValue, "#E09A3B", "clock");
-        VBox totalDaysCard = smallStatCardWithValue("Total Days", totalDaysValue, "#BFC5CC", "calendar");
+        VBox presentCard = smallStatCardWithValue(helper.getMessage("student.attendance.stats.present"), presentValue, "#3BAA66", "check");
+        VBox absentCard  = smallStatCardWithValue(helper.getMessage("student.attendance.stats.absent"), absentValue, "#E05A5A", "x");
+        VBox excusedCard = smallStatCardWithValue(helper.getMessage("student.attendance.stats.excused"), excusedValue, "#E09A3B", "clock");
+        VBox totalDaysCard = smallStatCardWithValue(helper.getMessage("student.attendance.stats.totalDays"), totalDaysValue, "#BFC5CC", "calendar");
 
         stats.add(rateCard, 0, 0);
         stats.add(presentCard, 1, 0);
@@ -138,15 +156,14 @@ public class StudentAttendancePage {
         stats.add(excusedCard, 1, 1);
         stats.add(totalDaysCard, 0, 2);
 
-        /* ================= RECORDS ================= */
-        Label recordsTitle = new Label("Attendance Records");
+        Label recordsTitle = new Label(helper.getMessage("student.attendance.records.title"));
         recordsTitle.getStyleClass().add("section-title");
 
         VBox recordsCard = new VBox(10);
         recordsCard.getStyleClass().add("records-card");
         recordsCard.setMinHeight(160);
 
-        Label loadingRecords = new Label("Loading records…");
+        Label loadingRecords = new Label(helper.getMessage("student.attendance.records.loading"));
         loadingRecords.getStyleClass().add("empty-subtitle");
         recordsCard.setAlignment(Pos.CENTER);
         recordsCard.getChildren().add(loadingRecords);
@@ -162,16 +179,15 @@ public class StudentAttendancePage {
                 recordsCard
         );
 
-        // Load from backend (NOT on UI thread)
         loadAttendance(jwtStore, state, rateValue, presentValue, absentValue, excusedValue, totalDaysValue, recordsCard);
 
         return AppLayout.wrapWithSidebar(
                 studentName,
-                "Student Panel",
-                "Dashboard",
-                "Mark Attendance",
-                "My Attendance",
-                "Email",
+                helper.getMessage("student.panel.title"),
+                helper.getMessage("student.nav.dashboard"),
+                helper.getMessage("student.nav.markAttendance"),
+                helper.getMessage("student.nav.myAttendance"),
+                helper.getMessage("student.nav.email"),
                 page,
                 "third",
                 new AppLayout.Navigator() {
@@ -212,14 +228,12 @@ public class StudentAttendancePage {
             @Override
             protected void succeeded() {
                 Platform.runLater(() -> {
-                    // summary
                     int present = num(summary.get("presentCount"));
                     int absent  = num(summary.get("absentCount"));
                     int excused = num(summary.get("excusedCount"));
                     int total   = num(summary.get("totalDays"));
 
-                    double rate = dbl(summary.get("attendanceRate")); // already percent in backend example
-                    // if backend returns 0..100:
+                    double rate = dbl(summary.get("attendanceRate"));
                     rateValue.setText(((int) Math.round(rate)) + "%");
 
                     presentValue.setText(String.valueOf(present));
@@ -227,7 +241,6 @@ public class StudentAttendancePage {
                     excusedValue.setText(String.valueOf(excused));
                     totalDaysValue.setText(String.valueOf(total));
 
-                    // records
                     recordsCard.getChildren().clear();
                     recordsCard.setAlignment(Pos.TOP_LEFT);
 
@@ -240,8 +253,9 @@ public class StudentAttendancePage {
 
                     for (Map<String, Object> r : records) {
                         String date = String.valueOf(r.getOrDefault("sessionDate", "—"));
-                        String status = String.valueOf(r.getOrDefault("status", "—"));
-                        recordsCard.getChildren().add(recordRow(date, status));
+                        String rawStatus = String.valueOf(r.getOrDefault("status", "—"));
+                        String status = localizeAttendanceStatus(rawStatus);
+                        recordsCard.getChildren().add(recordRow(date, status, rawStatus));
                     }
                 });
             }
@@ -253,7 +267,10 @@ public class StudentAttendancePage {
                     recordsCard.getChildren().clear();
                     recordsCard.setAlignment(Pos.CENTER);
 
-                    Label err = new Label("Failed to load attendance: " + (e == null ? "" : e.getMessage()));
+                    Label err = new Label(
+                            helper.getMessage("student.attendance.error.load")
+                                    .replace("{error}", e == null ? "" : e.getMessage())
+                    );
                     err.getStyleClass().add("empty-subtitle");
                     recordsCard.getChildren().add(err);
                 });
@@ -263,6 +280,17 @@ public class StudentAttendancePage {
         Thread t = new Thread(task);
         t.setDaemon(true);
         t.start();
+    }
+
+    private String localizeAttendanceStatus(String status) {
+        if (status == null || status.isBlank()) return "—";
+
+        return switch (status.trim().toUpperCase()) {
+            case "PRESENT" -> helper.getMessage("student.attendance.stats.present");
+            case "ABSENT" -> helper.getMessage("student.attendance.stats.absent");
+            case "EXCUSED" -> helper.getMessage("student.attendance.stats.excused");
+            default -> status;
+        };
     }
 
     private static int num(Object v) {
@@ -277,8 +305,6 @@ public class StudentAttendancePage {
         try { return Double.parseDouble(String.valueOf(v)); } catch (Exception e) { return 0; }
     }
 
-    /* ================= UI helpers ================= */
-
     private VBox emptyRecords() {
         VBox box = new VBox(8);
         box.setAlignment(Pos.CENTER);
@@ -287,17 +313,17 @@ public class StudentAttendancePage {
         recIcon.getStyleClass().add("empty-icon");
         recIcon.setFont(Font.font("Segoe UI Emoji", 18));
 
-        Label recT = new Label("No Records Found");
+        Label recT = new Label(helper.getMessage("student.attendance.records.empty.title"));
         recT.getStyleClass().add("empty-title");
 
-        Label recS = new Label("No attendance records for the selected filters");
+        Label recS = new Label(helper.getMessage("student.attendance.records.empty.subtitle"));
         recS.getStyleClass().add("empty-subtitle");
 
         box.getChildren().addAll(recIcon, recT, recS);
         return box;
     }
 
-    private HBox recordRow(String date, String status) {
+    private HBox recordRow(String date, String status, String rawStatus) {
         HBox row = new HBox(10);
         row.setAlignment(Pos.CENTER_LEFT);
         row.setPadding(new Insets(10));
@@ -311,6 +337,14 @@ public class StudentAttendancePage {
 
         Label chip = new Label(status);
         chip.getStyleClass().add("record-chip");
+
+        String normalized = rawStatus == null ? "" : rawStatus.trim().toUpperCase();
+        switch (normalized) {
+            case "PRESENT" -> chip.getStyleClass().add("record-chip-present");
+            case "ABSENT" -> chip.getStyleClass().add("record-chip-absent");
+            case "EXCUSED" -> chip.getStyleClass().add("record-chip-excused");
+            default -> { }
+        }
 
         row.getChildren().addAll(d, spacer, chip);
         return row;
@@ -333,7 +367,6 @@ public class StudentAttendancePage {
         trend.getStyleClass().add("rate-trend");
 
         top.getChildren().addAll(lbl, spacer, trend);
-
         card.getChildren().addAll(top, valueLabel);
         return card;
     }
@@ -350,10 +383,7 @@ public class StudentAttendancePage {
         badge.setMinSize(26, 26);
         badge.setMaxSize(26, 26);
 
-        badge.setStyle(
-                "-fx-background-color: " + colorHex + ";" +
-                        "-fx-background-radius: 8;"
-        );
+        badge.setStyle("-fx-background-color: " + colorHex + ";" + "-fx-background-radius: 8;");
 
         Node iconNode = makeBadgeIcon(iconKey);
         badge.getChildren().add(iconNode);
