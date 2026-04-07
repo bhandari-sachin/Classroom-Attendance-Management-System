@@ -115,7 +115,7 @@ INSERT INTO marked_by_translation (marked_by_code, language_code, label) VALUES
     ON DUPLICATE KEY UPDATE label = VALUES(label);
 
 
--- 7. UI TRANSLATIONS  (343 keys × 5 languages = up to 1 715 rows)
+-- 7. UI TRANSLATIONS
 INSERT INTO ui_translations (translation_key, language_code, value, category) VALUES
                                                                                   ('common.app.title', 'en', 'Classroom Attendance Management System', 'common'),
                                                                                   ('common.app.title', 'ne', 'कक्षा उपस्थिति व्यवस्थापन प्रणाली', 'common'),
@@ -1818,3 +1818,5 @@ INSERT INTO ui_translations (translation_key, language_code, value, category) VA
                                                                                   ('reports.export.dateRange', 'ar', 'النطاق الزمني:', 'reports')
     ON DUPLICATE KEY UPDATE value = VALUES(value), category = VALUES(category);
 
+
+-- End of classroom_attendance_sys.seed.sql
