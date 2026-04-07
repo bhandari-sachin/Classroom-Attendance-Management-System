@@ -9,11 +9,10 @@ CREATE TABLE IF NOT EXISTS users
     password_hash VARCHAR(255)       NOT NULL,
     first_name    VARCHAR(100)       NOT NULL,
     last_name     VARCHAR(100)       NOT NULL,
-    user_type     VARCHAR(20)        NOT NULL,
+    user_type     ENUM('ADMIN', 'TEACHER', 'STUDENT') NOT NULL,
     student_code  VARCHAR(20) UNIQUE NULL,
     created_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT chk_user_type
-    CHECK (user_type IN ('ADMIN', 'TEACHER', 'STUDENT')),
+
     CONSTRAINT chk_student_code
     CHECK (
 (user_type = 'STUDENT' AND student_code IS NOT NULL) OR
