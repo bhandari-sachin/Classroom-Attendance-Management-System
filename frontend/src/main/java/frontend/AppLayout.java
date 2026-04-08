@@ -163,7 +163,7 @@ public class AppLayout {
                     globe.getItems().clear();
 
                     for (LanguageApi.LanguageItem lang : languages) {
-                        MenuItem item = new MenuItem(lang.name());
+                        MenuItem item = new MenuItem(localizedLanguageName(lang.code(), lang.name()));
                         item.setOnAction(e -> loadLanguageAndRefresh(lang.code(), nav, activeKey));
                         globe.getItems().add(item);
                     }
@@ -175,11 +175,11 @@ public class AppLayout {
                 Platform.runLater(() -> {
                     globe.getItems().clear();
 
-                    MenuItem en = new MenuItem("English");
-                    MenuItem fi = new MenuItem("Finnish");
-                    MenuItem ar = new MenuItem("Arabic");
-                    MenuItem am = new MenuItem("Amharic");
-                    MenuItem ne = new MenuItem("Nepali");
+                    MenuItem en = new MenuItem(t("language.english", "English"));
+                    MenuItem fi = new MenuItem(t("language.finnish", "Finnish"));
+                    MenuItem ar = new MenuItem(t("language.arabic", "Arabic"));
+                    MenuItem am = new MenuItem(t("language.amharic", "Amharic"));
+                    MenuItem ne = new MenuItem(t("language.nepali", "Nepali"));
 
                     en.setOnAction(e -> loadLanguageAndRefresh("en", nav, activeKey));
                     fi.setOnAction(e -> loadLanguageAndRefresh("fi", nav, activeKey));
@@ -191,6 +191,17 @@ public class AppLayout {
                 });
             }
         }).start();
+    }
+
+    private static String localizedLanguageName(String code, String fallbackName) {
+        return switch (code.toLowerCase()) {
+            case "en" -> t("language.english", fallbackName);
+            case "fi" -> t("language.finnish", fallbackName);
+            case "ar" -> t("language.arabic", fallbackName);
+            case "am" -> t("language.amharic", fallbackName);
+            case "ne" -> t("language.nepali", fallbackName);
+            default -> fallbackName;
+        };
     }
 
     private static void loadLanguageAndRefresh(String languageCode, Navigator nav, String activeKey) {
