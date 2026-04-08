@@ -64,8 +64,8 @@ public class BackendMain {
         server.createContext("/api/reports/export/teacher", reportHandler);
         server.createContext("/api/reports/export/admin",   reportHandler);
 
-        server.createContext("/api/i18n/ui", new I18nHandler(() -> DatabaseConnection.getConnection()));
-        server.createContext("/api/i18n/languages", new I18nHandler(() -> DatabaseConnection.getConnection()));
+        server.createContext("/api/i18n/ui", new I18nHandler());
+        server.createContext("/api/i18n/languages", new I18nHandler());
 
 
         // ===== QR / ATTENDANCE CODE =====
