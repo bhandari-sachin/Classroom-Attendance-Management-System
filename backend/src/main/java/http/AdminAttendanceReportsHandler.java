@@ -37,6 +37,7 @@ public class AdminAttendanceReportsHandler implements HttpHandler {
             Long classId = HttpUtil.queryLong(query, "classId");
             String period = HttpUtil.queryString(query, "period");
             String search = HttpUtil.queryString(query, "search");
+            String lang = HttpUtil.queryString(query, "lang");
 
             if (search == null) {
                 search = "";
@@ -47,7 +48,11 @@ public class AdminAttendanceReportsHandler implements HttpHandler {
                 return;
             }
 
-            List<dto.AttendanceView> rows = attendanceSQL.getAdminAttendanceReport(classId, period, search);
+            if (lang == null) {
+                lang = "en";
+            }
+
+            List<dto.AttendanceView> rows = attendanceSQL.getAdminAttendanceReport(classId, period, search, lang);
             HttpUtil.json(ex, 200, rows);
 
         } catch (SecurityException sec) {

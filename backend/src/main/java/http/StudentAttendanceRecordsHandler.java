@@ -36,8 +36,13 @@ public class StudentAttendanceRecordsHandler implements HttpHandler {
             Long studentId = HttpUtil.jwtUserId(jwt);
             Long classId = HttpUtil.queryLong(ex.getRequestURI().getQuery(), "classId");
             String period = HttpUtil.queryString(ex.getRequestURI().getQuery(), "period");
+            String lang = HttpUtil.queryString(ex.getRequestURI().getQuery(), "lang");
 
-            List<AttendanceView> records = attendanceService.getStudentAttendanceViews(studentId, classId, period);
+            if (lang == null) {
+                lang = "en";
+            }
+
+            List<AttendanceView> records = attendanceService.getStudentAttendanceViews(studentId, classId, period, lang);
             HttpUtil.json(ex, 200, records);
 
         } catch (SecurityException se) {

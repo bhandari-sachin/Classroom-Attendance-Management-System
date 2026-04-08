@@ -127,7 +127,8 @@ public class AttendanceSQL {
     // Filter attendance records by student details
     public List<AttendanceView> filterAttendanceByStudent(
             Long classId,
-            String searchTerm
+            String searchTerm,
+            String languageCode
     ) {
 
         List<AttendanceView> results = new ArrayList<>();
@@ -137,11 +138,13 @@ public class AttendanceSQL {
                u.first_name,
                u.last_name,
                se.session_date,
-               a.status
+               ast.label AS status
         FROM attendance a
         JOIN sessions se ON a.session_id = se.id
         JOIN users u ON a.student_id = u.id  
+        JOIN attendance_status_translation ast ON a.status = ast.status_code
         WHERE se.class_id = ?
+          AND ast.language_code = ?
           AND (
                 CAST(u.id AS CHAR) LIKE ?
              OR LOWER(u.first_name) LIKE ?
@@ -157,10 +160,11 @@ public class AttendanceSQL {
             String term = "%" + searchTerm.toLowerCase() + "%";
 
             stmt.setLong(1, classId);
-            stmt.setString(2, "%" + searchTerm + "%"); // student ID
-            stmt.setString(3, term);                   // first name
-            stmt.setString(4, term);                   // last name
-            stmt.setString(5, term);                   // full name
+            stmt.setString(2, languageCode);
+            stmt.setString(3, "%" + searchTerm + "%"); // student ID
+            stmt.setString(4, term);                   // first name
+            stmt.setString(5, term);                   // last name
+            stmt.setString(6, term);                   // full name
 
             ResultSet rs = stmt.executeQuery();
 
@@ -277,7 +281,7 @@ public class AttendanceSQL {
         }
     }
 
-    public List<dto.AttendanceView> getStudentAttendanceViews(Long studentId) {
+    public List<dto.AttendanceView> getStudentAttendanceViews(Long studentId, String languageCode) {
         List<dto.AttendanceView> results = new ArrayList<>();
 
         String sql = """
@@ -286,11 +290,13 @@ public class AttendanceSQL {
             u.first_name,
             u.last_name,
             se.session_date,
-            a.status
+            ast.label AS status
         FROM attendance a
         JOIN sessions se ON a.session_id = se.id
         JOIN users u ON a.student_id = u.id
+        JOIN attendance_status_translation ast ON a.status = ast.status_code
         WHERE a.student_id = ?
+        AND ast.language_code = ?
         ORDER BY se.session_date DESC
     """;
 
@@ -298,6 +304,7 @@ public class AttendanceSQL {
              PreparedStatement stmt = conn.prepareStatement(sql)) {
 
             stmt.setLong(1, studentId);
+            stmt.setString(2, languageCode);
 
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
@@ -357,7 +364,7 @@ public class AttendanceSQL {
         }
         return out;
     }
-    public java.util.Map<String, Object> getSessionReport(long sessionId) {
+    public java.util.Map<String, Object> getSessionReport(long sessionId, String languageCode) {
 
         String statsSql = """
         SELECT
@@ -375,10 +382,12 @@ public class AttendanceSQL {
             u.first_name,
             u.last_name,
             u.email,
-            a.status
+            ast.label AS status
         FROM attendance a
         JOIN users u ON u.id = a.student_id
+        JOIN attendance_status_translation ast ON a.status = ast.status_code
         WHERE a.session_id = ?
+        AND ast.language_code = ?
         ORDER BY u.last_name, u.first_name
     """;
 
@@ -391,6 +400,7 @@ public class AttendanceSQL {
 
             try (PreparedStatement ps = conn.prepareStatement(statsSql)) {
                 ps.setLong(1, sessionId);
+                ps.setString(2, languageCode);
                 try (ResultSet rs = ps.executeQuery()) {
                     if (rs.next()) {
                         present = rs.getInt("presentCount");
@@ -518,14 +528,16 @@ public class AttendanceSQL {
             throw new RuntimeException("Failed to get filtered student stats", e);
         }
     }
-    public List<dto.AttendanceView> getStudentAttendanceViews(Long studentId, Long classId, String period) {
+    public List<dto.AttendanceView> getStudentAttendanceViews(Long studentId, Long classId, String period, String languageCode) {
         StringBuilder sql = new StringBuilder("""
         SELECT
             s.session_date,
-            a.status
+            ast.label AS status
         FROM attendance a
         JOIN sessions s ON a.session_id = s.id
+        JOIN attendance_status_translation ast ON a.status = ast.status_code
         WHERE a.student_id = ?
+        AND ast.language_code = ?
         """);
 
         if (classId != null) {
@@ -542,6 +554,7 @@ public class AttendanceSQL {
 
             int i = 1;
             stmt.setLong(i++, studentId);
+            stmt.setString(i++, languageCode);
             if (classId != null) {
                 stmt.setLong(i++, classId);
             }
@@ -561,7 +574,7 @@ public class AttendanceSQL {
             throw new RuntimeException("Failed to get filtered attendance records", e);
         }
     }
-    public List<dto.AttendanceView> getAdminAttendanceReport(Long classId, String period, String searchTerm) {
+    public List<dto.AttendanceView> getAdminAttendanceReport(Long classId, String period, String searchTerm, String languageCode) {
         List<dto.AttendanceView> results = new ArrayList<>();
 
         StringBuilder sql = new StringBuilder("""
@@ -570,11 +583,13 @@ public class AttendanceSQL {
             u.first_name,
             u.last_name,
             se.session_date,
-            a.status
+            ast.label AS status
         FROM attendance a
         JOIN sessions se ON a.session_id = se.id
         JOIN users u ON a.student_id = u.id
+        JOIN attendance_status_translation ast ON a.status = ast.status_code
         WHERE se.class_id = ?
+            AND ast.language_code = ?
         """);
 
         sql.append(buildPeriodConditionForSessionAlias(period, "se"));
@@ -596,10 +611,11 @@ public class AttendanceSQL {
             String likeText = "%" + safeSearch + "%";
 
             stmt.setLong(1, classId);
-            stmt.setString(2, "%" + safeSearch + "%");
-            stmt.setString(3, likeText);
+            stmt.setString(2, languageCode);
+            stmt.setString(3, "%" + safeSearch + "%");
             stmt.setString(4, likeText);
             stmt.setString(5, likeText);
+            stmt.setString(6, likeText);
 
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
@@ -690,7 +706,7 @@ public class AttendanceSQL {
         return list;
     }
 
-    public List<TeacherStudentReportRow> getTeacherClassReport(Long teacherId, Long classId) {
+    public List<TeacherStudentReportRow> getTeacherClassReport(Long teacherId, Long classId, int year) {
 
         String sql = """
         SELECT c.name,
