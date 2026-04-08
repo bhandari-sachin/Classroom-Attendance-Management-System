@@ -12,7 +12,7 @@ import java.util.Map;
 
 public class LocalizationSQL {
 
-    public Map<String, String> getLabels(String language) {
+    public static Map<String, String> getLabels(String language) {
         String sql = """
             SELECT translation_key, value
             FROM ui_translations

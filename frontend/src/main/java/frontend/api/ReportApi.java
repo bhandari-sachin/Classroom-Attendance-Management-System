@@ -2,6 +2,7 @@ package frontend.api;
 
 import frontend.auth.AuthState;
 import frontend.auth.JwtStore;
+import frontend.i18n.FrontendI18n;
 
 import java.io.FileOutputStream;
 import java.io.InputStream;
@@ -24,17 +25,17 @@ public class ReportApi {
     }
 
     public void exportStudentPdf(JwtStore store, AuthState state, String destPath) throws Exception {
-        String url = baseUrl + "/api/reports/export/student?format=pdf&lang=" + state.getLanguage();
+        String url = baseUrl + "/api/reports/export/student?format=pdf&lang=" + FrontendI18n.getLanguage();
         download(url, token(store, state), destPath);
     }
 
     public void exportTeacherReport(JwtStore store, AuthState state, long classId, String format, String destPath) throws Exception {
-        String url = baseUrl + "/api/reports/export/teacher?classId=" + classId + "&format=" + format+ "&lang=" + state.getLanguage();
+        String url = baseUrl + "/api/reports/export/teacher?classId=" + classId + "&format=" + format+ "&lang=" + FrontendI18n.getLanguage();
         download(url, token(store, state), destPath);
     }
 
     public void exportAdminReport(JwtStore store, AuthState state, String format, String destPath) throws Exception {
-        String url = baseUrl + "/api/reports/export/admin?format=" + format + "&lang=" + state.getLanguage();
+        String url = baseUrl + "/api/reports/export/admin?format=" + format + "&lang=" + FrontendI18n.getLanguage();
         download(url, token(store, state), destPath);
     }
 
