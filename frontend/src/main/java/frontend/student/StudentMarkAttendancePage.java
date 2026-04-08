@@ -5,7 +5,7 @@ import frontend.api.StudentAttendanceApi;
 import frontend.auth.AppRouter;
 import frontend.auth.AuthState;
 import frontend.auth.JwtStore;
-import frontend.ui.HelperClass;
+import frontend.i18n.FrontendI18n;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Parent;
@@ -16,26 +16,24 @@ import javafx.scene.text.Font;
 
 public class StudentMarkAttendancePage {
 
-    private final HelperClass helper = new HelperClass();
-
     public Parent build(Scene scene, AppRouter router, JwtStore jwtStore, AuthState state) {
 
         String studentName = (state.getName() == null || state.getName().isBlank())
-                ? helper.getMessage("student.name.placeholder")
+                ? t("student.name.placeholder", "Name")
                 : state.getName();
 
         VBox page = new VBox(16);
         page.setPadding(new Insets(26));
         page.getStyleClass().add("page");
 
-        Button back = new Button(helper.getMessage("student.mark.back"));
+        Button back = new Button(t("student.mark.back", "Back"));
         back.getStyleClass().add("back-link");
         back.setOnAction(e -> router.go("student-dashboard"));
 
-        Label title = new Label(helper.getMessage("student.mark.title"));
+        Label title = new Label(t("student.mark.title", "Mark Attendance"));
         title.getStyleClass().add("dash-title");
 
-        Label subtitle = new Label(helper.getMessage("student.mark.subtitle"));
+        Label subtitle = new Label(t("student.mark.subtitle", "Scan a QR code or enter the attendance code manually"));
         subtitle.getStyleClass().add("dash-subtitle");
 
         VBox qrCard = new VBox();
@@ -62,29 +60,29 @@ public class StudentMarkAttendancePage {
         Label manualIcon = new Label("⌨");
         manualIcon.getStyleClass().add("manual-icon");
 
-        Label manualTitle = new Label(helper.getMessage("student.mark.manual.title"));
+        Label manualTitle = new Label(t("student.mark.manual.title", "Enter Code Manually"));
         manualTitle.getStyleClass().add("manual-title");
 
         manualHeader.getChildren().addAll(manualIcon, manualTitle);
 
-        Label manualSub = new Label(helper.getMessage("student.mark.manual.subtitle"));
+        Label manualSub = new Label(t("student.mark.manual.subtitle", "Use the code shared by your teacher"));
         manualSub.getStyleClass().add("manual-subtitle");
 
-        Label codeLabel = new Label(helper.getMessage("student.mark.code.label"));
+        Label codeLabel = new Label(t("student.mark.code.label", "Attendance Code"));
         codeLabel.getStyleClass().add("field-label");
 
         TextField codeField = new TextField();
-        codeField.setPromptText(helper.getMessage("student.mark.code.placeholder"));
+        codeField.setPromptText(t("student.mark.code.placeholder", "Enter code"));
         codeField.getStyleClass().add("code-field");
 
-        Button submit = new Button(helper.getMessage("student.mark.submit"));
+        Button submit = new Button(t("student.mark.submit", "Submit"));
         submit.getStyleClass().add("submit-button");
         submit.setMaxWidth(Double.MAX_VALUE);
 
         submit.setOnAction(e -> {
             String code = codeField.getText().trim();
             if (code.isBlank()) {
-                new Alert(Alert.AlertType.WARNING, helper.getMessage("student.mark.warning.empty")).show();
+                new Alert(Alert.AlertType.WARNING, t("student.mark.warning.empty", "Please enter a code.")).show();
                 return;
             }
 
@@ -97,7 +95,7 @@ public class StudentMarkAttendancePage {
 
                     javafx.application.Platform.runLater(() -> {
                         codeField.clear();
-                        new Alert(Alert.AlertType.INFORMATION, helper.getMessage("student.mark.success")).show();
+                        new Alert(Alert.AlertType.INFORMATION, t("student.mark.success", "Attendance marked successfully.")).show();
                     });
 
                 } catch (Exception exx) {
@@ -119,12 +117,12 @@ public class StudentMarkAttendancePage {
         VBox howCard = new VBox(8);
         howCard.getStyleClass().add("how-card");
 
-        Label howTitle = new Label(helper.getMessage("student.mark.how.title"));
+        Label howTitle = new Label(t("student.mark.how.title", "How it works"));
         howTitle.getStyleClass().add("how-title");
 
-        Label step1 = new Label(helper.getMessage("student.mark.how.step1"));
-        Label step2 = new Label(helper.getMessage("student.mark.how.step2"));
-        Label step3 = new Label(helper.getMessage("student.mark.how.step3"));
+        Label step1 = new Label(t("student.mark.how.step1", "1. Get the attendance code from your teacher."));
+        Label step2 = new Label(t("student.mark.how.step2", "2. Enter the code in the field above."));
+        Label step3 = new Label(t("student.mark.how.step3", "3. Submit to record your attendance."));
 
         step1.getStyleClass().add("how-step");
         step2.getStyleClass().add("how-step");
@@ -143,11 +141,11 @@ public class StudentMarkAttendancePage {
 
         return AppLayout.wrapWithSidebar(
                 studentName,
-                helper.getMessage("student.panel.title"),
-                helper.getMessage("student.nav.dashboard"),
-                helper.getMessage("student.nav.markAttendance"),
-                helper.getMessage("student.nav.myAttendance"),
-                helper.getMessage("student.nav.email"),
+                t("student.panel.title", "Student Panel"),
+                t("student.nav.dashboard", "Dashboard"),
+                t("student.nav.markAttendance", "Mark Attendance"),
+                t("student.nav.myAttendance", "My Attendance"),
+                t("student.nav.email", "Email"),
                 page,
                 "second",
                 new AppLayout.Navigator() {
@@ -161,5 +159,10 @@ public class StudentMarkAttendancePage {
                     }
                 }
         );
+    }
+
+    private static String t(String key, String fallback) {
+        String value = FrontendI18n.t(key);
+        return key.equals(value) ? fallback : value;
     }
 }

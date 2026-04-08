@@ -6,7 +6,7 @@ import frontend.api.ReportApi;
 import frontend.auth.AppRouter;
 import frontend.auth.AuthState;
 import frontend.auth.JwtStore;
-import frontend.ui.HelperClass;
+import frontend.i18n.FrontendI18n;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.scene.Parent;
@@ -38,20 +38,19 @@ public class AdminAttendanceReportsPage {
     }
 
     public Parent build(Scene scene, AppRouter router, JwtStore jwtStore, AuthState state) {
-        HelperClass helper = new HelperClass();
 
         String adminName = (state.getName() == null || state.getName().isBlank())
-                ? helper.getMessage("teacher.fallback.name")
+                ? t("teacher.fallback.name", "Name")
                 : state.getName();
 
         VBox content = new VBox(14);
         content.getStyleClass().add("content");
         content.setPadding(new Insets(18));
 
-        Label title = new Label(helper.getMessage("admin.reports.title"));
+        Label title = new Label(t("admin.reports.title", "Attendance Reports"));
         title.getStyleClass().add("title");
 
-        Label subtitle = new Label(helper.getMessage("admin.reports.subtitle"));
+        Label subtitle = new Label(t("admin.reports.subtitle", "Comprehensive attendance analytics and reports"));
         subtitle.getStyleClass().add("subtitle");
 
         GridPane filters = new GridPane();
@@ -59,23 +58,23 @@ public class AdminAttendanceReportsPage {
         filters.setVgap(8);
 
         ComboBox<ClassItem> classFilter = new ComboBox<>();
-        classFilter.setPromptText(helper.getMessage("admin.reports.filter.class.loading"));
+        classFilter.setPromptText(t("admin.reports.filter.class.loading", "Loading classes..."));
 
         ComboBox<String> timeFilter = new ComboBox<>();
         timeFilter.getItems().addAll(
-                helper.getMessage("admin.reports.filter.time.all"),
-                helper.getMessage("admin.reports.filter.time.thisMonth"),
-                helper.getMessage("admin.reports.filter.time.lastMonth"),
-                helper.getMessage("admin.reports.filter.time.thisYear")
+                t("admin.reports.filter.time.all", "ALL"),
+                t("admin.reports.filter.time.thisMonth", "THIS_MONTH"),
+                t("admin.reports.filter.time.lastMonth", "LAST_MONTH"),
+                t("admin.reports.filter.time.thisYear", "THIS_YEAR")
         );
-        timeFilter.setValue(helper.getMessage("admin.reports.filter.time.thisMonth"));
+        timeFilter.setValue(t("admin.reports.filter.time.thisMonth", "THIS_MONTH"));
 
         TextField studentSearch = new TextField();
-        studentSearch.setPromptText(helper.getMessage("admin.reports.filter.search.placeholder"));
+        studentSearch.setPromptText(t("admin.reports.filter.search.placeholder", "Search by name..."));
 
-        filters.add(new VBox(new Label(helper.getMessage("admin.reports.filter.class")), classFilter), 0, 0);
-        filters.add(new VBox(new Label(helper.getMessage("admin.reports.filter.time")), timeFilter), 1, 0);
-        filters.add(new VBox(new Label(helper.getMessage("admin.reports.filter.search")), studentSearch), 2, 0);
+        filters.add(new VBox(new Label(t("admin.reports.filter.class", "Class")), classFilter), 0, 0);
+        filters.add(new VBox(new Label(t("admin.reports.filter.time", "Time Period")), timeFilter), 1, 0);
+        filters.add(new VBox(new Label(t("admin.reports.filter.search", "Search Student")), studentSearch), 2, 0);
 
         GridPane stats = new GridPane();
         stats.setHgap(12);
@@ -96,20 +95,20 @@ public class AdminAttendanceReportsPage {
         error.setVisible(false);
         error.setManaged(false);
 
-        Label tableTitle = new Label(helper.getMessage("admin.reports.table.title"));
+        Label tableTitle = new Label(t("admin.reports.table.title", "Filtered Records"));
         tableTitle.getStyleClass().add("section-title");
 
         TableView<ReportRow> table = new TableView<>();
         table.getStyleClass().add("table");
         table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
 
-        TableColumn<ReportRow, String> cStudent = new TableColumn<>(helper.getMessage("admin.reports.table.student"));
+        TableColumn<ReportRow, String> cStudent = new TableColumn<>(t("admin.reports.table.student", "Student"));
         cStudent.setCellValueFactory(d -> d.getValue().studentProperty());
 
-        TableColumn<ReportRow, String> cDate = new TableColumn<>(helper.getMessage("admin.reports.table.date"));
+        TableColumn<ReportRow, String> cDate = new TableColumn<>(t("admin.reports.table.date", "Session Date"));
         cDate.setCellValueFactory(d -> d.getValue().dateProperty());
 
-        TableColumn<ReportRow, String> cStatus = new TableColumn<>(helper.getMessage("admin.reports.table.status"));
+        TableColumn<ReportRow, String> cStatus = new TableColumn<>(t("admin.reports.table.status", "Status"));
         cStatus.setCellValueFactory(d -> d.getValue().statusProperty());
 
         table.getColumns().addAll(cStudent, cDate, cStatus);
@@ -117,17 +116,17 @@ public class AdminAttendanceReportsPage {
         AdminApi api = new AdminApi("http://localhost:8081", jwtStore);
         ReportApi reportApi = new ReportApi(System.getenv().getOrDefault("BACKEND_URL", "http://localhost:8081"));
 
-        MenuButton exportBtn = new MenuButton(helper.getMessage("common.export"));
+        MenuButton exportBtn = new MenuButton(t("common.export", "Export"));
         exportBtn.getStyleClass().addAll("pill", "pill-blue");
 
-        MenuItem exportPdf = new MenuItem(helper.getMessage("common.export.pdf"));
-        MenuItem exportCsv = new MenuItem(helper.getMessage("common.export.csv"));
+        MenuItem exportPdf = new MenuItem(t("common.export.pdf", "Export as PDF"));
+        MenuItem exportCsv = new MenuItem(t("common.export.csv", "Export as CSV"));
         exportBtn.getItems().addAll(exportPdf, exportCsv);
 
         exportPdf.setOnAction(e -> {
             FileChooser fc = new FileChooser();
-            fc.setTitle(helper.getMessage("admin.reports.export.pdf.title"));
-            fc.setInitialFileName(helper.getMessage("admin.reports.export.pdf.filename"));
+            fc.setTitle(t("admin.reports.export.pdf.title", "Save PDF Report"));
+            fc.setInitialFileName(t("admin.reports.export.pdf.filename", "admin-report.pdf"));
             fc.getExtensionFilters().add(new FileChooser.ExtensionFilter("PDF Files", "*.pdf"));
             File dest = fc.showSaveDialog(scene.getWindow());
             if (dest == null) return;
@@ -136,16 +135,22 @@ public class AdminAttendanceReportsPage {
                 try {
                     reportApi.exportAdminReport(jwtStore, state, "pdf", dest.getAbsolutePath());
                     Platform.runLater(() ->
-                            new Alert(Alert.AlertType.INFORMATION,
-                                    helper.getMessage("admin.reports.export.success.pdf").replace("{path}", dest.getAbsolutePath()),
-                                    ButtonType.OK).showAndWait()
+                            new Alert(
+                                    Alert.AlertType.INFORMATION,
+                                    t("admin.reports.export.success.pdf", "PDF saved:\n{path}")
+                                            .replace("{path}", dest.getAbsolutePath()),
+                                    ButtonType.OK
+                            ).showAndWait()
                     );
                 } catch (Exception ex) {
                     ex.printStackTrace();
                     Platform.runLater(() ->
-                            new Alert(Alert.AlertType.ERROR,
-                                    helper.getMessage("admin.reports.export.error").replace("{error}", ex.getMessage()),
-                                    ButtonType.OK).showAndWait()
+                            new Alert(
+                                    Alert.AlertType.ERROR,
+                                    t("admin.reports.export.error", "Export failed: {error}")
+                                            .replace("{error}", ex.getMessage()),
+                                    ButtonType.OK
+                            ).showAndWait()
                     );
                 }
             }).start();
@@ -153,8 +158,8 @@ public class AdminAttendanceReportsPage {
 
         exportCsv.setOnAction(e -> {
             FileChooser fc = new FileChooser();
-            fc.setTitle(helper.getMessage("admin.reports.export.csv.title"));
-            fc.setInitialFileName(helper.getMessage("admin.reports.export.csv.filename"));
+            fc.setTitle(t("admin.reports.export.csv.title", "Save CSV Report"));
+            fc.setInitialFileName(t("admin.reports.export.csv.filename", "admin-report.csv"));
             fc.getExtensionFilters().add(new FileChooser.ExtensionFilter("CSV Files", "*.csv"));
             File dest = fc.showSaveDialog(scene.getWindow());
             if (dest == null) return;
@@ -163,16 +168,22 @@ public class AdminAttendanceReportsPage {
                 try {
                     reportApi.exportAdminReport(jwtStore, state, "csv", dest.getAbsolutePath());
                     Platform.runLater(() ->
-                            new Alert(Alert.AlertType.INFORMATION,
-                                    helper.getMessage("admin.reports.export.success.csv").replace("{path}", dest.getAbsolutePath()),
-                                    ButtonType.OK).showAndWait()
+                            new Alert(
+                                    Alert.AlertType.INFORMATION,
+                                    t("admin.reports.export.success.csv", "CSV saved:\n{path}")
+                                            .replace("{path}", dest.getAbsolutePath()),
+                                    ButtonType.OK
+                            ).showAndWait()
                     );
                 } catch (Exception ex) {
                     ex.printStackTrace();
                     Platform.runLater(() ->
-                            new Alert(Alert.AlertType.ERROR,
-                                    helper.getMessage("admin.reports.export.error").replace("{error}", ex.getMessage()),
-                                    ButtonType.OK).showAndWait()
+                            new Alert(
+                                    Alert.AlertType.ERROR,
+                                    t("admin.reports.export.error", "Export failed: {error}")
+                                            .replace("{error}", ex.getMessage()),
+                                    ButtonType.OK
+                            ).showAndWait()
                     );
                 }
             }).start();
@@ -186,7 +197,7 @@ public class AdminAttendanceReportsPage {
                 return;
             }
 
-            String period = timeFilter.getValue();
+            String period = mapPeriodToBackend(timeFilter.getValue());
             String search = studentSearch.getText();
 
             new Thread(() -> {
@@ -207,11 +218,12 @@ public class AdminAttendanceReportsPage {
                         String lastName = String.valueOf(r.getOrDefault("lastName", ""));
                         String studentName = (firstName + " " + lastName).trim();
                         String date = String.valueOf(r.getOrDefault("sessionDate", "—"));
-                        String status = String.valueOf(r.getOrDefault("status", "—"));
+                        String statusCode = String.valueOf(r.getOrDefault("status", "—"));
+                        String statusLabel = translateAttendanceStatus(statusCode);
 
-                        mappedRows.add(new ReportRow(studentName, date, status));
+                        mappedRows.add(new ReportRow(studentName, date, statusLabel));
 
-                        switch (status.toUpperCase()) {
+                        switch (statusCode.toUpperCase()) {
                             case "PRESENT" -> present++;
                             case "ABSENT" -> absent++;
                             case "EXCUSED" -> excused++;
@@ -230,18 +242,44 @@ public class AdminAttendanceReportsPage {
 
                     Platform.runLater(() -> {
                         stats.getChildren().clear();
-                        stats.add(AdminUI.makeStatCard(helper.getMessage("admin.reports.stats.rate"),    String.format("%.1f%%", finalRate),    "📈", "accent-green"),  0, 0);
-                        stats.add(AdminUI.makeStatCard(helper.getMessage("admin.reports.stats.present"), String.valueOf(finalPresent),           "🟢", "accent-green"),  1, 0);
-                        stats.add(AdminUI.makeStatCard(helper.getMessage("admin.reports.stats.absent"),  String.valueOf(finalAbsent),            "🔴", "accent-orange"), 0, 1);
-                        stats.add(AdminUI.makeStatCard(helper.getMessage("admin.reports.stats.excused"), String.valueOf(finalExcused),           "🟠", "accent-purple"), 1, 1);
-                        stats.add(AdminUI.makeStatCard(helper.getMessage("admin.reports.stats.total"),   String.valueOf(finalTotal),             "📄", "accent-purple"), 0, 2);
+                        stats.add(AdminUI.makeStatCard(
+                                t("admin.reports.stats.rate", "Overall Attendance Rate"),
+                                String.format("%.1f%%", finalRate),
+                                "📈",
+                                "accent-green"
+                        ), 0, 0);
+                        stats.add(AdminUI.makeStatCard(
+                                t("admin.reports.stats.present", "Present"),
+                                String.valueOf(finalPresent),
+                                "🟢",
+                                "accent-green"
+                        ), 1, 0);
+                        stats.add(AdminUI.makeStatCard(
+                                t("admin.reports.stats.absent", "Absent"),
+                                String.valueOf(finalAbsent),
+                                "🔴",
+                                "accent-orange"
+                        ), 0, 1);
+                        stats.add(AdminUI.makeStatCard(
+                                t("admin.reports.stats.excused", "Excused"),
+                                String.valueOf(finalExcused),
+                                "🟠",
+                                "accent-purple"
+                        ), 1, 1);
+                        stats.add(AdminUI.makeStatCard(
+                                t("admin.reports.stats.total", "Total Records"),
+                                String.valueOf(finalTotal),
+                                "📄",
+                                "accent-purple"
+                        ), 0, 2);
+
                         table.getItems().setAll(finalMappedRows);
                     });
 
                 } catch (Exception e) {
                     e.printStackTrace();
                     Platform.runLater(() -> {
-                        error.setText(helper.getMessage("admin.reports.error.loadReport"));
+                        error.setText(t("admin.reports.error.loadReport", "Failed to load attendance report."));
                         error.setVisible(true);
                         error.setManaged(true);
                     });
@@ -260,7 +298,8 @@ public class AdminAttendanceReportsPage {
 
                 for (Map<String, Object> c : classes) {
                     Long id = ((Number) c.get("id")).longValue();
-                    String label = c.getOrDefault("classCode", "—") + " — " + c.getOrDefault("name", "Unnamed");
+                    String label = c.getOrDefault("classCode", "—") + " — " +
+                            c.getOrDefault("name", t("common.unnamed", "Unnamed"));
                     items.add(new ClassItem(id, label));
                 }
 
@@ -275,7 +314,7 @@ public class AdminAttendanceReportsPage {
             } catch (Exception e) {
                 e.printStackTrace();
                 Platform.runLater(() -> {
-                    error.setText(helper.getMessage("admin.reports.error.loadClasses"));
+                    error.setText(t("admin.reports.error.loadClasses", "Failed to load classes."));
                     error.setVisible(true);
                     error.setManaged(true);
                 });
@@ -299,11 +338,11 @@ public class AdminAttendanceReportsPage {
 
         return AdminAppLayout.wrapWithSidebar(
                 adminName,
-                helper.getMessage("teacher.sidebar.title"),
-                helper.getMessage("admin.dashboard.title"),
-                helper.getMessage("admin.classes.title"),
-                helper.getMessage("admin.reports.title"),
-                helper.getMessage("admin.users.title"),
+                t("admin.panel", "Admin Panel"),
+                t("admin.dashboard.title", "Dashboard"),
+                t("admin.classes.title", "Manage Classes"),
+                t("admin.reports.title", "Attendance Reports"),
+                t("admin.users.title", "Manage Users"),
                 scroll,
                 "third",
                 new AdminAppLayout.Navigator() {
@@ -317,5 +356,32 @@ public class AdminAttendanceReportsPage {
                     }
                 }
         );
+    }
+
+    private String mapPeriodToBackend(String periodLabel) {
+        if (periodLabel == null) return "THIS_MONTH";
+
+        if (periodLabel.equals(t("admin.reports.filter.time.all", "ALL"))) return "ALL";
+        if (periodLabel.equals(t("admin.reports.filter.time.thisMonth", "THIS_MONTH"))) return "THIS_MONTH";
+        if (periodLabel.equals(t("admin.reports.filter.time.lastMonth", "LAST_MONTH"))) return "LAST_MONTH";
+        if (periodLabel.equals(t("admin.reports.filter.time.thisYear", "THIS_YEAR"))) return "THIS_YEAR";
+
+        return "THIS_MONTH";
+    }
+
+    private String translateAttendanceStatus(String statusCode) {
+        if (statusCode == null) return "—";
+
+        return switch (statusCode.toUpperCase()) {
+            case "PRESENT" -> t("attendance.status.present", "Present");
+            case "ABSENT" -> t("attendance.status.absent", "Absent");
+            case "EXCUSED" -> t("attendance.status.excused", "Excused");
+            default -> statusCode;
+        };
+    }
+
+    private static String t(String key, String fallback) {
+        String value = FrontendI18n.t(key);
+        return key.equals(value) ? fallback : value;
     }
 }

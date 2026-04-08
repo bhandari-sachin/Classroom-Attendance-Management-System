@@ -7,7 +7,7 @@ import frontend.auth.AuthState;
 import frontend.auth.JwtStore;
 import frontend.dto.AdminUsersResponseDto;
 import frontend.dto.AdminUserDto;
-import frontend.ui.HelperClass;
+import frontend.i18n.FrontendI18n;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -22,39 +22,36 @@ import javafx.scene.layout.*;
 public class AdminManageUsersPage {
 
     public Parent build(Scene scene, AppRouter router, JwtStore jwtStore, AuthState state) {
-        HelperClass helper = new HelperClass();
 
         String adminName = (state.getName() == null || state.getName().isBlank())
-                ? helper.getMessage("teacher.fallback.name")
+                ? t("teacher.fallback.name", "Name")
                 : state.getName();
 
         VBox content = new VBox(14);
         content.getStyleClass().add("content");
         content.setPadding(new Insets(18));
 
-        Label title = new Label(helper.getMessage("admin.users.title"));
+        Label title = new Label(t("admin.users.title", "Manage Users"));
         title.getStyleClass().add("title");
 
-        Label subtitle = new Label(helper.getMessage("admin.users.subtitle"));
+        Label subtitle = new Label(t("admin.users.subtitle", "View and manage students, teachers, and their enrollments"));
         subtitle.getStyleClass().add("subtitle");
 
-        // Summary row (dynamic)
         HBox summary = new HBox(12);
         summary.getStyleClass().add("summary-row");
 
-        // Filters
         HBox filters = new HBox(10);
         filters.setAlignment(Pos.CENTER_LEFT);
 
         TextField search = new TextField();
-        search.setPromptText(helper.getMessage("admin.users.search.placeholder"));
+        search.setPromptText(t("admin.users.search.placeholder", "Search by name or email..."));
         search.getStyleClass().add("search-field");
         HBox.setHgrow(search, Priority.ALWAYS);
 
-        String allTypesLabel = helper.getMessage("admin.users.filter.allTypes");
-        String studentLabel = helper.getMessage("admin.users.filter.student");
-        String teacherLabel = helper.getMessage("admin.users.filter.teacher");
-        String adminLabel = helper.getMessage("admin.users.filter.admin");
+        String allTypesLabel = t("admin.users.filter.allTypes", "All Types");
+        String studentLabel = t("admin.users.filter.student", "Student");
+        String teacherLabel = t("admin.users.filter.teacher", "Teacher");
+        String adminLabel = t("admin.users.filter.admin", "Admin");
 
         ComboBox<String> type = new ComboBox<>();
         type.getItems().addAll(
@@ -68,7 +65,6 @@ public class AdminManageUsersPage {
 
         filters.getChildren().addAll(search, type);
 
-        // Table
         TableView<UserRow> table = AdminUI.buildUsersTable();
         table.getItems().clear();
 
@@ -120,9 +116,24 @@ public class AdminManageUsersPage {
 
                     Platform.runLater(() -> {
                         summary.getChildren().setAll(
-                                AdminUI.smallSummaryCard(helper.getMessage("admin.users.summary.students"), String.valueOf(data.students), "🎓", "accent-green"),
-                                AdminUI.smallSummaryCard(helper.getMessage("admin.users.summary.teachers"), String.valueOf(data.teachers), "👥", "accent-purple"),
-                                AdminUI.smallSummaryCard(helper.getMessage("admin.users.summary.admins"), String.valueOf(data.admins), "🛡", "accent-orange")
+                                AdminUI.smallSummaryCard(
+                                        t("admin.users.summary.students", "Students"),
+                                        String.valueOf(data.students),
+                                        "🎓",
+                                        "accent-green"
+                                ),
+                                AdminUI.smallSummaryCard(
+                                        t("admin.users.summary.teachers", "Teachers"),
+                                        String.valueOf(data.teachers),
+                                        "👥",
+                                        "accent-purple"
+                                ),
+                                AdminUI.smallSummaryCard(
+                                        t("admin.users.summary.admins", "Admins"),
+                                        String.valueOf(data.admins),
+                                        "🛡",
+                                        "accent-orange"
+                                )
                         );
 
                         rows.clear();
@@ -130,8 +141,8 @@ public class AdminManageUsersPage {
                             for (AdminUserDto u : data.users) {
                                 String userCell = (u.name == null ? "" : u.name) + "\n" + (u.email == null ? "" : u.email);
 
-                                String localizedRole = localizeRole(u.role, helper);
-                                String enrolledText = localizeEnrolled(u.enrolled, helper);
+                                String localizedRole = localizeRole(u.role);
+                                String enrolledText = localizeEnrolled(u.enrolled);
 
                                 rows.add(new UserRow(
                                         userCell,
@@ -147,7 +158,7 @@ public class AdminManageUsersPage {
                 } catch (Exception e) {
                     e.printStackTrace();
                     Platform.runLater(() -> {
-                        loadError.setText(helper.getMessage("admin.users.loadError") + " " + e.getMessage());
+                        loadError.setText(t("admin.users.loadError", "Failed to load users:") + " " + e.getMessage());
                         loadError.setVisible(true);
                         loadError.setManaged(true);
                     });
@@ -165,18 +176,18 @@ public class AdminManageUsersPage {
 
         return AdminAppLayout.wrapWithSidebar(
                 adminName,
-                helper.getMessage("teacher.sidebar.title"),
-                helper.getMessage("admin.dashboard.title"),
-                helper.getMessage("admin.classes.title"),
-                helper.getMessage("admin.users.title"),
-                helper.getMessage("admin.reports.title"),
+                t("admin.panel", "Admin Panel"),
+                t("admin.dashboard.title", "Dashboard"),
+                t("admin.classes.title", "Manage Classes"),
+                t("admin.reports.title", "Attendance Reports"),
+                t("admin.users.title", "Manage Users"),
                 scroll,
-                "third",
+                "fourth",
                 new AdminAppLayout.Navigator() {
                     @Override public void goDashboard() { router.go("admin-dashboard"); }
                     @Override public void goTakeAttendance() { router.go("admin-classes"); }
-                    @Override public void goReports() { router.go("admin-users"); }
-                    @Override public void goEmail() { router.go("admin-reports"); }
+                    @Override public void goReports() { router.go("admin-reports"); }
+                    @Override public void goEmail() { router.go("admin-users"); }
                     @Override public void logout() {
                         jwtStore.clear();
                         router.go("login");
@@ -185,25 +196,30 @@ public class AdminManageUsersPage {
         );
     }
 
-    private String localizeRole(String role, HelperClass helper) {
+    private String localizeRole(String role) {
         if (role == null) return "";
 
         return switch (role.trim().toUpperCase()) {
-            case "STUDENT" -> helper.getMessage("admin.users.filter.student");
-            case "TEACHER" -> helper.getMessage("admin.users.filter.teacher");
-            case "ADMIN" -> helper.getMessage("admin.users.filter.admin");
+            case "STUDENT" -> t("admin.users.filter.student", "Student");
+            case "TEACHER" -> t("admin.users.filter.teacher", "Teacher");
+            case "ADMIN" -> t("admin.users.filter.admin", "Admin");
             default -> role;
         };
     }
 
-    private String localizeEnrolled(String enrolled, HelperClass helper) {
+    private String localizeEnrolled(String enrolled) {
         if (enrolled == null || enrolled.isBlank()) {
-            return helper.getMessage("common.status.noData");
+            return t("common.status.noData", "No data");
         }
         return enrolled;
     }
 
     private static String safe(String s) {
         return s == null ? "" : s.toLowerCase();
+    }
+
+    private static String t(String key, String fallback) {
+        String value = FrontendI18n.t(key);
+        return key.equals(value) ? fallback : value;
     }
 }

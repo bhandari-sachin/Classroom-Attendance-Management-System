@@ -6,7 +6,7 @@ import frontend.api.StudentAttendanceApi;
 import frontend.auth.AppRouter;
 import frontend.auth.AuthState;
 import frontend.auth.JwtStore;
-import frontend.ui.HelperClass;
+import frontend.i18n.FrontendI18n;
 import javafx.application.Platform;
 import javafx.concurrent.Task;
 import javafx.geometry.Insets;
@@ -36,22 +36,20 @@ public class StudentAttendancePage {
     private static final String BASE_URL =
             System.getenv().getOrDefault("BACKEND_URL", "http://localhost:8081");
 
-    private final HelperClass helper = new HelperClass();
-
     public Parent build(Scene scene, AppRouter router, JwtStore jwtStore, AuthState state) {
 
         String studentName = (state.getName() == null || state.getName().isBlank())
-                ? helper.getMessage("student.name.placeholder")
+                ? t("student.name.placeholder", "Name")
                 : state.getName();
 
         VBox page = new VBox(16);
         page.setPadding(new Insets(26));
         page.getStyleClass().add("page");
 
-        Label title = new Label(helper.getMessage("student.attendance.title"));
+        Label title = new Label(t("student.attendance.title", "My Attendance"));
         title.getStyleClass().add("dash-title");
 
-        Label subtitle = new Label(helper.getMessage("student.attendance.subtitle"));
+        Label subtitle = new Label(t("student.attendance.subtitle", "Track your attendance across all classes"));
         subtitle.getStyleClass().add("dash-subtitle");
 
         HBox filters = new HBox(10);
@@ -62,34 +60,34 @@ public class StudentAttendancePage {
 
         ComboBox<String> classFilter = new ComboBox<>();
         classFilter.getItems().addAll(
-                helper.getMessage("student.attendance.filter.all"),
+                t("student.attendance.filter.class.all", "All Classes"),
                 "OOP1",
                 "Databases",
                 "Web Dev"
         );
-        classFilter.setValue(helper.getMessage("student.attendance.filter.all"));
+        classFilter.setValue(t("student.attendance.filter.class.all", "All Classes"));
         classFilter.getStyleClass().add("filter-combo");
 
         ComboBox<String> timeFilter = new ComboBox<>();
         timeFilter.getItems().addAll(
-                helper.getMessage("student.attendance.filter.time.thisMonth"),
-                helper.getMessage("student.attendance.filter.lastMonth"),
-                helper.getMessage("student.attendance.filter.thisYear")
+                t("student.attendance.filter.time.thisMonth", "This Month"),
+                t("student.attendance.filter.time.lastMonth", "Last Month"),
+                t("student.attendance.filter.time.thisYear", "This Year")
         );
-        timeFilter.setValue(helper.getMessage("student.attendance.filter.time.thisMonth"));
+        timeFilter.setValue(t("student.attendance.filter.time.thisMonth", "This Month"));
         timeFilter.getStyleClass().add("filter-combo");
 
         filters.getChildren().addAll(filterIcon, classFilter, timeFilter);
 
         ReportApi reportApi = new ReportApi(BASE_URL);
 
-        Button exportPdfBtn = new Button(helper.getMessage("common.export.pdf"));
+        Button exportPdfBtn = new Button(t("common.export.pdf", "Export as PDF"));
         exportPdfBtn.getStyleClass().addAll("pill", "pill-blue");
 
         exportPdfBtn.setOnAction(e -> {
             FileChooser fc = new FileChooser();
-            fc.setTitle(helper.getMessage("student.attendance.export.file.title"));
-            fc.setInitialFileName(helper.getMessage("student.attendance.export.file.name"));
+            fc.setTitle(t("student.attendance.export.file.title", "Save PDF Report"));
+            fc.setInitialFileName(t("student.attendance.export.file.name", "student-attendance-report.pdf"));
             fc.getExtensionFilters().add(
                     new FileChooser.ExtensionFilter("PDF Files", "*.pdf")
             );
@@ -101,7 +99,7 @@ public class StudentAttendancePage {
                     reportApi.exportStudentPdf(jwtStore, state, dest.getAbsolutePath());
                     Platform.runLater(() -> new Alert(
                             Alert.AlertType.INFORMATION,
-                            helper.getMessage("student.attendance.export.success")
+                            t("student.attendance.export.success", "PDF saved:\n{path}")
                                     .replace("{path}", dest.getAbsolutePath()),
                             ButtonType.OK
                     ).showAndWait());
@@ -109,7 +107,7 @@ public class StudentAttendancePage {
                     ex.printStackTrace();
                     Platform.runLater(() -> new Alert(
                             Alert.AlertType.ERROR,
-                            helper.getMessage("student.attendance.export.error")
+                            t("student.attendance.export.error", "Export failed: {error}")
                                     .replace("{error}", ex.getMessage()),
                             ButtonType.OK
                     ).showAndWait());
@@ -138,17 +136,17 @@ public class StudentAttendancePage {
         Label rateValue = new Label("0%");
         rateValue.getStyleClass().add("rate-value");
 
-        VBox rateCard = rateCardWithValue(helper.getMessage("student.attendance.stats.rate"), rateValue);
+        VBox rateCard = rateCardWithValue(t("student.attendance.stats.rate", "Attendance Rate"), rateValue);
 
         Label presentValue = new Label("0");
         Label absentValue = new Label("0");
         Label excusedValue = new Label("0");
         Label totalDaysValue = new Label("0");
 
-        VBox presentCard = smallStatCardWithValue(helper.getMessage("student.attendance.stats.present"), presentValue, "#3BAA66", "check");
-        VBox absentCard  = smallStatCardWithValue(helper.getMessage("student.attendance.stats.absent"), absentValue, "#E05A5A", "x");
-        VBox excusedCard = smallStatCardWithValue(helper.getMessage("student.attendance.stats.excused"), excusedValue, "#E09A3B", "clock");
-        VBox totalDaysCard = smallStatCardWithValue(helper.getMessage("student.attendance.stats.totalDays"), totalDaysValue, "#BFC5CC", "calendar");
+        VBox presentCard = smallStatCardWithValue(t("student.attendance.stats.present", "Present"), presentValue, "#3BAA66", "check");
+        VBox absentCard  = smallStatCardWithValue(t("student.attendance.stats.absent", "Absent"), absentValue, "#E05A5A", "x");
+        VBox excusedCard = smallStatCardWithValue(t("student.attendance.stats.excused", "Excused"), excusedValue, "#E09A3B", "clock");
+        VBox totalDaysCard = smallStatCardWithValue(t("student.attendance.stats.totalDays", "Total Days"), totalDaysValue, "#BFC5CC", "calendar");
 
         stats.add(rateCard, 0, 0);
         stats.add(presentCard, 1, 0);
@@ -156,14 +154,14 @@ public class StudentAttendancePage {
         stats.add(excusedCard, 1, 1);
         stats.add(totalDaysCard, 0, 2);
 
-        Label recordsTitle = new Label(helper.getMessage("student.attendance.records.title"));
+        Label recordsTitle = new Label(t("student.attendance.records.title", "Attendance Records"));
         recordsTitle.getStyleClass().add("section-title");
 
         VBox recordsCard = new VBox(10);
         recordsCard.getStyleClass().add("records-card");
         recordsCard.setMinHeight(160);
 
-        Label loadingRecords = new Label(helper.getMessage("student.attendance.records.loading"));
+        Label loadingRecords = new Label(t("student.attendance.records.loading", "Loading records..."));
         loadingRecords.getStyleClass().add("empty-subtitle");
         recordsCard.setAlignment(Pos.CENTER);
         recordsCard.getChildren().add(loadingRecords);
@@ -183,11 +181,11 @@ public class StudentAttendancePage {
 
         return AppLayout.wrapWithSidebar(
                 studentName,
-                helper.getMessage("student.panel.title"),
-                helper.getMessage("student.nav.dashboard"),
-                helper.getMessage("student.nav.markAttendance"),
-                helper.getMessage("student.nav.myAttendance"),
-                helper.getMessage("student.nav.email"),
+                t("student.panel.title", "Student Panel"),
+                t("student.nav.dashboard", "Dashboard"),
+                t("student.nav.markAttendance", "Mark Attendance"),
+                t("student.nav.myAttendance", "My Attendance"),
+                t("student.nav.email", "Email"),
                 page,
                 "third",
                 new AppLayout.Navigator() {
@@ -268,7 +266,7 @@ public class StudentAttendancePage {
                     recordsCard.setAlignment(Pos.CENTER);
 
                     Label err = new Label(
-                            helper.getMessage("student.attendance.error.load")
+                            t("student.attendance.error.load", "Failed to load attendance: {error}")
                                     .replace("{error}", e == null ? "" : e.getMessage())
                     );
                     err.getStyleClass().add("empty-subtitle");
@@ -286,9 +284,9 @@ public class StudentAttendancePage {
         if (status == null || status.isBlank()) return "—";
 
         return switch (status.trim().toUpperCase()) {
-            case "PRESENT" -> helper.getMessage("student.attendance.stats.present");
-            case "ABSENT" -> helper.getMessage("student.attendance.stats.absent");
-            case "EXCUSED" -> helper.getMessage("student.attendance.stats.excused");
+            case "PRESENT" -> t("student.attendance.stats.present", "Present");
+            case "ABSENT" -> t("student.attendance.stats.absent", "Absent");
+            case "EXCUSED" -> t("student.attendance.stats.excused", "Excused");
             default -> status;
         };
     }
@@ -313,10 +311,10 @@ public class StudentAttendancePage {
         recIcon.getStyleClass().add("empty-icon");
         recIcon.setFont(Font.font("Segoe UI Emoji", 18));
 
-        Label recT = new Label(helper.getMessage("student.attendance.records.empty.title"));
+        Label recT = new Label(t("student.attendance.records.empty.title", "No attendance records"));
         recT.getStyleClass().add("empty-title");
 
-        Label recS = new Label(helper.getMessage("student.attendance.records.empty.subtitle"));
+        Label recS = new Label(t("student.attendance.records.empty.subtitle", "No records match the selected filters"));
         recS.getStyleClass().add("empty-subtitle");
 
         box.getChildren().addAll(recIcon, recT, recS);
@@ -466,5 +464,10 @@ public class StudentAttendancePage {
                 return dot;
             }
         }
+    }
+
+    private static String t(String key, String fallback) {
+        String value = FrontendI18n.t(key);
+        return key.equals(value) ? fallback : value;
     }
 }

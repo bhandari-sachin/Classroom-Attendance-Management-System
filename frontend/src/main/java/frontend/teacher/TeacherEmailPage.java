@@ -6,7 +6,7 @@ import frontend.api.TeacherApi;
 import frontend.auth.AppRouter;
 import frontend.auth.AuthState;
 import frontend.auth.JwtStore;
-import frontend.ui.HelperClass;
+import frontend.i18n.FrontendI18n;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -38,12 +38,11 @@ public class TeacherEmailPage {
     }
 
     private final ObservableList<StudentRow> rows = FXCollections.observableArrayList();
-    private final HelperClass helper = new HelperClass();
 
     public Parent build(Scene scene, AppRouter router, JwtStore jwtStore, AuthState state) {
 
         String teacherName = (state.getName() == null || state.getName().isBlank())
-                ? helper.getMessage("teacher.fallback.name")
+                ? t("teacher.fallback.name", "Teacher")
                 : state.getName();
 
         String backendUrl = System.getenv().getOrDefault("BACKEND_URL", "http://localhost:8081");
@@ -53,20 +52,20 @@ public class TeacherEmailPage {
         page.setPadding(new Insets(22));
         page.getStyleClass().add("page");
 
-        Label title = new Label(helper.getMessage("teacher.email.title"));
+        Label title = new Label(t("teacher.email.title", "Student Emails"));
         title.getStyleClass().add("title");
 
-        Label info = new Label(helper.getMessage("teacher.email.subtitle"));
+        Label info = new Label(t("teacher.email.subtitle", "Select a class to view student email addresses"));
         info.getStyleClass().add("subtitle");
 
         HBox top = new HBox(10);
         top.setAlignment(Pos.CENTER_LEFT);
 
         ComboBox<ClassItem> classBox = new ComboBox<>();
-        classBox.setPromptText(helper.getMessage("teacher.email.class_select.placeholder"));
+        classBox.setPromptText(t("teacher.email.class_select.placeholder", "Select a class"));
         classBox.setMaxWidth(360);
 
-        Button refresh = new Button(helper.getMessage("teacher.email.button.refresh"));
+        Button refresh = new Button(t("teacher.email.button.refresh", "Refresh"));
         refresh.getStyleClass().addAll("pill", "pill-green");
 
         top.getChildren().addAll(classBox, refresh);
@@ -75,10 +74,10 @@ public class TeacherEmailPage {
         table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
         table.setPrefHeight(340);
 
-        TableColumn<StudentRow, String> colName = new TableColumn<>(helper.getMessage("teacher.email.table.column.student"));
+        TableColumn<StudentRow, String> colName = new TableColumn<>(t("teacher.email.table.column.student", "Student"));
         colName.setCellValueFactory(d -> d.getValue().studentNameProperty());
 
-        TableColumn<StudentRow, String> colEmail = new TableColumn<>(helper.getMessage("teacher.email.table.column.email"));
+        TableColumn<StudentRow, String> colEmail = new TableColumn<>(t("teacher.email.table.column.email", "Email"));
         colEmail.setCellValueFactory(d -> d.getValue().emailProperty());
 
         table.getColumns().addAll(colName, colEmail);
@@ -92,7 +91,7 @@ public class TeacherEmailPage {
                 return;
             }
 
-            rows.setAll(new StudentRow(-1L, helper.getMessage("teacher.email.loading.students"), "-", "—"));
+            rows.setAll(new StudentRow(-1L, t("teacher.email.loading.students", "Loading students..."), "-", "—"));
 
             new Thread(() -> {
                 try {
@@ -117,7 +116,8 @@ public class TeacherEmailPage {
                         rows.clear();
                         new Alert(
                                 Alert.AlertType.ERROR,
-                                helper.getMessage("teacher.email.error.students").replace("{reason}", ex.getMessage()),
+                                t("teacher.email.error.students", "Failed to load students: {reason}")
+                                        .replace("{reason}", ex.getMessage()),
                                 ButtonType.OK
                         ).showAndWait();
                     });
@@ -143,7 +143,8 @@ public class TeacherEmailPage {
                 Platform.runLater(() ->
                         new Alert(
                                 Alert.AlertType.ERROR,
-                                helper.getMessage("teacher.email.error.classes").replace("{reason}", ex.getMessage()),
+                                t("teacher.email.error.classes", "Failed to load classes: {reason}")
+                                        .replace("{reason}", ex.getMessage()),
                                 ButtonType.OK
                         ).showAndWait()
                 );
@@ -155,11 +156,11 @@ public class TeacherEmailPage {
 
         return AppLayout.wrapWithSidebar(
                 teacherName,
-                helper.getMessage("teacher.sidebar.title"),
-                helper.getMessage("teacher.sidebar.menu.dashboard"),
-                helper.getMessage("teacher.sidebar.menu.take_attendance"),
-                helper.getMessage("teacher.sidebar.menu.reports"),
-                helper.getMessage("teacher.sidebar.menu.email"),
+                t("teacher.sidebar.title", "Teacher Panel"),
+                t("teacher.sidebar.menu.dashboard", "Dashboard"),
+                t("teacher.sidebar.menu.take_attendance", "Take Attendance"),
+                t("teacher.sidebar.menu.reports", "Reports"),
+                t("teacher.sidebar.menu.email", "Email"),
                 page,
                 "fourth",
                 new AppLayout.Navigator() {
@@ -173,5 +174,10 @@ public class TeacherEmailPage {
                     }
                 }
         );
+    }
+
+    private static String t(String key, String fallback) {
+        String value = FrontendI18n.t(key);
+        return key.equals(value) ? fallback : value;
     }
 }

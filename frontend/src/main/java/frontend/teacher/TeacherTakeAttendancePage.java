@@ -6,7 +6,7 @@ import frontend.api.TeacherApi;
 import frontend.auth.AppRouter;
 import frontend.auth.AuthState;
 import frontend.auth.JwtStore;
-import frontend.ui.HelperClass;
+import frontend.i18n.FrontendI18n;
 import javafx.application.Platform;
 import javafx.beans.binding.Bindings;
 import javafx.collections.FXCollections;
@@ -28,7 +28,6 @@ import java.util.Map;
 public class TeacherTakeAttendancePage {
 
     private final ObservableList<StudentRow> rows = FXCollections.observableArrayList();
-    private final HelperClass helper = new HelperClass();
 
     private static class ClassItem {
         final long id;
@@ -47,7 +46,7 @@ public class TeacherTakeAttendancePage {
 
     public Parent build(Scene scene, AppRouter router, JwtStore jwtStore, AuthState state) {
         String teacherName = (state.getName() == null || state.getName().isBlank())
-                ? helper.getMessage("teacher.fallback.name")
+                ? t("teacher.fallback.name", "Teacher")
                 : state.getName();
 
         String backendUrl = System.getenv().getOrDefault("BACKEND_URL", "http://localhost:8081");
@@ -58,24 +57,24 @@ public class TeacherTakeAttendancePage {
         page.setPadding(new Insets(22));
         page.getStyleClass().add("page");
 
-        Label title = new Label(helper.getMessage("teacher.attendance.title"));
+        Label title = new Label(t("teacher.attendance.title", "Take Attendance"));
         title.getStyleClass().add("title");
 
-        Label subtitle = new Label(helper.getMessage("teacher.attendance.subtitle"));
+        Label subtitle = new Label(t("teacher.attendance.subtitle", "Generate a QR code and manage student attendance"));
         subtitle.getStyleClass().add("subtitle");
 
-        Label selectClass = new Label(helper.getMessage("teacher.attendance.selectClass"));
+        Label selectClass = new Label(t("teacher.attendance.selectClass", "Select Class"));
         selectClass.getStyleClass().add("section-title");
 
         ComboBox<ClassItem> classBox = new ComboBox<>();
-        classBox.setPromptText(helper.getMessage("teacher.attendance.class.prompt"));
+        classBox.setPromptText(t("teacher.attendance.class.prompt", "Choose a class"));
         classBox.setMaxWidth(320);
 
         VBox qrCard = new VBox(12);
         qrCard.getStyleClass().add("card");
         qrCard.setPadding(new Insets(16));
 
-        Label qrTitle = new Label(helper.getMessage("teacher.attendance.qr.title"));
+        Label qrTitle = new Label(t("teacher.attendance.qr.title", "QR Code"));
         qrTitle.getStyleClass().add("section-title");
 
         ImageView qrImageView = new ImageView();
@@ -89,7 +88,7 @@ public class TeacherTakeAttendancePage {
         qrArea.setPrefWidth(180);
         qrArea.getStyleClass().add("qr-area");
 
-        Label manualTitle = new Label(helper.getMessage("teacher.attendance.manual.title"));
+        Label manualTitle = new Label(t("teacher.attendance.manual.title", "Manual Code"));
         manualTitle.getStyleClass().add("small-title");
 
         Label manualCode = new Label("—");
@@ -99,19 +98,19 @@ public class TeacherTakeAttendancePage {
         manualBox.setAlignment(Pos.CENTER);
         manualBox.getStyleClass().add("manual-box");
 
-        Button generate = new Button(helper.getMessage("teacher.attendance.generate"));
+        Button generate = new Button(t("teacher.attendance.generate", "Generate"));
         generate.getStyleClass().addAll("pill", "pill-green");
         generate.setMaxWidth(Double.MAX_VALUE);
 
         generate.setOnAction(e -> {
             ClassItem selected = classBox.getValue();
             if (selected == null) {
-                new Alert(Alert.AlertType.WARNING, helper.getMessage("teacher.attendance.selectClassFirst"), ButtonType.OK).showAndWait();
+                new Alert(Alert.AlertType.WARNING, t("teacher.attendance.selectClassFirst", "Please select a class first."), ButtonType.OK).showAndWait();
                 return;
             }
 
             generate.setDisable(true);
-            manualCode.setText(helper.getMessage("teacher.attendance.generating"));
+            manualCode.setText(t("teacher.attendance.generating", "Generating..."));
             qrImageView.setImage(null);
             currentSessionId[0] = -1L;
 
@@ -146,7 +145,7 @@ public class TeacherTakeAttendancePage {
                         generate.setDisable(false);
                         new Alert(
                                 Alert.AlertType.ERROR,
-                                helper.getMessage("teacher.attendance.generateFailed") + " " + ex.getMessage(),
+                                t("teacher.attendance.generateFailed", "Failed to generate session:") + " " + ex.getMessage(),
                                 ButtonType.OK
                         ).showAndWait();
                     });
@@ -160,18 +159,18 @@ public class TeacherTakeAttendancePage {
         studentsTitle.getStyleClass().add("section-title");
         studentsTitle.textProperty().bind(
                 Bindings.createStringBinding(
-                        () -> helper.getMessage("teacher.attendance.students.title")
+                        () -> t("teacher.attendance.students.title", "Students ({count})")
                                 .replace("{count}", String.valueOf(rows.size())),
                         rows
                 )
         );
 
-        Button markAllPresentBtn = new Button(helper.getMessage("teacher.attendance.markAll"));
+        Button markAllPresentBtn = new Button(t("teacher.attendance.markAll", "Mark All Present"));
         markAllPresentBtn.getStyleClass().addAll("pill", "pill-green");
 
         markAllPresentBtn.setOnAction(e -> {
             if (currentSessionId[0] <= 0) {
-                new Alert(Alert.AlertType.WARNING, helper.getMessage("teacher.attendance.generateSessionFirst"), ButtonType.OK).showAndWait();
+                new Alert(Alert.AlertType.WARNING, t("teacher.attendance.generateSessionFirst", "Generate a session first."), ButtonType.OK).showAndWait();
                 return;
             }
             if (rows.isEmpty()) return;
@@ -196,7 +195,7 @@ public class TeacherTakeAttendancePage {
                         markAllPresentBtn.setDisable(false);
                         new Alert(
                                 Alert.AlertType.ERROR,
-                                helper.getMessage("teacher.attendance.markAllFailed") + " " + ex.getMessage(),
+                                t("teacher.attendance.markAllFailed", "Failed to mark all students:") + " " + ex.getMessage(),
                                 ButtonType.OK
                         ).showAndWait();
                     });
@@ -215,13 +214,13 @@ public class TeacherTakeAttendancePage {
         table.setFixedCellSize(36);
         table.setPrefHeight(300);
 
-        TableColumn<StudentRow, String> colName = new TableColumn<>(helper.getMessage("teacher.attendance.table.student"));
+        TableColumn<StudentRow, String> colName = new TableColumn<>(t("teacher.attendance.table.student", "Student"));
         colName.setCellValueFactory(d -> d.getValue().studentNameProperty());
 
-        TableColumn<StudentRow, String> colEmail = new TableColumn<>(helper.getMessage("teacher.attendance.table.email"));
+        TableColumn<StudentRow, String> colEmail = new TableColumn<>(t("teacher.attendance.table.email", "Email"));
         colEmail.setCellValueFactory(d -> d.getValue().emailProperty());
 
-        TableColumn<StudentRow, String> colStatus = new TableColumn<>(helper.getMessage("teacher.attendance.table.status"));
+        TableColumn<StudentRow, String> colStatus = new TableColumn<>(t("teacher.attendance.table.status", "Status"));
         colStatus.setCellValueFactory(d -> d.getValue().statusProperty());
         colStatus.setCellFactory(col -> new TableCell<>() {
             @Override
@@ -237,7 +236,7 @@ public class TeacherTakeAttendancePage {
             }
         });
 
-        TableColumn<StudentRow, Void> colActions = new TableColumn<>(helper.getMessage("teacher.attendance.actions"));
+        TableColumn<StudentRow, Void> colActions = new TableColumn<>(t("teacher.attendance.actions", "Actions"));
         colActions.setCellFactory(col -> new TableCell<>() {
             private final Button presentBtn = new Button("✓");
             private final Button absentBtn = new Button("✕");
@@ -289,7 +288,7 @@ public class TeacherTakeAttendancePage {
                 StudentRow row = getTableView().getItems().get(getIndex());
 
                 if (currentSessionId[0] <= 0) {
-                    new Alert(Alert.AlertType.WARNING, helper.getMessage("teacher.attendance.generateSessionFirst"), ButtonType.OK).showAndWait();
+                    new Alert(Alert.AlertType.WARNING, t("teacher.attendance.generateSessionFirst", "Generate a session first."), ButtonType.OK).showAndWait();
                     return;
                 }
 
@@ -317,7 +316,7 @@ public class TeacherTakeAttendancePage {
                             excusedBtn.setDisable(false);
                             new Alert(
                                     Alert.AlertType.ERROR,
-                                    helper.getMessage("teacher.attendance.updateFailed") + " " + ex.getMessage(),
+                                    t("teacher.attendance.updateFailed", "Failed to update attendance:") + " " + ex.getMessage(),
                                     ButtonType.OK
                             ).showAndWait();
                         });
@@ -361,7 +360,7 @@ public class TeacherTakeAttendancePage {
                 Platform.runLater(() ->
                         new Alert(
                                 Alert.AlertType.ERROR,
-                                helper.getMessage("teacher.attendance.loadClassesFailed") + " " + ex.getMessage(),
+                                t("teacher.attendance.loadClassesFailed", "Failed to load classes:") + " " + ex.getMessage(),
                                 ButtonType.OK
                         ).showAndWait()
                 );
@@ -376,7 +375,7 @@ public class TeacherTakeAttendancePage {
             manualCode.setText("—");
             qrImageView.setImage(null);
             rows.clear();
-            rows.add(new StudentRow(-1L, helper.getMessage("teacher.attendance.loading.students"), "-", "—"));
+            rows.add(new StudentRow(-1L, t("teacher.attendance.loading.students", "Loading students..."), "-", "—"));
 
             new Thread(() -> {
                 try {
@@ -400,7 +399,7 @@ public class TeacherTakeAttendancePage {
                         rows.clear();
                         new Alert(
                                 Alert.AlertType.ERROR,
-                                helper.getMessage("teacher.attendance.error.loadStudents") + " " + ex.getMessage(),
+                                t("teacher.attendance.error.loadStudents", "Failed to load students:") + " " + ex.getMessage(),
                                 ButtonType.OK
                         ).showAndWait();
                     });
@@ -410,11 +409,11 @@ public class TeacherTakeAttendancePage {
 
         return AppLayout.wrapWithSidebar(
                 teacherName,
-                helper.getMessage("teacher.sidebar.title"),
-                helper.getMessage("teacher.sidebar.menu.dashboard"),
-                helper.getMessage("teacher.sidebar.menu.take_attendance"),
-                helper.getMessage("teacher.sidebar.menu.reports"),
-                helper.getMessage("teacher.sidebar.menu.email"),
+                t("teacher.sidebar.title", "Teacher Panel"),
+                t("teacher.sidebar.menu.dashboard", "Dashboard"),
+                t("teacher.sidebar.menu.take_attendance", "Take Attendance"),
+                t("teacher.sidebar.menu.reports", "Reports"),
+                t("teacher.sidebar.menu.email", "Email"),
                 page,
                 "second",
                 new AppLayout.Navigator() {
@@ -436,10 +435,15 @@ public class TeacherTakeAttendancePage {
         }
 
         return switch (status.trim().toUpperCase()) {
-            case "PRESENT" -> helper.getMessage("student.attendance.stats.present");
-            case "ABSENT" -> helper.getMessage("student.attendance.stats.absent");
-            case "EXCUSED" -> helper.getMessage("student.attendance.stats.excused");
+            case "PRESENT" -> t("student.attendance.stats.present", "Present");
+            case "ABSENT" -> t("student.attendance.stats.absent", "Absent");
+            case "EXCUSED" -> t("student.attendance.stats.excused", "Excused");
             default -> status;
         };
+    }
+
+    private static String t(String key, String fallback) {
+        String value = FrontendI18n.t(key);
+        return key.equals(value) ? fallback : value;
     }
 }

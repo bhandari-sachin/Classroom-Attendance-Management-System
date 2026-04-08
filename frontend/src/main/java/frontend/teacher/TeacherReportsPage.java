@@ -6,7 +6,7 @@ import frontend.api.TeacherApi;
 import frontend.auth.AppRouter;
 import frontend.auth.AuthState;
 import frontend.auth.JwtStore;
-import frontend.ui.HelperClass;
+import frontend.i18n.FrontendI18n;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -56,7 +56,6 @@ public class TeacherReportsPage {
     }
 
     private final ObservableList<ReportRow> tableRows = FXCollections.observableArrayList();
-    private final HelperClass helper = new HelperClass();
 
     @SuppressWarnings("unchecked")
     private static Map<String, Object> asMap(Object o) {
@@ -93,7 +92,7 @@ public class TeacherReportsPage {
     public Parent build(Scene scene, AppRouter router, JwtStore jwtStore, AuthState state) {
 
         String teacherName = (state.getName() == null || state.getName().isBlank())
-                ? helper.getMessage("teacher.fallback.name")
+                ? t("teacher.fallback.name", "Teacher")
                 : state.getName();
 
         String backendUrl = System.getenv().getOrDefault("BACKEND_URL", "http://localhost:8081");
@@ -104,32 +103,32 @@ public class TeacherReportsPage {
         page.setPadding(new Insets(22));
         page.getStyleClass().add("page");
 
-        Label title = new Label(helper.getMessage("teacher.reports.title"));
+        Label title = new Label(t("teacher.reports.title", "Reports"));
         title.getStyleClass().add("title");
 
-        Label subtitle = new Label(helper.getMessage("teacher.reports.subtitle"));
+        Label subtitle = new Label(t("teacher.reports.subtitle", "View attendance reports for your classes"));
         subtitle.getStyleClass().add("subtitle");
 
         HBox selects = new HBox(10);
         selects.setAlignment(Pos.CENTER_LEFT);
 
         ComboBox<ClassItem> classBox = new ComboBox<>();
-        classBox.setPromptText(helper.getMessage("teacher.reports.select.class"));
+        classBox.setPromptText(t("teacher.reports.select.class", "Select class"));
         classBox.setMaxWidth(340);
 
         ComboBox<SessionItem> sessionBox = new ComboBox<>();
-        sessionBox.setPromptText(helper.getMessage("teacher.reports.select.session"));
+        sessionBox.setPromptText(t("teacher.reports.select.session", "Select session"));
         sessionBox.setMaxWidth(340);
 
-        Button load = new Button(helper.getMessage("teacher.reports.load"));
+        Button load = new Button(t("teacher.reports.load", "Load"));
         load.getStyleClass().addAll("pill", "pill-green");
 
-        MenuButton exportBtn = new MenuButton(helper.getMessage("common.export"));
+        MenuButton exportBtn = new MenuButton(t("common.export", "Export"));
         exportBtn.getStyleClass().addAll("pill", "pill-blue");
         exportBtn.setDisable(true);
 
-        MenuItem exportPdf = new MenuItem(helper.getMessage("common.export.pdf"));
-        MenuItem exportCsv = new MenuItem(helper.getMessage("common.export.csv"));
+        MenuItem exportPdf = new MenuItem(t("common.export.pdf", "Export PDF"));
+        MenuItem exportCsv = new MenuItem(t("common.export.csv", "Export CSV"));
         exportBtn.getItems().addAll(exportPdf, exportCsv);
 
         selects.getChildren().addAll(classBox, sessionBox, load, exportBtn);
@@ -137,10 +136,10 @@ public class TeacherReportsPage {
         HBox stats = new HBox(10);
         stats.setAlignment(Pos.CENTER_LEFT);
 
-        Label present = new Label(helper.getMessage("teacher.reports.stats.present").replace("{count}", "—"));
-        Label absent  = new Label(helper.getMessage("teacher.reports.stats.absent").replace("{count}", "—"));
-        Label excused = new Label(helper.getMessage("teacher.reports.stats.excused").replace("{count}", "—"));
-        Label rate    = new Label(helper.getMessage("teacher.reports.stats.rate").replace("{rate}", "—"));
+        Label present = new Label(t("teacher.reports.stats.present", "Present: {count}").replace("{count}", "—"));
+        Label absent  = new Label(t("teacher.reports.stats.absent", "Absent: {count}").replace("{count}", "—"));
+        Label excused = new Label(t("teacher.reports.stats.excused", "Excused: {count}").replace("{count}", "—"));
+        Label rate    = new Label(t("teacher.reports.stats.rate", "Rate: {rate}%").replace("{rate}", "—"));
 
         present.getStyleClass().add("subtitle");
         absent.getStyleClass().add("subtitle");
@@ -153,13 +152,13 @@ public class TeacherReportsPage {
         table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
         table.setPrefHeight(340);
 
-        TableColumn<ReportRow, String> colName = new TableColumn<>(helper.getMessage("teacher.reports.table.student"));
+        TableColumn<ReportRow, String> colName = new TableColumn<>(t("teacher.reports.table.student", "Student"));
         colName.setCellValueFactory(d -> new javafx.beans.property.SimpleStringProperty(d.getValue().getName()));
 
-        TableColumn<ReportRow, String> colEmail = new TableColumn<>(helper.getMessage("teacher.reports.table.email"));
+        TableColumn<ReportRow, String> colEmail = new TableColumn<>(t("teacher.reports.table.email", "Email"));
         colEmail.setCellValueFactory(d -> new javafx.beans.property.SimpleStringProperty(d.getValue().getEmail()));
 
-        TableColumn<ReportRow, String> colStatus = new TableColumn<>(helper.getMessage("teacher.reports.table.status"));
+        TableColumn<ReportRow, String> colStatus = new TableColumn<>(t("teacher.reports.table.status", "Status"));
         colStatus.setCellValueFactory(d -> new javafx.beans.property.SimpleStringProperty(d.getValue().getStatus()));
         colStatus.setCellFactory(col -> new TableCell<>() {
             @Override
@@ -180,10 +179,10 @@ public class TeacherReportsPage {
         page.getChildren().addAll(title, subtitle, selects, stats, table);
 
         Runnable resetReportUI = () -> {
-            present.setText(helper.getMessage("teacher.reports.stats.present").replace("{count}", "—"));
-            absent.setText(helper.getMessage("teacher.reports.stats.absent").replace("{count}", "—"));
-            excused.setText(helper.getMessage("teacher.reports.stats.excused").replace("{count}", "—"));
-            rate.setText(helper.getMessage("teacher.reports.stats.rate").replace("{rate}", "—"));
+            present.setText(t("teacher.reports.stats.present", "Present: {count}").replace("{count}", "—"));
+            absent.setText(t("teacher.reports.stats.absent", "Absent: {count}").replace("{count}", "—"));
+            excused.setText(t("teacher.reports.stats.excused", "Excused: {count}").replace("{count}", "—"));
+            rate.setText(t("teacher.reports.stats.rate", "Rate: {rate}%").replace("{rate}", "—"));
             tableRows.clear();
         };
 
@@ -205,7 +204,8 @@ public class TeacherReportsPage {
                 Platform.runLater(() ->
                         new Alert(
                                 Alert.AlertType.ERROR,
-                                helper.getMessage("teacher.reports.error.loadClasses").replace("{error}", ex.getMessage()),
+                                t("teacher.reports.error.loadClasses", "Failed to load classes: {error}")
+                                        .replace("{error}", ex.getMessage()),
                                 ButtonType.OK
                         ).showAndWait()
                 );
@@ -234,11 +234,11 @@ public class TeacherReportsPage {
                         String code = pick(s, "code", "qrCode", "qr_token", "qrToken");
 
                         String label = (date.isBlank()
-                                ? helper.getMessage("teacher.reports.session.default").replace("{id}", String.valueOf(sid))
+                                ? t("teacher.reports.session.default", "Session {id}").replace("{id}", String.valueOf(sid))
                                 : date)
                                 + (code.isBlank()
                                 ? ""
-                                : " " + helper.getMessage("teacher.reports.session.code").replace("{code}", code));
+                                : " " + t("teacher.reports.session.code", "(Code: {code})").replace("{code}", code));
 
                         return new SessionItem(sid, label);
                     }).toList();
@@ -250,7 +250,8 @@ public class TeacherReportsPage {
                     Platform.runLater(() ->
                             new Alert(
                                     Alert.AlertType.ERROR,
-                                    helper.getMessage("teacher.reports.error.loadSessions").replace("{error}", ex.getMessage()),
+                                    t("teacher.reports.error.loadSessions", "Failed to load sessions: {error}")
+                                            .replace("{error}", ex.getMessage()),
                                     ButtonType.OK
                             ).showAndWait()
                     );
@@ -263,7 +264,7 @@ public class TeacherReportsPage {
         load.setOnAction(e -> {
             SessionItem sItem = sessionBox.getValue();
             if (sItem == null) {
-                new Alert(Alert.AlertType.WARNING, helper.getMessage("teacher.reports.alert.selectSession"), ButtonType.OK).showAndWait();
+                new Alert(Alert.AlertType.WARNING, t("teacher.reports.alert.selectSession", "Please select a session first."), ButtonType.OK).showAndWait();
                 return;
             }
 
@@ -287,10 +288,10 @@ public class TeacherReportsPage {
                     double r = asDouble(st.get("rate"));
 
                     Platform.runLater(() -> {
-                        present.setText(helper.getMessage("teacher.reports.stats.present").replace("{count}", String.valueOf(p)));
-                        absent.setText(helper.getMessage("teacher.reports.stats.absent").replace("{count}", String.valueOf(a)));
-                        excused.setText(helper.getMessage("teacher.reports.stats.excused").replace("{count}", String.valueOf(ex)));
-                        rate.setText(helper.getMessage("teacher.reports.stats.rate").replace("{rate}", String.format("%.1f", r)));
+                        present.setText(t("teacher.reports.stats.present", "Present: {count}").replace("{count}", String.valueOf(p)));
+                        absent.setText(t("teacher.reports.stats.absent", "Absent: {count}").replace("{count}", String.valueOf(a)));
+                        excused.setText(t("teacher.reports.stats.excused", "Excused: {count}").replace("{count}", String.valueOf(ex)));
+                        rate.setText(t("teacher.reports.stats.rate", "Rate: {rate}%").replace("{rate}", String.format("%.1f", r)));
 
                         for (var row : rows) {
                             String fn = pick(row, "firstName", "first_name");
@@ -310,7 +311,7 @@ public class TeacherReportsPage {
                         load.setDisable(false);
                         new Alert(
                                 Alert.AlertType.ERROR,
-                                helper.getMessage("teacher.reports.error.loadReport") + " " + ex.getMessage(),
+                                t("teacher.reports.error.loadReport", "Failed to load report:") + " " + ex.getMessage(),
                                 ButtonType.OK
                         ).showAndWait();
                     });
@@ -323,8 +324,8 @@ public class TeacherReportsPage {
             if (c == null) return;
 
             FileChooser fc = new FileChooser();
-            fc.setTitle(helper.getMessage("teacher.reports.filechooser.pdf.title"));
-            fc.setInitialFileName(helper.getMessage("teacher.reports.filechooser.pdf.name"));
+            fc.setTitle(t("teacher.reports.filechooser.pdf.title", "Save PDF Report"));
+            fc.setInitialFileName(t("teacher.reports.filechooser.pdf.name", "teacher-report.pdf"));
             fc.getExtensionFilters().add(new FileChooser.ExtensionFilter("PDF Files", "*.pdf"));
             File dest = fc.showSaveDialog(scene.getWindow());
             if (dest == null) return;
@@ -334,14 +335,14 @@ public class TeacherReportsPage {
                     reportApi.exportTeacherReport(jwtStore, state, c.id, "pdf", dest.getAbsolutePath());
                     Platform.runLater(() -> new Alert(
                             Alert.AlertType.INFORMATION,
-                            helper.getMessage("teacher.reports.export.success.pdf") + "\n" + dest.getAbsolutePath(),
+                            t("teacher.reports.export.success.pdf", "PDF report exported successfully:") + "\n" + dest.getAbsolutePath(),
                             ButtonType.OK
                     ).showAndWait());
                 } catch (Exception ex2) {
                     ex2.printStackTrace();
                     Platform.runLater(() -> new Alert(
                             Alert.AlertType.ERROR,
-                            helper.getMessage("teacher.reports.error.export") + " " + ex2.getMessage(),
+                            t("teacher.reports.error.export", "Export failed:") + " " + ex2.getMessage(),
                             ButtonType.OK
                     ).showAndWait());
                 }
@@ -353,8 +354,8 @@ public class TeacherReportsPage {
             if (c == null) return;
 
             FileChooser fc = new FileChooser();
-            fc.setTitle(helper.getMessage("teacher.reports.filechooser.csv.title"));
-            fc.setInitialFileName(helper.getMessage("teacher.reports.filechooser.csv.name"));
+            fc.setTitle(t("teacher.reports.filechooser.csv.title", "Save CSV Report"));
+            fc.setInitialFileName(t("teacher.reports.filechooser.csv.name", "teacher-report.csv"));
             fc.getExtensionFilters().add(new FileChooser.ExtensionFilter("CSV Files", "*.csv"));
             File dest = fc.showSaveDialog(scene.getWindow());
             if (dest == null) return;
@@ -364,14 +365,14 @@ public class TeacherReportsPage {
                     reportApi.exportTeacherReport(jwtStore, state, c.id, "csv", dest.getAbsolutePath());
                     Platform.runLater(() -> new Alert(
                             Alert.AlertType.INFORMATION,
-                            helper.getMessage("teacher.reports.export.success.csv") + "\n" + dest.getAbsolutePath(),
+                            t("teacher.reports.export.success.csv", "CSV report exported successfully:") + "\n" + dest.getAbsolutePath(),
                             ButtonType.OK
                     ).showAndWait());
                 } catch (Exception ex2) {
                     ex2.printStackTrace();
                     Platform.runLater(() -> new Alert(
                             Alert.AlertType.ERROR,
-                            helper.getMessage("teacher.reports.error.export") + " " + ex2.getMessage(),
+                            t("teacher.reports.error.export", "Export failed:") + " " + ex2.getMessage(),
                             ButtonType.OK
                     ).showAndWait());
                 }
@@ -380,11 +381,11 @@ public class TeacherReportsPage {
 
         return AppLayout.wrapWithSidebar(
                 teacherName,
-                helper.getMessage("teacher.sidebar.title"),
-                helper.getMessage("teacher.sidebar.menu.dashboard"),
-                helper.getMessage("teacher.sidebar.menu.take_attendance"),
-                helper.getMessage("teacher.sidebar.menu.reports"),
-                helper.getMessage("teacher.sidebar.menu.email"),
+                t("teacher.sidebar.title", "Teacher Panel"),
+                t("teacher.sidebar.menu.dashboard", "Dashboard"),
+                t("teacher.sidebar.menu.take_attendance", "Take Attendance"),
+                t("teacher.sidebar.menu.reports", "Reports"),
+                t("teacher.sidebar.menu.email", "Email"),
                 page,
                 "third",
                 new AppLayout.Navigator() {
@@ -403,10 +404,15 @@ public class TeacherReportsPage {
         }
 
         return switch (status.trim().toUpperCase()) {
-            case "PRESENT" -> helper.getMessage("student.attendance.stats.present");
-            case "ABSENT" -> helper.getMessage("student.attendance.stats.absent");
-            case "EXCUSED" -> helper.getMessage("student.attendance.stats.excused");
+            case "PRESENT" -> t("student.attendance.stats.present", "Present");
+            case "ABSENT" -> t("student.attendance.stats.absent", "Absent");
+            case "EXCUSED" -> t("student.attendance.stats.excused", "Excused");
             default -> status;
         };
+    }
+
+    private static String t(String key, String fallback) {
+        String value = FrontendI18n.t(key);
+        return key.equals(value) ? fallback : value;
     }
 }

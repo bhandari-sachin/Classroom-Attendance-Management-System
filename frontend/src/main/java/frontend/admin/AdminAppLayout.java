@@ -1,7 +1,10 @@
 package frontend.admin;
 
-import frontend.ui.HelperClass;
+import frontend.api.LanguageApi;
+import frontend.api.TranslationApi;
+import frontend.i18n.FrontendI18n;
 import frontend.ui.UiPreferences;
+import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.NodeOrientation;
 import javafx.geometry.Pos;
@@ -16,7 +19,9 @@ import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
-import javafx.scene.layout.Region;
+
+import java.util.List;
+import java.util.Map;
 
 public class AdminAppLayout {
 
@@ -27,6 +32,9 @@ public class AdminAppLayout {
         void goEmail();
         void logout();
     }
+
+    private static final String BACKEND_URL =
+            System.getenv().getOrDefault("BACKEND_URL", "http://localhost:8081");
 
     private static boolean isRtl() {
         String lang = UiPreferences.getLanguage();
@@ -44,51 +52,22 @@ public class AdminAppLayout {
             String activeKey,
             Navigator nav
     ) {
-
-        HelperClass helper = new HelperClass();
         boolean isArabic = isRtl();
 
         BorderPane root = new BorderPane();
         root.getStyleClass().add("app-root");
-        // IMPORTANT: do NOT set root BorderPane to RTL
 
+        // ===== LANGUAGE =====
         MenuButton globe = new MenuButton("🌐");
         globe.getStyleClass().add("utility-menu");
+        loadLanguageMenu(globe, nav, activeKey);
 
-        MenuItem en = new MenuItem(helper.getMessage("language.english"));
-        MenuItem fi = new MenuItem(helper.getMessage("language.finnish"));
-        MenuItem ar = new MenuItem(helper.getMessage("language.arabic"));
-        MenuItem am = new MenuItem(helper.getMessage("language.amharic"));
-        MenuItem ne = new MenuItem(helper.getMessage("language.nepali"));
-
-        en.setOnAction(e -> {
-            UiPreferences.setLanguage("en");
-            refreshCurrentPage(nav, activeKey);
-        });
-        fi.setOnAction(e -> {
-            UiPreferences.setLanguage("fi");
-            refreshCurrentPage(nav, activeKey);
-        });
-        ar.setOnAction(e -> {
-            UiPreferences.setLanguage("ar");
-            refreshCurrentPage(nav, activeKey);
-        });
-        am.setOnAction(e -> {
-            UiPreferences.setLanguage("am");
-            refreshCurrentPage(nav, activeKey);
-        });
-        ne.setOnAction(e -> {
-            UiPreferences.setLanguage("ne");
-            refreshCurrentPage(nav, activeKey);
-        });
-
-        globe.getItems().addAll(en, fi, ar, am, ne);
-
+        // ===== SETTINGS =====
         MenuButton settings = new MenuButton("⚙");
         settings.getStyleClass().add("utility-menu");
 
-        MenuItem light = new MenuItem(helper.getMessage("settingsThemeLight"));
-        MenuItem dark = new MenuItem(helper.getMessage("settingsThemeDark"));
+        MenuItem light = new MenuItem(t("settings.theme.light", "Light"));
+        MenuItem dark = new MenuItem(t("settings.theme.dark", "Dark"));
 
         light.setOnAction(e -> {
             UiPreferences.setTheme(UiPreferences.Theme.LIGHT);
@@ -118,6 +97,7 @@ public class AdminAppLayout {
         topBar.getStyleClass().add("top-utility-bar");
         topBar.setNodeOrientation(isArabic ? NodeOrientation.RIGHT_TO_LEFT : NodeOrientation.LEFT_TO_RIGHT);
 
+        // ===== SIDEBAR =====
         VBox sidebar = new VBox(14);
         sidebar.getStyleClass().add("sidebar");
         sidebar.setPadding(new Insets(18));
@@ -150,7 +130,7 @@ public class AdminAppLayout {
         Region push = new Region();
         VBox.setVgrow(push, Priority.ALWAYS);
 
-        Label logout = new Label(helper.getMessage("teacher.sidebar.logout"));
+        Label logout = new Label(t("common.button.logout", "Logout"));
         logout.getStyleClass().add("logout-link");
         logout.setMaxWidth(Double.MAX_VALUE);
         logout.setAlignment(isArabic ? Pos.CENTER_RIGHT : Pos.CENTER_LEFT);
@@ -181,6 +161,67 @@ public class AdminAppLayout {
         return root;
     }
 
+    private static void loadLanguageMenu(MenuButton globe, Navigator nav, String activeKey) {
+        new Thread(() -> {
+            try {
+                LanguageApi languageApi = new LanguageApi(BACKEND_URL);
+                List<LanguageApi.LanguageItem> languages = languageApi.getActiveLanguages();
+
+                Platform.runLater(() -> {
+                    globe.getItems().clear();
+
+                    for (LanguageApi.LanguageItem lang : languages) {
+                        MenuItem item = new MenuItem(lang.name());
+                        item.setOnAction(e -> loadLanguageAndRefresh(lang.code(), nav, activeKey));
+                        globe.getItems().add(item);
+                    }
+                });
+
+            } catch (Exception ex) {
+                ex.printStackTrace();
+
+                Platform.runLater(() -> {
+                    globe.getItems().clear();
+
+                    MenuItem en = new MenuItem("English");
+                    MenuItem fi = new MenuItem("Finnish");
+                    MenuItem ar = new MenuItem("Arabic");
+                    MenuItem am = new MenuItem("Amharic");
+                    MenuItem ne = new MenuItem("Nepali");
+
+                    en.setOnAction(e -> loadLanguageAndRefresh("en", nav, activeKey));
+                    fi.setOnAction(e -> loadLanguageAndRefresh("fi", nav, activeKey));
+                    ar.setOnAction(e -> loadLanguageAndRefresh("ar", nav, activeKey));
+                    am.setOnAction(e -> loadLanguageAndRefresh("am", nav, activeKey));
+                    ne.setOnAction(e -> loadLanguageAndRefresh("ne", nav, activeKey));
+
+                    globe.getItems().addAll(en, fi, ar, am, ne);
+                });
+            }
+        }).start();
+    }
+
+    private static void loadLanguageAndRefresh(String languageCode, Navigator nav, String activeKey) {
+        UiPreferences.setLanguage(languageCode);
+
+        new Thread(() -> {
+            try {
+                TranslationApi translationApi = new TranslationApi(BACKEND_URL);
+                Map<String, String> translations = translationApi.getUiTranslations(languageCode);
+
+                Platform.runLater(() -> {
+                    FrontendI18n.setLanguage(languageCode);
+                    FrontendI18n.setTranslations(translations);
+                    refreshCurrentPage(nav, activeKey);
+                });
+
+            } catch (Exception ex) {
+                ex.printStackTrace();
+                Platform.runLater(() -> refreshCurrentPage(nav, activeKey));
+            }
+        }).start();
+    }
+
     private static void refreshCurrentPage(Navigator nav, String activeKey) {
         switch (activeKey) {
             case "dashboard" -> nav.goDashboard();
@@ -204,5 +245,10 @@ public class AdminAppLayout {
         l.setNodeOrientation(isArabic ? NodeOrientation.RIGHT_TO_LEFT : NodeOrientation.LEFT_TO_RIGHT);
 
         return l;
+    }
+
+    private static String t(String key, String fallback) {
+        String value = FrontendI18n.t(key);
+        return key.equals(value) ? fallback : value;
     }
 }

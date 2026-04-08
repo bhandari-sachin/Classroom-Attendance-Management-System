@@ -7,7 +7,7 @@ import frontend.auth.AuthState;
 import frontend.auth.JwtStore;
 import frontend.dto.AdminClassDto;
 import frontend.dto.AdminStudentDto;
-import frontend.ui.HelperClass;
+import frontend.i18n.FrontendI18n;
 import javafx.application.Platform;
 import javafx.beans.binding.Bindings;
 import javafx.collections.FXCollections;
@@ -28,10 +28,9 @@ import java.util.stream.Collectors;
 public class AdminManageClassesPage {
 
     public Parent build(Scene scene, AppRouter router, JwtStore jwtStore, AuthState state) {
-        HelperClass helper = new HelperClass();
 
         String adminName = (state.getName() == null || state.getName().isBlank())
-                ? helper.getMessage("teacher.fallback.name")
+                ? t("teacher.fallback.name", "Name")
                 : state.getName();
 
         VBox content = new VBox(14);
@@ -42,10 +41,10 @@ public class AdminManageClassesPage {
         titleRow.setAlignment(Pos.CENTER_LEFT);
 
         VBox titleCol = new VBox(4);
-        Label title = new Label(helper.getMessage("admin.classes.title"));
+        Label title = new Label(t("admin.classes.title", "Manage Classes"));
         title.getStyleClass().add("title");
 
-        Label subtitle = new Label(helper.getMessage("admin.classes.subtitle"));
+        Label subtitle = new Label(t("admin.classes.subtitle", "Create, manage classes, and enroll students"));
         subtitle.getStyleClass().add("subtitle");
 
         titleCol.getChildren().addAll(title, subtitle);
@@ -53,19 +52,19 @@ public class AdminManageClassesPage {
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
-        Button enrollBtn = new Button(helper.getMessage("admin.classes.button.enroll"));
+        Button enrollBtn = new Button(t("admin.classes.button.enroll", "Enroll students"));
         enrollBtn.getStyleClass().add("secondary-btn");
 
-        Button add = new Button("+   " + helper.getMessage("admin.classes.button.add"));
+        Button add = new Button("+   " + t("admin.classes.button.add", "Add class"));
         add.getStyleClass().add("primary-btn");
 
         titleRow.getChildren().addAll(titleCol, spacer, enrollBtn, add);
 
         TextField search = new TextField();
-        search.setPromptText(helper.getMessage("admin.classes.search.placeholder"));
+        search.setPromptText(t("admin.classes.search.placeholder", "Search classes..."));
         search.getStyleClass().add("search-field");
 
-        Label section = new Label(helper.getMessage("admin.classes.section.detailed"));
+        Label section = new Label(t("admin.classes.section.detailed", "Detailed Records"));
         section.getStyleClass().add("section-title");
 
         TableView<ClassRow> table = AdminUI.buildClassesTable();
@@ -120,7 +119,7 @@ public class AdminManageClassesPage {
                 } catch (Exception e) {
                     e.printStackTrace();
                     Platform.runLater(() -> {
-                        loadError.setText(helper.getMessage("admin.classes.dialog.loadStudents.failed") + " " + e.getMessage());
+                        loadError.setText(t("admin.classes.dialog.loadStudents.failed", "Failed to load students:") + " " + e.getMessage());
                         loadError.setVisible(true);
                         loadError.setManaged(true);
                     });
@@ -134,14 +133,14 @@ public class AdminManageClassesPage {
             ClassRow selectedClass = table.getSelectionModel().getSelectedItem();
             if (selectedClass == null) return;
 
-            openEnrollStudentsDialog(helper, api, selectedClass, reload);
+            openEnrollStudentsDialog(api, selectedClass, reload);
         });
 
         add.setOnAction(e -> {
             Dialog<ButtonType> dialog = new Dialog<>();
-            dialog.setTitle(helper.getMessage("admin.classes.dialog.add.title"));
+            dialog.setTitle(t("admin.classes.dialog.add.title", "Add class"));
 
-            ButtonType createBtn = new ButtonType(helper.getMessage("admin.classes.dialog.add.create"), ButtonBar.ButtonData.OK_DONE);
+            ButtonType createBtn = new ButtonType(t("admin.classes.dialog.add.create", "Create"), ButtonBar.ButtonData.OK_DONE);
             dialog.getDialogPane().getButtonTypes().addAll(createBtn, ButtonType.CANCEL);
 
             GridPane form = new GridPane();
@@ -167,12 +166,12 @@ public class AdminManageClassesPage {
             TextField maxCapacity = new TextField();
             maxCapacity.setPromptText("e.g. 30");
 
-            form.addRow(0, new Label(helper.getMessage("admin.classes.dialog.add.classCode")),    classCode);
-            form.addRow(1, new Label(helper.getMessage("admin.classes.dialog.add.name")),         nameField);
-            form.addRow(2, new Label(helper.getMessage("admin.classes.dialog.add.teacherEmail")), teacherEmail);
-            form.addRow(3, new Label(helper.getMessage("admin.classes.dialog.add.semester")),     semester);
-            form.addRow(4, new Label(helper.getMessage("admin.classes.dialog.add.academicYear")), academicYear);
-            form.addRow(5, new Label(helper.getMessage("admin.classes.dialog.add.maxCapacity")),  maxCapacity);
+            form.addRow(0, new Label(t("admin.classes.dialog.add.classCode", "Class code")), classCode);
+            form.addRow(1, new Label(t("admin.classes.dialog.add.name", "Name")), nameField);
+            form.addRow(2, new Label(t("admin.classes.dialog.add.teacherEmail", "Teacher email")), teacherEmail);
+            form.addRow(3, new Label(t("admin.classes.dialog.add.semester", "Semester")), semester);
+            form.addRow(4, new Label(t("admin.classes.dialog.add.academicYear", "Academic year")), academicYear);
+            form.addRow(5, new Label(t("admin.classes.dialog.add.maxCapacity", "Max capacity")), maxCapacity);
 
             dialog.getDialogPane().setContent(form);
 
@@ -211,7 +210,7 @@ public class AdminManageClassesPage {
                         Platform.runLater(() -> {
                             Alert a = new Alert(
                                     Alert.AlertType.ERROR,
-                                    helper.getMessage("admin.classes.dialog.add.error") + ":\n" + ex2.getMessage(),
+                                    t("admin.classes.dialog.add.error", "Create class failed") + ":\n" + ex2.getMessage(),
                                     ButtonType.OK
                             );
                             a.showAndWait();
@@ -229,18 +228,18 @@ public class AdminManageClassesPage {
 
         return AdminAppLayout.wrapWithSidebar(
                 adminName,
-                helper.getMessage("teacher.sidebar.title"),
-                helper.getMessage("admin.dashboard.title"),
-                helper.getMessage("admin.classes.title"),
-                helper.getMessage("admin.users.title"),
-                helper.getMessage("admin.reports.title"),
+                t("admin.panel", "Admin Panel"),
+                t("admin.dashboard.title", "Dashboard"),
+                t("admin.classes.title", "Manage Classes"),
+                t("admin.reports.title", "Attendance Reports"),
+                t("admin.users.title", "Manage Users"),
                 scroll,
                 "second",
                 new AdminAppLayout.Navigator() {
                     @Override public void goDashboard() { router.go("admin-dashboard"); }
                     @Override public void goTakeAttendance() { router.go("admin-classes"); }
-                    @Override public void goReports() { router.go("admin-users"); }
-                    @Override public void goEmail() { router.go("admin-reports"); }
+                    @Override public void goReports() { router.go("admin-reports"); }
+                    @Override public void goEmail() { router.go("admin-users"); }
                     @Override public void logout() {
                         jwtStore.clear();
                         router.go("login");
@@ -249,27 +248,28 @@ public class AdminManageClassesPage {
         );
     }
 
-    private void openEnrollStudentsDialog(HelperClass helper, AdminApi api, ClassRow selectedClass, Runnable reload) {
+    private void openEnrollStudentsDialog(AdminApi api, ClassRow selectedClass, Runnable reload) {
         Dialog<ButtonType> dialog = new Dialog<>();
-        dialog.setTitle(helper.getMessage("admin.classes.dialog.enroll.title"));
+        dialog.setTitle(t("admin.classes.dialog.enroll.title", "Enroll Students"));
         dialog.getDialogPane().setPrefWidth(560);
 
-        ButtonType enrollType = new ButtonType(helper.getMessage("admin.classes.button.enroll"), ButtonBar.ButtonData.OK_DONE);
+        ButtonType enrollType = new ButtonType(t("admin.classes.button.enroll", "Enroll students"), ButtonBar.ButtonData.OK_DONE);
         dialog.getDialogPane().getButtonTypes().addAll(enrollType, ButtonType.CANCEL);
 
         VBox root = new VBox(12);
         root.setPadding(new Insets(12));
 
         Label classInfo = new Label(
-                "Class: " + nullToEmpty(selectedClass.getClassName()) +
+                t("admin.classes.dialog.enroll.classLabel", "Class") + ": " +
+                        nullToEmpty(selectedClass.getClassName()) +
                         " (" + nullToEmpty(selectedClass.codeProperty().get()) + ")"
         );
         classInfo.getStyleClass().add("section-title");
 
         TextField searchStudents = new TextField();
-        searchStudents.setPromptText(helper.getMessage("admin.classes.dialog.enroll.search.placeholder"));
+        searchStudents.setPromptText(t("admin.classes.dialog.enroll.search.placeholder", "Search students by name, email, or code..."));
 
-        Label status = new Label(helper.getMessage("admin.classes.dialog.loadStudents.loading"));
+        Label status = new Label(t("admin.classes.dialog.loadStudents.loading", "Loading students..."));
         status.getStyleClass().add("subtitle");
 
         ListView<AdminStudentDto> listView = new ListView<>();
@@ -289,7 +289,7 @@ public class AdminManageClassesPage {
             }
         });
 
-        Label selectedCount = new Label(helper.getMessage("admin.classes.dialog.enroll.selectedCount"));
+        Label selectedCount = new Label(t("admin.classes.dialog.enroll.selectedCount", "Selected: 0"));
         selectedCount.getStyleClass().add("subtitle");
 
         ObservableList<AdminStudentDto> studentRows = FXCollections.observableArrayList();
@@ -297,7 +297,8 @@ public class AdminManageClassesPage {
         listView.setItems(filteredStudents);
 
         listView.getSelectionModel().getSelectedItems().addListener((javafx.collections.ListChangeListener<AdminStudentDto>) c ->
-                selectedCount.setText("Selected: " + listView.getSelectionModel().getSelectedItems().size())
+                selectedCount.setText(t("admin.classes.dialog.enroll.selectedPrefix", "Selected: ") +
+                        listView.getSelectionModel().getSelectedItems().size())
         );
 
         searchStudents.textProperty().addListener((obs, oldV, q) -> {
@@ -328,12 +329,14 @@ public class AdminManageClassesPage {
                 Platform.runLater(() -> {
                     studentRows.setAll(students);
                     status.setText(students.isEmpty()
-                            ? helper.getMessage("admin.classes.dialog.loadStudents.empty")
-                            : "Select one or more students to enroll.");
+                            ? t("admin.classes.dialog.loadStudents.empty", "No available students found.")
+                            : t("admin.classes.dialog.enroll.selectPrompt", "Select one or more students to enroll."));
                 });
             } catch (Exception ex) {
                 ex.printStackTrace();
-                Platform.runLater(() -> status.setText(helper.getMessage("admin.classes.dialog.loadStudents.failed") + " " + ex.getMessage()));
+                Platform.runLater(() -> status.setText(
+                        t("admin.classes.dialog.loadStudents.failed", "Failed to load students:") + " " + ex.getMessage()
+                ));
             }
         }).start();
 
@@ -347,12 +350,16 @@ public class AdminManageClassesPage {
                     .collect(Collectors.toList());
 
             if (studentEmails.isEmpty()) {
-                Alert a = new Alert(Alert.AlertType.WARNING, helper.getMessage("admin.classes.dialog.enroll.noneSelected"), ButtonType.OK);
+                Alert a = new Alert(
+                        Alert.AlertType.WARNING,
+                        t("admin.classes.dialog.enroll.noneSelected", "No students selected."),
+                        ButtonType.OK
+                );
                 a.showAndWait();
                 return;
             }
 
-            status.setText("Enrolling students...");
+            status.setText(t("admin.classes.dialog.enroll.inProgress", "Enrolling students..."));
 
             new Thread(() -> {
                 try {
@@ -363,7 +370,7 @@ public class AdminManageClassesPage {
 
                         Alert ok = new Alert(
                                 Alert.AlertType.INFORMATION,
-                                helper.getMessage("admin.classes.dialog.enroll.success"),
+                                t("admin.classes.dialog.enroll.success", "Students enrolled successfully."),
                                 ButtonType.OK
                         );
                         ok.showAndWait();
@@ -373,10 +380,10 @@ public class AdminManageClassesPage {
                 } catch (Exception ex) {
                     ex.printStackTrace();
                     Platform.runLater(() -> {
-                        status.setText(helper.getMessage("admin.classes.dialog.enroll.failure") + " " + ex.getMessage());
+                        status.setText(t("admin.classes.dialog.enroll.failure", "Failed to enroll students.") + " " + ex.getMessage());
                         Alert err = new Alert(
                                 Alert.AlertType.ERROR,
-                                helper.getMessage("admin.classes.dialog.enroll.failure") + "\n" + ex.getMessage(),
+                                t("admin.classes.dialog.enroll.failure", "Failed to enroll students.") + "\n" + ex.getMessage(),
                                 ButtonType.OK
                         );
                         err.showAndWait();
@@ -401,5 +408,10 @@ public class AdminManageClassesPage {
         if (a.isBlank()) return b;
         if (b.isBlank()) return a;
         return a + " · " + b;
+    }
+
+    private static String t(String key, String fallback) {
+        String value = FrontendI18n.t(key);
+        return key.equals(value) ? fallback : value;
     }
 }

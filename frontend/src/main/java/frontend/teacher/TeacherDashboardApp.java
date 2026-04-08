@@ -5,7 +5,7 @@ import frontend.api.TeacherApi;
 import frontend.auth.AppRouter;
 import frontend.auth.AuthState;
 import frontend.auth.JwtStore;
-import frontend.ui.HelperClass;
+import frontend.i18n.FrontendI18n;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -29,11 +29,9 @@ public class TeacherDashboardApp {
     private int presentToday = 0;
     private int absentToday = 0;
 
-    private final HelperClass helper = new HelperClass();
-
     public Parent build(Scene scene, AppRouter router, JwtStore jwtStore, AuthState state) {
         String teacherName = (state.getName() == null || state.getName().isBlank())
-                ? helper.getMessage("teacher.fallback.name")
+                ? t("teacher.fallback.name", "Teacher")
                 : state.getName();
 
         String backendUrl = System.getenv().getOrDefault("BACKEND_URL", "http://localhost:8081");
@@ -44,7 +42,7 @@ public class TeacherDashboardApp {
         page.getStyleClass().add("page");
 
         Label greeting = new Label(
-                helper.getMessage("teacher.dashboard.greeting").replace("{name}", teacherName)
+                t("teacher.dashboard.greeting", "Welcome, {name}").replace("{name}", teacherName)
         );
         greeting.getStyleClass().add("dash-title");
 
@@ -56,15 +54,15 @@ public class TeacherDashboardApp {
         actionsRow.getStyleClass().add("dash-actions");
 
         VBox takeCard = bigActionCard(
-                helper.getMessage("teacher.dashboard.takeAttendance.title"),
-                helper.getMessage("teacher.dashboard.takeAttendance.subtitle"),
+                t("teacher.dashboard.takeAttendance.title", "Take Attendance"),
+                t("teacher.dashboard.takeAttendance.subtitle", "Start attendance for a class session"),
                 "card-green",
                 () -> router.go("teacher-take")
         );
 
         VBox reportCard = bigActionCard(
-                helper.getMessage("teacher.dashboard.reports.title"),
-                helper.getMessage("teacher.dashboard.reports.subtitle"),
+                t("teacher.dashboard.reports.title", "Reports"),
+                t("teacher.dashboard.reports.subtitle", "View attendance reports and summaries"),
                 "card-purple",
                 () -> router.go("teacher-reports")
         );
@@ -78,10 +76,10 @@ public class TeacherDashboardApp {
         stats.setVgap(14);
         stats.getStyleClass().add("dash-stats");
 
-        VBox myClassesCard = statCard(helper.getMessage("teacher.dashboard.stats.classes"), totalClasses);
-        VBox totalStudentsCard = statCard(helper.getMessage("teacher.dashboard.stats.students"), totalStudents);
-        VBox presentTodayCard = statCard(helper.getMessage("teacher.dashboard.stats.present"), presentToday);
-        VBox absentTodayCard = statCard(helper.getMessage("teacher.dashboard.stats.absent"), absentToday);
+        VBox myClassesCard = statCard(t("teacher.dashboard.stats.classes", "Classes"), totalClasses);
+        VBox totalStudentsCard = statCard(t("teacher.dashboard.stats.students", "Students"), totalStudents);
+        VBox presentTodayCard = statCard(t("teacher.dashboard.stats.present", "Present Today"), presentToday);
+        VBox absentTodayCard = statCard(t("teacher.dashboard.stats.absent", "Absent Today"), absentToday);
 
         stats.add(myClassesCard, 0, 0);
         stats.add(totalStudentsCard, 1, 0);
@@ -98,7 +96,7 @@ public class TeacherDashboardApp {
 
         stats.getColumnConstraints().addAll(c1, c2);
 
-        Label classesTitle = new Label(helper.getMessage("teacher.dashboard.classes.title"));
+        Label classesTitle = new Label(t("teacher.dashboard.classes.title", "My Classes"));
         classesTitle.getStyleClass().add("section-title");
 
         VBox classesContainer = new VBox(10);
@@ -106,7 +104,7 @@ public class TeacherDashboardApp {
         classesContainer.setPadding(new Insets(16));
         classesContainer.setMinHeight(170);
 
-        Label loading = new Label(helper.getMessage("teacher.dashboard.classes.loading"));
+        Label loading = new Label(t("teacher.dashboard.classes.loading", "Loading classes..."));
         loading.getStyleClass().add("empty-subtitle");
         classesContainer.setAlignment(Pos.CENTER);
         classesContainer.getChildren().add(loading);
@@ -140,7 +138,8 @@ public class TeacherDashboardApp {
                 Platform.runLater(() ->
                         new Alert(
                                 Alert.AlertType.ERROR,
-                                helper.getMessage("teacher.dashboard.error.stats").replace("{error}", ex.getMessage()),
+                                t("teacher.dashboard.error.stats", "Failed to load stats: {error}")
+                                        .replace("{error}", ex.getMessage()),
                                 ButtonType.OK
                         ).showAndWait()
                 );
@@ -160,13 +159,13 @@ public class TeacherDashboardApp {
                         Label icon = new Label("📅");
                         icon.getStyleClass().add("empty-icon");
 
-                        Label t = new Label(helper.getMessage("teacher.dashboard.classes.empty.title"));
-                        t.getStyleClass().add("empty-title");
+                        Label t1 = new Label(t("teacher.dashboard.classes.empty.title", "No classes yet"));
+                        t1.getStyleClass().add("empty-title");
 
-                        Label s = new Label(helper.getMessage("teacher.dashboard.classes.empty.subtitle"));
+                        Label s = new Label(t("teacher.dashboard.classes.empty.subtitle", "Your assigned classes will appear here"));
                         s.getStyleClass().add("empty-subtitle");
 
-                        classesContainer.getChildren().addAll(icon, t, s);
+                        classesContainer.getChildren().addAll(icon, t1, s);
                         return;
                     }
 
@@ -174,7 +173,7 @@ public class TeacherDashboardApp {
 
                     for (Map<String, Object> c : classes) {
                         String classCode = String.valueOf(c.getOrDefault("classCode", "—"));
-                        String name = String.valueOf(c.getOrDefault("name", helper.getMessage("teacher.dashboard.classes.unnamed")));
+                        String name = String.valueOf(c.getOrDefault("name", t("teacher.dashboard.classes.unnamed", "Unnamed class")));
                         String semester = String.valueOf(c.getOrDefault("semester", "—"));
                         String academicYear = String.valueOf(c.getOrDefault("academicYear", "—"));
                         String studentsCount = String.valueOf(c.getOrDefault("studentsCount", "0"));
@@ -195,7 +194,8 @@ public class TeacherDashboardApp {
                     classesContainer.setAlignment(Pos.CENTER);
 
                     Label err = new Label(
-                            helper.getMessage("teacher.dashboard.error.classes").replace("{error}", ex.getMessage())
+                            t("teacher.dashboard.error.classes", "Failed to load classes: {error}")
+                                    .replace("{error}", ex.getMessage())
                     );
                     err.getStyleClass().add("empty-subtitle");
                     classesContainer.getChildren().add(err);
@@ -205,11 +205,11 @@ public class TeacherDashboardApp {
 
         return AppLayout.wrapWithSidebar(
                 teacherName,
-                helper.getMessage("teacher.sidebar.title"),
-                helper.getMessage("teacher.sidebar.menu.dashboard"),
-                helper.getMessage("teacher.sidebar.menu.take_attendance"),
-                helper.getMessage("teacher.sidebar.menu.reports"),
-                helper.getMessage("teacher.sidebar.menu.email"),
+                t("teacher.sidebar.title", "Teacher Panel"),
+                t("teacher.sidebar.menu.dashboard", "Dashboard"),
+                t("teacher.sidebar.menu.take_attendance", "Take Attendance"),
+                t("teacher.sidebar.menu.reports", "Reports"),
+                t("teacher.sidebar.menu.email", "Email"),
                 page,
                 "dashboard",
                 new AppLayout.Navigator() {
@@ -235,13 +235,13 @@ public class TeacherDashboardApp {
         VBox card = new VBox(4);
         card.getStyleClass().addAll("big-card", styleClass);
 
-        Label t = new Label(title);
-        t.getStyleClass().add("big-card-title");
+        Label t1 = new Label(title);
+        t1.getStyleClass().add("big-card-title");
 
         Label s = new Label(subtitle);
         s.getStyleClass().add("big-card-subtitle");
 
-        card.getChildren().addAll(t, s);
+        card.getChildren().addAll(t1, s);
         card.setOnMouseClicked(e -> action.run());
         return card;
     }
@@ -278,7 +278,7 @@ public class TeacherDashboardApp {
         title.getStyleClass().add("class-title");
 
         Label meta = new Label(
-                helper.getMessage("teacher.dashboard.classes.meta")
+                t("teacher.dashboard.classes.meta", "{semester} • {year} • {count} students")
                         .replace("{semester}", semester)
                         .replace("{year}", academicYear)
                         .replace("{count}", studentsCount)
@@ -290,10 +290,15 @@ public class TeacherDashboardApp {
     }
 
     private String resolveIcon(String label) {
-        if (label.equals(helper.getMessage("teacher.dashboard.stats.classes"))) return "📚";
-        if (label.equals(helper.getMessage("teacher.dashboard.stats.students"))) return "👥";
-        if (label.equals(helper.getMessage("teacher.dashboard.stats.present"))) return "✅";
-        if (label.equals(helper.getMessage("teacher.dashboard.stats.absent"))) return "❌";
+        if (label.equals(t("teacher.dashboard.stats.classes", "Classes"))) return "📚";
+        if (label.equals(t("teacher.dashboard.stats.students", "Students"))) return "👥";
+        if (label.equals(t("teacher.dashboard.stats.present", "Present Today"))) return "✅";
+        if (label.equals(t("teacher.dashboard.stats.absent", "Absent Today"))) return "❌";
         return "📊";
+    }
+
+    private static String t(String key, String fallback) {
+        String value = FrontendI18n.t(key);
+        return key.equals(value) ? fallback : value;
     }
 }

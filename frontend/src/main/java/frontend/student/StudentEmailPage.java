@@ -6,7 +6,7 @@ import frontend.api.StudentTeacherApi;
 import frontend.auth.AppRouter;
 import frontend.auth.AuthState;
 import frontend.auth.JwtStore;
-import frontend.ui.HelperClass;
+import frontend.i18n.FrontendI18n;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -28,35 +28,34 @@ public class StudentEmailPage {
             System.getenv().getOrDefault("BACKEND_URL", "http://localhost:8081");
 
     private final ObservableList<TeacherRow> rows = FXCollections.observableArrayList();
-    private final HelperClass helper = new HelperClass();
 
     public Parent build(Scene scene, AppRouter router, JwtStore jwtStore, AuthState state) {
 
         String studentName = (state.getName() == null || state.getName().isBlank())
-                ? helper.getMessage("student.name.placeholder")
+                ? t("student.name.placeholder", "Name")
                 : state.getName();
 
         VBox page = new VBox(14);
         page.setPadding(new Insets(22));
         page.getStyleClass().add("page");
 
-        Label title = new Label(helper.getMessage("student.email.title"));
+        Label title = new Label(t("student.email.title", "Teacher Emails"));
         title.getStyleClass().add("title");
 
-        Label info = new Label(helper.getMessage("student.email.subtitle"));
+        Label info = new Label(t("student.email.subtitle", "View your teachers and their email addresses"));
         info.getStyleClass().add("subtitle");
 
-        Label status = new Label(helper.getMessage("student.email.status.loading"));
+        Label status = new Label(t("student.email.status.loading", "Loading teachers..."));
         status.getStyleClass().add("subtitle");
 
         TableView<TeacherRow> table = new TableView<>(rows);
         table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
         table.setPrefHeight(320);
 
-        TableColumn<TeacherRow, String> colName = new TableColumn<>(helper.getMessage("student.email.table.teacher"));
+        TableColumn<TeacherRow, String> colName = new TableColumn<>(t("student.email.table.teacher", "Teacher"));
         colName.setCellValueFactory(d -> d.getValue().teacherNameProperty());
 
-        TableColumn<TeacherRow, String> colEmail = new TableColumn<>(helper.getMessage("student.email.table.email"));
+        TableColumn<TeacherRow, String> colEmail = new TableColumn<>(t("student.email.table.email", "Email"));
         colEmail.setCellValueFactory(d -> d.getValue().emailProperty());
 
         table.getColumns().addAll(colName, colEmail);
@@ -67,11 +66,11 @@ public class StudentEmailPage {
 
         return AppLayout.wrapWithSidebar(
                 studentName,
-                helper.getMessage("student.panel.title"),
-                helper.getMessage("student.nav.dashboard"),
-                helper.getMessage("student.nav.markAttendance"),
-                helper.getMessage("student.nav.myAttendance"),
-                helper.getMessage("student.nav.email"),
+                t("student.panel.title", "Student Panel"),
+                t("student.nav.dashboard", "Dashboard"),
+                t("student.nav.markAttendance", "Mark Attendance"),
+                t("student.nav.myAttendance", "My Attendance"),
+                t("student.nav.email", "Email"),
                 page,
                 "fourth",
                 new AppLayout.Navigator() {
@@ -102,6 +101,14 @@ public class StudentEmailPage {
 
                 Platform.runLater(() -> {
                     rows.clear();
+
+                    if (list == null || list.isEmpty()) {
+                        statusLabel.setText(t("student.email.status.empty", "No teachers found."));
+                        return;
+                    }
+
+                    statusLabel.setText("");
+
                     for (Map<String, Object> t : list) {
                         String name = String.valueOf(t.getOrDefault("teacherName", ""));
                         String email = String.valueOf(t.getOrDefault("email", ""));
@@ -114,7 +121,7 @@ public class StudentEmailPage {
             protected void failed() {
                 Throwable e = getException();
                 Platform.runLater(() -> statusLabel.setText(
-                        helper.getMessage("student.email.status.error") + " " + (e == null ? "" : e.getMessage())
+                        t("student.email.status.error", "Failed to load teachers:") + " " + (e == null ? "" : e.getMessage())
                 ));
                 if (e != null) e.printStackTrace();
             }
@@ -123,5 +130,10 @@ public class StudentEmailPage {
         Thread th = new Thread(task);
         th.setDaemon(true);
         th.start();
+    }
+
+    private static String t(String key, String fallback) {
+        String value = FrontendI18n.t(key);
+        return key.equals(value) ? fallback : value;
     }
 }

@@ -2,13 +2,13 @@ package frontend.admin;
 
 import frontend.ClassRow;
 import frontend.UserRow;
-import frontend.ui.HelperClass;
+import frontend.i18n.FrontendI18n;
 import javafx.geometry.Pos;
 import javafx.scene.control.Button;
+import javafx.scene.control.Label;
 import javafx.scene.control.TableCell;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
-import javafx.scene.control.Label;
 import javafx.scene.layout.*;
 
 public class AdminUI {
@@ -138,25 +138,23 @@ public class AdminUI {
     }
 
     public static TableView<ClassRow> buildClassesTable() {
-        HelperClass helper = new HelperClass();
-
         TableView<ClassRow> table = new TableView<>();
         table.getStyleClass().add("table");
         table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
 
-        TableColumn<ClassRow, String> cName = new TableColumn<>(helper.getMessage("common.table.column.name"));
+        TableColumn<ClassRow, String> cName = new TableColumn<>(t("common.table.column.name", "Name"));
         cName.setCellValueFactory(d -> d.getValue().classNameProperty());
 
-        TableColumn<ClassRow, String> cCode = new TableColumn<>(helper.getMessage("common.table.column.class"));
+        TableColumn<ClassRow, String> cCode = new TableColumn<>(t("common.table.column.class", "Class"));
         cCode.setCellValueFactory(d -> d.getValue().codeProperty());
 
-        TableColumn<ClassRow, String> cTeacher = new TableColumn<>(helper.getMessage("admin.users.filter.teacher"));
+        TableColumn<ClassRow, String> cTeacher = new TableColumn<>(t("admin.users.filter.teacher", "Teacher"));
         cTeacher.setCellValueFactory(d -> d.getValue().teacherProperty());
 
-        TableColumn<ClassRow, String> cSchedule = new TableColumn<>(helper.getMessage("common.table.column.session"));
+        TableColumn<ClassRow, String> cSchedule = new TableColumn<>(t("common.table.column.session", "Session"));
         cSchedule.setCellValueFactory(d -> d.getValue().scheduleProperty());
 
-        TableColumn<ClassRow, String> cStudents = new TableColumn<>(helper.getMessage("admin.users.filter.student") + "s");
+        TableColumn<ClassRow, String> cStudents = new TableColumn<>(t("admin.ui.students", "Students"));
         cStudents.setCellValueFactory(d -> d.getValue().studentsProperty());
 
         table.getColumns().addAll(cName, cCode, cTeacher, cSchedule, cStudents);
@@ -164,22 +162,20 @@ public class AdminUI {
     }
 
     public static TableView<UserRow> buildUsersTable() {
-        HelperClass helper = new HelperClass();
-
         TableView<UserRow> table = new TableView<>();
         table.getStyleClass().add("table");
         table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
 
-        TableColumn<UserRow, String> cUser = new TableColumn<>(helper.getMessage("admin.users.table.user"));
+        TableColumn<UserRow, String> cUser = new TableColumn<>(t("admin.users.table.user", "User"));
         cUser.setCellValueFactory(d -> d.getValue().userProperty());
 
-        TableColumn<UserRow, String> cType = new TableColumn<>(helper.getMessage("admin.users.table.type"));
+        TableColumn<UserRow, String> cType = new TableColumn<>(t("admin.users.table.type", "Type"));
         cType.setCellValueFactory(d -> d.getValue().typeProperty());
 
-        TableColumn<UserRow, String> cEnrolled = new TableColumn<>(helper.getMessage("admin.users.table.enrolled"));
+        TableColumn<UserRow, String> cEnrolled = new TableColumn<>(t("admin.users.table.enrolled", "Enrolled"));
         cEnrolled.setCellValueFactory(d -> d.getValue().enrolledProperty());
 
-        TableColumn<UserRow, Void> cActions = new TableColumn<>(helper.getMessage("teacher.attendance.actions"));
+        TableColumn<UserRow, Void> cActions = new TableColumn<>(t("teacher.attendance.actions", "Actions"));
         cActions.setCellFactory(col -> new TableCell<>() {
             private final HBox box = new HBox(10);
             private final Button edit = iconBtn("✎");
@@ -200,11 +196,6 @@ public class AdminUI {
         });
 
         table.getColumns().addAll(cUser, cType, cEnrolled, cActions);
-        table.getItems().addAll(
-                new UserRow("User\nuser@example.com", "Admin", "-"),
-                new UserRow("teacher\nteacher@example.com", "Teacher", "4")
-        );
-
         return table;
     }
 
@@ -215,5 +206,10 @@ public class AdminUI {
         b.setMaxSize(26, 26);
         b.setFocusTraversable(false);
         return b;
+    }
+
+    private static String t(String key, String fallback) {
+        String value = FrontendI18n.t(key);
+        return key.equals(value) ? fallback : value;
     }
 }
