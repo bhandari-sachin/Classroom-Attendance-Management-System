@@ -78,13 +78,13 @@ public class CSVReportExporter {
             writer.newLine();
 
             if (rows != null && !rows.isEmpty()) {
-                writer.write("common.table.column.class"+"," + escape(rows.get(0).getClassName()));
+                writer.write(labels.get("common.table.column.class")+"," + escape(rows.get(0).getClassName()));
                 writer.newLine();
 
-                writer.write("signup.role.teacher"+"," + escape(rows.get(0).getTeacherName()));
+                writer.write(labels.get("signup.role.teacher")+"," + escape(rows.get(0).getTeacherName()));
                 writer.newLine();
 
-                writer.write("reports.export.dateRange"+"," + year);
+                writer.write(labels.get("reports.export.dateRange")+"," + year);
                 writer.newLine();
             }
 
