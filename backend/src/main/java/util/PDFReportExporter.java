@@ -3,11 +3,13 @@ package util;
 import com.lowagie.text.*;
 import com.lowagie.text.Font;
 import com.lowagie.text.pdf.*;
+import config.LocalizationSQL;
 import dto.*;
 
 import java.awt.*;
 import java.io.FileOutputStream;
 import java.util.List;
+import java.util.Map;
 
 public class PDFReportExporter {
 
@@ -18,19 +20,23 @@ public class PDFReportExporter {
     public static void studentYearReport(
             String file,
             int year,
-            List<StudentClassReportRow> rows
+            List<StudentClassReportRow> rows,
+            String lang
     ) throws Exception {
 
+        Map<String, String> labels= LocalizationSQL.getLabels(lang);
+        String rateLabel = labels.get("teacher.reports.stats.rate");
+        String rate = rateLabel.split(":")[0];
         Document doc = new Document();
         PdfWriter.getInstance(doc, new FileOutputStream(file));
         doc.open();
 
-        doc.add(new Paragraph("Student Attendance Report - " + year, title));
-        doc.add(new Paragraph("Student Code: " + rows.get(0).getStudentCode()));
+        doc.add(new Paragraph(labels.get("reports.export.studentTitle")+ " " + year, title));
+        doc.add(new Paragraph(labels.get("signup.studentcode.label")+ ": " + rows.get(0).getStudentCode()));
         doc.add(Chunk.NEWLINE);
 
         PdfPTable table = new PdfPTable(5);
-        addHeader(table, "Class", "Present", "Absent", "Excused", "Rate");
+        addHeader(table, labels.get("common.table.column.class"), labels.get("common.attendance.present"), labels.get("common.attendance.absent"), labels.get("common.attendance.excused"), rate);
 
         for (StudentClassReportRow r : rows) {
             table.addCell(r.getClassName());
@@ -47,19 +53,24 @@ public class PDFReportExporter {
     // Teacher report for all students in a class
     public static void teacherClassReport(
             String file,
-            List<TeacherStudentReportRow> rows
+            int year,
+            List<TeacherStudentReportRow> rows,
+            String lang
     ) throws Exception {
 
+        Map<String, String> labels= LocalizationSQL.getLabels(lang);
+        String rateLabel = labels.get("teacher.reports.stats.rate");
+        String rate = rateLabel.split(":")[0];
         Document doc = new Document();
         PdfWriter.getInstance(doc, new FileOutputStream(file));
         doc.open();
 
         // fetch school name when implemented
-        Paragraph school = new Paragraph("School Name", header);
+        Paragraph school = new Paragraph(labels.get("reports.export.schoolName"), header);
         school.setAlignment(Element.ALIGN_LEFT);
         doc.add(school);
 
-        Paragraph reportTitle = new Paragraph("Class Attendance Summary", title);
+        Paragraph reportTitle = new Paragraph(labels.get("reports.export.teacherTitle"), title);
         reportTitle.setAlignment(Element.ALIGN_CENTER);
         doc.add(reportTitle);
 
@@ -68,21 +79,21 @@ public class PDFReportExporter {
         PdfPTable infoTable = new PdfPTable(2);
         infoTable.setWidthPercentage(40);
 
-        infoTable.addCell("Class:");
+        infoTable.addCell(labels.get("common.table.column.class")+":");
         infoTable.addCell(rows.get(0).getClassName());
 
-        infoTable.addCell("Teacher:");
+        infoTable.addCell(labels.get("signup.role.teacher")+":");
         infoTable.addCell(rows.get(0).getTeacherName());
 
-        infoTable.addCell("Date Range:");
-        infoTable.addCell("year"); // to be implemented
+        infoTable.addCell(labels.get("reports.export.dateRange"));
+        infoTable.addCell(String.valueOf(year));
 
         doc.add(infoTable);
         doc.add(Chunk.NEWLINE);
 
         PdfPTable table = new PdfPTable(6);
         table.setWidthPercentage(100);
-        addHeader(table, "Student", "Present", "Absent", "Excused", "Total", "Rate");
+        addHeader(table, labels.get("signup.role.student"), labels.get("common.attendance.present"), labels.get("common.attendance.absent"), labels.get("common.attendance.excused"), labels.get("admin.reports.stats.total"), rate);
 
         for (TeacherStudentReportRow r : rows) {
             table.addCell(r.getStudentName());
@@ -100,18 +111,22 @@ public class PDFReportExporter {
     // Admin report for all students in the school
     public static void adminAllStudentsReport(
             String file,
-            List<AttendanceReportRow> rows
+            List<AttendanceReportRow> rows,
+            String lang
     ) throws Exception {
 
+        Map<String, String> labels= LocalizationSQL.getLabels(lang);
+        String rateLabel = labels.get("teacher.reports.stats.rate");
+        String rate = rateLabel.split(":")[0];
         Document doc = new Document();
         PdfWriter.getInstance(doc, new FileOutputStream(file));
         doc.open();
 
-        doc.add(new Paragraph("School Attendance Summary", title));
+        doc.add(new Paragraph(labels.get("reports.export.adminTitle"), title));
         doc.add(Chunk.NEWLINE);
 
         PdfPTable table = new PdfPTable(5);
-        addHeader(table, "Student", "Present", "Absent", "Excused", "Rate");
+        addHeader(table, labels.get("signup.role.student"), labels.get("common.attendance.present"), labels.get("common.attendance.absent"), labels.get("common.attendance.excused"), rate);
 
         for (AttendanceReportRow r : rows) {
             table.addCell(r.getStudentName());
@@ -136,4 +151,5 @@ public class PDFReportExporter {
             table.addCell(cell);
         }
     }
+
 }

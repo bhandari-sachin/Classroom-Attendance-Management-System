@@ -24,17 +24,17 @@ public class ReportApi {
     }
 
     public void exportStudentPdf(JwtStore store, AuthState state, String destPath) throws Exception {
-        String url = baseUrl + "/api/reports/export/student?format=pdf";
+        String url = baseUrl + "/api/reports/export/student?format=pdf&lang=" + state.getLanguage();
         download(url, token(store, state), destPath);
     }
 
     public void exportTeacherReport(JwtStore store, AuthState state, long classId, String format, String destPath) throws Exception {
-        String url = baseUrl + "/api/reports/export/teacher?classId=" + classId + "&format=" + format;
+        String url = baseUrl + "/api/reports/export/teacher?classId=" + classId + "&format=" + format+ "&lang=" + state.getLanguage();
         download(url, token(store, state), destPath);
     }
 
     public void exportAdminReport(JwtStore store, AuthState state, String format, String destPath) throws Exception {
-        String url = baseUrl + "/api/reports/export/admin?format=" + format;
+        String url = baseUrl + "/api/reports/export/admin?format=" + format + "&lang=" + state.getLanguage();
         download(url, token(store, state), destPath);
     }
 

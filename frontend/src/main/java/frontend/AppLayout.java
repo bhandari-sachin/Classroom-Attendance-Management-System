@@ -1,5 +1,7 @@
 package frontend;
 
+import frontend.auth.AuthState;
+import frontend.auth.JwtStore;
 import frontend.ui.HelperClass;
 import frontend.ui.UiPreferences;
 import javafx.geometry.Insets;
@@ -41,6 +43,8 @@ public class AppLayout {
     ) {
 
         HelperClass helper = new HelperClass();
+        JwtStore store = JwtStore.get();
+        AuthState state = store.load().orElseThrow(() -> new RuntimeException("Not logged in"));
         boolean isArabic = isRtl();
 
         BorderPane root = new BorderPane();
@@ -56,11 +60,11 @@ public class AppLayout {
         MenuItem am = new MenuItem(helper.getMessage("language.amharic"));
         MenuItem ne = new MenuItem(helper.getMessage("language.nepali"));
 
-        en.setOnAction(e -> { UiPreferences.setLanguage("en"); refreshCurrentPage(nav, activeKey); });
-        fi.setOnAction(e -> { UiPreferences.setLanguage("fi"); refreshCurrentPage(nav, activeKey); });
-        ar.setOnAction(e -> { UiPreferences.setLanguage("ar"); refreshCurrentPage(nav, activeKey); });
-        am.setOnAction(e -> { UiPreferences.setLanguage("am"); refreshCurrentPage(nav, activeKey); });
-        ne.setOnAction(e -> { UiPreferences.setLanguage("ne"); refreshCurrentPage(nav, activeKey); });
+        en.setOnAction(e -> { UiPreferences.setLanguage("en"); state.setLanguage("en"); store.save(state); refreshCurrentPage(nav, activeKey); });
+        fi.setOnAction(e -> { UiPreferences.setLanguage("fi"); state.setLanguage("fi"); store.save(state); refreshCurrentPage(nav, activeKey); });
+        ar.setOnAction(e -> { UiPreferences.setLanguage("ar"); state.setLanguage("ar"); store.save(state); refreshCurrentPage(nav, activeKey); });
+        am.setOnAction(e -> { UiPreferences.setLanguage("am"); state.setLanguage("am"); store.save(state); refreshCurrentPage(nav, activeKey); });
+        ne.setOnAction(e -> { UiPreferences.setLanguage("ne"); state.setLanguage("ne"); store.save(state); refreshCurrentPage(nav, activeKey); });
 
         globe.getItems().addAll(en, fi, ar, am, ne);
 
@@ -183,5 +187,9 @@ public class AppLayout {
         l.setNodeOrientation(isArabic ? NodeOrientation.RIGHT_TO_LEFT : NodeOrientation.LEFT_TO_RIGHT);
 
         return l;
+    }
+
+    private static AuthState getCurrentState(JwtStore store) {
+        return store.load().orElseThrow(() -> new RuntimeException("Not logged in"));
     }
 }

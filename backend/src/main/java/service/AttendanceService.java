@@ -123,9 +123,10 @@ public class AttendanceService {
 
     public List<AttendanceView> filterAttendance(
             Long classId,
-            String searchTerm
+            String searchTerm,
+            String languageCode
     ) {
-        return attendanceSQL.filterAttendanceByStudent(classId, searchTerm);
+        return attendanceSQL.filterAttendanceByStudent(classId, searchTerm, languageCode);
     }
     public dto.AttendanceStats getOverallStats() {
         return attendanceSQL.getOverallStats();
@@ -136,15 +137,15 @@ public class AttendanceService {
 
 
 
-    public List<dto.AttendanceView> getStudentAttendanceViews(Long studentId) {
-        return attendanceSQL.getStudentAttendanceViews(studentId);
+    public List<dto.AttendanceView> getStudentAttendanceViews(Long studentId, String languageCode) {
+        return attendanceSQL.getStudentAttendanceViews(studentId, languageCode);
     }
     public AttendanceStats getStudentStats(Long studentId, Long classId, String period) {
         return attendanceSQL.getStudentStats(studentId, classId, period);
     }
 
-    public List<dto.AttendanceView> getStudentAttendanceViews(Long studentId, Long classId, String period) {
-        return attendanceSQL.getStudentAttendanceViews(studentId, classId, period);
+    public List<dto.AttendanceView> getStudentAttendanceViews(Long studentId, Long classId, String period, String languageCode) {
+        return attendanceSQL.getStudentAttendanceViews(studentId, classId, period, languageCode);
     }
 
 }
