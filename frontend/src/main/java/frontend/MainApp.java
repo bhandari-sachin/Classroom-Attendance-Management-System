@@ -80,9 +80,9 @@ public class MainApp extends Application {
         router.register("teacher-email", guard(router, store, Set.of(Role.TEACHER),
                 () -> new TeacherEmailPage().build(scene, router, store, store.load().orElseThrow())));
 
-        // Role previewRole = Role.STUDENT;
-        // Role previewRole = Role.TEACHER;
-        Role previewRole = Role.ADMIN;
+        //Role previewRole = Role.STUDENT;
+        //Role previewRole = Role.TEACHER;
+         Role previewRole = Role.ADMIN;
 
         store.clear();
         store.save(new AuthState("demo-token", previewRole, "Demo User"));
