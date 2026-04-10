@@ -19,6 +19,7 @@ public class TeacherSessionReportHandler implements HttpHandler {
     private final ClassSQL classSQL;
     private final SessionSQL sessionSQL;
     private final AttendanceSQL attendanceSQL;
+    private static final String ERROR = "error";
 
     public TeacherSessionReportHandler(JwtService jwtService, ClassSQL classSQL, SessionSQL sessionSQL, AttendanceSQL attendanceSQL) {
         this.jwtService = jwtService;
@@ -42,13 +43,13 @@ public class TeacherSessionReportHandler implements HttpHandler {
             String qs = uri.getQuery();
             Long sessionId = Query.getLong(qs, "sessionId");
             if (sessionId == null) {
-                HttpUtil.json(ex, 400, Map.of("error", "sessionId is required"));
+                HttpUtil.json(ex, 400, Map.of(ERROR, "sessionId is required"));
                 return;
             }
 
             Session session = sessionSQL.findById(sessionId);
             if (session == null) {
-                HttpUtil.json(ex, 404, Map.of("error", "Session not found"));
+                HttpUtil.json(ex, 404, Map.of(ERROR, "Session not found"));
                 return;
             }
 
@@ -58,7 +59,7 @@ public class TeacherSessionReportHandler implements HttpHandler {
 
             String role = jwt.getClaim("role").isNull() ? "" : jwt.getClaim("role").asString();
             if (!"ADMIN".equalsIgnoreCase(role) && !classSQL.isClassOwnedByTeacher(session.getClassId(), teacherId)) {
-                HttpUtil.json(ex, 403, Map.of("error", "Forbidden: not your session"));
+                HttpUtil.json(ex, 403, Map.of(ERROR, "Forbidden: not your session"));
                 return;
             }
 
@@ -77,10 +78,10 @@ public class TeacherSessionReportHandler implements HttpHandler {
             ));
 
         } catch (SecurityException se) {
-            HttpUtil.json(ex, 401, Map.of("error", se.getMessage()));
+            HttpUtil.json(ex, 401, Map.of(ERROR, se.getMessage()));
         } catch (Exception e) {
             e.printStackTrace();
-            HttpUtil.json(ex, 500, Map.of("error", "Server error"));
+            HttpUtil.json(ex, 500, Map.of(ERROR, "Server error"));
         }
     }
 }

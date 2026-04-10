@@ -2,7 +2,6 @@ package http;
 
 import security.Auth;
 import security.JwtService;
-import com.auth0.jwt.interfaces.DecodedJWT;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import service.AttendanceService;
@@ -13,8 +12,8 @@ import java.util.Map;
 public class MarkAttendanceHandler implements HttpHandler {
 
     private final JwtService jwtService;
-
     private final AttendanceService attendanceService;
+    private static final String ERROR = "error";
 
     public MarkAttendanceHandler(JwtService jwtService, AttendanceService attendanceService) {
         this.jwtService = jwtService;
@@ -38,7 +37,7 @@ public class MarkAttendanceHandler implements HttpHandler {
 
             String code = (String) body.get("code");
             if (code == null || code.isBlank()) {
-                HttpUtil.json(ex, 400, Map.of("error", "Attendance code required"));
+                HttpUtil.json(ex, 400, Map.of(ERROR, "Attendance code required"));
                 return;
             }
 
@@ -51,12 +50,12 @@ public class MarkAttendanceHandler implements HttpHandler {
             HttpUtil.json(ex, 200, Map.of("status", "attendance marked"));
 
         } catch (SecurityException se) {
-            HttpUtil.json(ex, 403, Map.of("error", se.getMessage()));
+            HttpUtil.json(ex, 403, Map.of(ERROR, se.getMessage()));
         } catch (IllegalArgumentException bad) {
-            HttpUtil.json(ex, 400, Map.of("error", bad.getMessage()));
+            HttpUtil.json(ex, 400, Map.of(ERROR, bad.getMessage()));
         } catch (Exception e) {
             e.printStackTrace();
-            HttpUtil.json(ex, 500, Map.of("error", "Server error"));
+            HttpUtil.json(ex, 500, Map.of(ERROR, "Server error"));
         }
     }
 }

@@ -15,6 +15,7 @@ public class StudentAttendanceSummaryHandler implements HttpHandler {
 
     private final JwtService jwtService;
     private final AttendanceService attendanceService;
+    private static final String ERROR = "error";
 
     public StudentAttendanceSummaryHandler(JwtService jwtService, AttendanceService attendanceService) {
         this.jwtService = jwtService;
@@ -28,7 +29,7 @@ public class StudentAttendanceSummaryHandler implements HttpHandler {
             Auth.requireRole(jwt, "STUDENT");
 
             if (!"GET".equalsIgnoreCase(ex.getRequestMethod())) {
-                HttpUtil.json(ex, 405, Map.of("error", "Method Not Allowed"));
+                HttpUtil.json(ex, 405, Map.of(ERROR, "Method Not Allowed"));
                 return;
             }
 
@@ -47,10 +48,10 @@ public class StudentAttendanceSummaryHandler implements HttpHandler {
             ));
 
         } catch (SecurityException se) {
-            HttpUtil.json(ex, 403, Map.of("error", se.getMessage()));
+            HttpUtil.json(ex, 403, Map.of(ERROR, se.getMessage()));
         } catch (Exception e) {
             e.printStackTrace();
-            HttpUtil.json(ex, 500, Map.of("error", "Server error"));
+            HttpUtil.json(ex, 500, Map.of(ERROR, "Server error"));
         }
     }
 }

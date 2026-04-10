@@ -1,7 +1,6 @@
 package http;
 
 import com.auth0.jwt.interfaces.DecodedJWT;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import model.User;
@@ -17,7 +16,6 @@ public class AdminUsersHandler implements HttpHandler {
 
     private final UserRepository users;
     private final JwtService jwtService;
-    private final ObjectMapper om = new ObjectMapper();
 
     public AdminUsersHandler(UserRepository users, JwtService jwtService) {
         this.users = users;
@@ -42,7 +40,6 @@ public class AdminUsersHandler implements HttpHandler {
             List<User> all = users.findAll();
 
             // Shape exactly as frontend expects:
-            // {"students":..,"teachers":..,"admins":..,"users":[{"name","email","role","enrolled"}]}
             List<Map<String, Object>> list = new ArrayList<>();
             for (User u : all) {
                 String name = (u.getFirstName() + " " + u.getLastName()).trim();

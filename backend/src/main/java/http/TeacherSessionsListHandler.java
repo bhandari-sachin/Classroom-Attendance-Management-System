@@ -19,6 +19,7 @@ public class TeacherSessionsListHandler implements HttpHandler {
     private final JwtService jwtService;
     private final ClassSQL classSQL;
     private final SessionSQL sessionSQL;
+    private static final String ERROR = "error";
 
     public TeacherSessionsListHandler(JwtService jwtService, ClassSQL classSQL, SessionSQL sessionSQL) {
         this.jwtService = jwtService;
@@ -40,7 +41,7 @@ public class TeacherSessionsListHandler implements HttpHandler {
             String query = ex.getRequestURI().getQuery(); // classId=123
             Long classId = parseLongQueryParam(query, "classId");
             if (classId == null) {
-                HttpUtil.json(ex, 400, Map.of("error", "classId is required"));
+                HttpUtil.json(ex, 400, Map.of(ERROR, "classId is required"));
                 return;
             }
 
@@ -52,7 +53,7 @@ public class TeacherSessionsListHandler implements HttpHandler {
 
             // Teacher can only list sessions for their own class (admin can list any)
             if (!"ADMIN".equalsIgnoreCase(role) && !classSQL.isClassOwnedByTeacher(classId, teacherId)) {
-                HttpUtil.json(ex, 403, Map.of("error", "Forbidden: not your class"));
+                HttpUtil.json(ex, 403, Map.of(ERROR, "Forbidden: not your class"));
                 return;
             }
 
@@ -71,10 +72,10 @@ public class TeacherSessionsListHandler implements HttpHandler {
             HttpUtil.json(ex, 200, Map.of("data", payload));
 
         } catch (SecurityException se) {
-            HttpUtil.json(ex, 401, Map.of("error", se.getMessage()));
+            HttpUtil.json(ex, 401, Map.of(ERROR, se.getMessage()));
         } catch (Exception e) {
             e.printStackTrace();
-            HttpUtil.json(ex, 500, Map.of("error", "Server error"));
+            HttpUtil.json(ex, 500, Map.of(ERROR, "Server error"));
         }
     }
 
@@ -83,7 +84,10 @@ public class TeacherSessionsListHandler implements HttpHandler {
         for (String part : query.split("&")) {
             String[] kv = part.split("=", 2);
             if (kv.length == 2 && kv[0].equals(key)) {
-                try { return Long.parseLong(kv[1]); } catch (Exception ignored) {}
+                try { return Long.parseLong(kv[1]); } catch (Exception ignored) {
+                    // Intentionally ignored: query parameter is malformed or not a valid long.
+                    // Returning null allows the caller to handle missing/invalid values uniformly.
+                }
             }
         }
         return null;

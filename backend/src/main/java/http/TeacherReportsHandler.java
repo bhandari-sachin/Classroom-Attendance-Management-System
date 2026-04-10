@@ -15,6 +15,7 @@ public class TeacherReportsHandler implements HttpHandler {
     private final JwtService jwtService;
     private final AttendanceSQL attendanceSQL;
     private final ClassSQL classSQL;
+    private static final String ERROR = "error";
 
     public TeacherReportsHandler(JwtService jwtService, AttendanceSQL attendanceSQL, ClassSQL classSQL) {
         this.jwtService = jwtService;
@@ -45,7 +46,7 @@ public class TeacherReportsHandler implements HttpHandler {
             }
 
             if (classId == null) {
-                HttpUtil.json(ex, 400, Map.of("error", "classId query param is required"));
+                HttpUtil.json(ex, 400, Map.of(ERROR, "classId query param is required"));
                 return;
             }
 
@@ -56,7 +57,7 @@ public class TeacherReportsHandler implements HttpHandler {
             String role = jwt.getClaim("role").isNull() ? "" : jwt.getClaim("role").asString();
 
             if (!"ADMIN".equalsIgnoreCase(role) && !classSQL.isClassOwnedByTeacher(classId, teacherId)) {
-                HttpUtil.json(ex, 403, Map.of("error", "Forbidden: not your class"));
+                HttpUtil.json(ex, 403, Map.of(ERROR, "Forbidden: not your class"));
                 return;
             }
 
@@ -68,10 +69,10 @@ public class TeacherReportsHandler implements HttpHandler {
             ));
 
         } catch (SecurityException se) {
-            HttpUtil.json(ex, 401, Map.of("error", se.getMessage()));
+            HttpUtil.json(ex, 401, Map.of(ERROR, se.getMessage()));
         } catch (Exception e) {
             e.printStackTrace();
-            HttpUtil.json(ex, 500, Map.of("error", "Server error"));
+            HttpUtil.json(ex, 500, Map.of(ERROR, "Server error"));
         }
     }
 }

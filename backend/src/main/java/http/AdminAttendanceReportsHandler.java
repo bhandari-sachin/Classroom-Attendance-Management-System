@@ -15,6 +15,7 @@ public class AdminAttendanceReportsHandler implements HttpHandler {
 
     private final JwtService jwtService;
     private final AttendanceSQL attendanceSQL;
+    private String error = "error";
 
     public AdminAttendanceReportsHandler(JwtService jwtService, AttendanceSQL attendanceSQL) {
         this.jwtService = jwtService;
@@ -44,7 +45,7 @@ public class AdminAttendanceReportsHandler implements HttpHandler {
             }
 
             if (classId == null) {
-                HttpUtil.json(ex, 400, Map.of("error", "classId is required"));
+                HttpUtil.json(ex, 400, Map.of(error, "classId is required"));
                 return;
             }
 
@@ -56,10 +57,10 @@ public class AdminAttendanceReportsHandler implements HttpHandler {
             HttpUtil.json(ex, 200, rows);
 
         } catch (SecurityException sec) {
-            HttpUtil.json(ex, 401, Map.of("error", sec.getMessage()));
+            HttpUtil.json(ex, 401, Map.of(error, sec.getMessage()));
         } catch (Exception e) {
             e.printStackTrace();
-            HttpUtil.json(ex, 500, Map.of("error", "Server error"));
+            HttpUtil.json(ex, 500, Map.of(error, "Server error"));
         }
     }
 }

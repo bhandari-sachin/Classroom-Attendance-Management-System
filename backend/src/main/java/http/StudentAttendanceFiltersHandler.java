@@ -15,6 +15,9 @@ public class StudentAttendanceFiltersHandler implements HttpHandler {
 
     private final JwtService jwtService;
     private final ClassSQL classSQL;
+    private static final String ERROR = "error";
+    private static final String LABEL = "label";
+    private static final String VALUE = "value";
 
     public StudentAttendanceFiltersHandler(JwtService jwtService, ClassSQL classSQL) {
         this.jwtService = jwtService;
@@ -28,7 +31,7 @@ public class StudentAttendanceFiltersHandler implements HttpHandler {
             Auth.requireRole(jwt, "STUDENT");
 
             if (!"GET".equalsIgnoreCase(ex.getRequestMethod())) {
-                HttpUtil.json(ex, 405, Map.of("error", "Method Not Allowed"));
+                HttpUtil.json(ex, 405, Map.of(ERROR, "Method Not Allowed"));
                 return;
             }
 
@@ -37,10 +40,10 @@ public class StudentAttendanceFiltersHandler implements HttpHandler {
             List<Map<String, Object>> classes = classSQL.listClassesForStudent(studentId);
 
             List<Map<String, String>> periods = List.of(
-                    Map.of("value", "ALL", "label", "All Time"),
-                    Map.of("value", "THIS_MONTH", "label", "This Month"),
-                    Map.of("value", "LAST_MONTH", "label", "Last Month"),
-                    Map.of("value", "THIS_YEAR", "label", "This Year")
+                    Map.of(VALUE, "ALL", LABEL, "All Time"),
+                    Map.of(VALUE, "THIS_MONTH", LABEL, "This Month"),
+                    Map.of(VALUE, "LAST_MONTH", LABEL, "Last Month"),
+                    Map.of(VALUE, "THIS_YEAR", LABEL, "This Year")
             );
 
             HttpUtil.json(ex, 200, Map.of(
@@ -49,10 +52,10 @@ public class StudentAttendanceFiltersHandler implements HttpHandler {
             ));
 
         } catch (SecurityException se) {
-            HttpUtil.json(ex, 403, Map.of("error", se.getMessage()));
+            HttpUtil.json(ex, 403, Map.of(ERROR, se.getMessage()));
         } catch (Exception e) {
             e.printStackTrace();
-            HttpUtil.json(ex, 500, Map.of("error", "Server error"));
+            HttpUtil.json(ex, 500, Map.of(ERROR, "Server error"));
         }
     }
 }

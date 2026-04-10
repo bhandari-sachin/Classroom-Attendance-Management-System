@@ -10,6 +10,7 @@ import security.Auth;
 import security.JwtService;
 
 import java.io.IOException;
+import com.auth0.jwt.exceptions.JWTVerificationException;
 import java.net.URI;
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -22,6 +23,9 @@ public class TeacherSessionsHandler implements HttpHandler {
     private final ClassSQL classSQL;
     private final SessionSQL sessionSQL;
     private final ObjectMapper om = new ObjectMapper();
+    private static final String ERROR = "error";
+    private static final String ADMIN_ROLE = "ADMIN";
+    private static final String CLASS_ID = "classId";
 
     public TeacherSessionsHandler(JwtService jwtService, ClassSQL classSQL, SessionSQL sessionSQL) {
         this.jwtService = jwtService;
@@ -33,7 +37,7 @@ public class TeacherSessionsHandler implements HttpHandler {
     public void handle(HttpExchange ex) throws IOException {
         try {
             var jwt = Auth.requireJwt(ex, jwtService);
-            Auth.requireRole(jwt, "TEACHER", "ADMIN");
+            Auth.requireRole(jwt, "TEACHER", ADMIN_ROLE);
 
             String method = ex.getRequestMethod();
 
@@ -50,22 +54,22 @@ public class TeacherSessionsHandler implements HttpHandler {
             HttpUtil.send(ex, 405, "Method Not Allowed");
 
         } catch (SecurityException se) {
-            HttpUtil.json(ex, 401, Map.of("error", se.getMessage()));
+            HttpUtil.json(ex, 401, Map.of(ERROR, se.getMessage()));
         } catch (IllegalArgumentException bad) {
-            HttpUtil.json(ex, 400, Map.of("error", bad.getMessage()));
+            HttpUtil.json(ex, 400, Map.of(ERROR, bad.getMessage()));
         } catch (Exception e) {
             e.printStackTrace();
-            HttpUtil.json(ex, 500, Map.of("error", "Server error"));
+            HttpUtil.json(ex, 500, Map.of(ERROR, "Server error"));
         }
     }
 
-    private void handleList(HttpExchange ex, com.auth0.jwt.interfaces.DecodedJWT jwt) throws Exception {
+    private void handleList(HttpExchange ex, com.auth0.jwt.interfaces.DecodedJWT jwt) throws JWTVerificationException, IOException {
         URI uri = ex.getRequestURI();
         String qs = uri.getQuery(); // classId=123
 
-        Long classId = Query.getLong(qs, "classId");
+        Long classId = Query.getLong(qs, CLASS_ID);
         if (classId == null) {
-            HttpUtil.json(ex, 400, Map.of("error", "classId is required"));
+            HttpUtil.json(ex, 400, Map.of(ERROR, "classId is required"));
             return;
         }
 
@@ -74,8 +78,8 @@ public class TeacherSessionsHandler implements HttpHandler {
                 : jwt.getClaim("id").asLong();
 
         String role = jwt.getClaim("role").isNull() ? "" : jwt.getClaim("role").asString();
-        if (!"ADMIN".equalsIgnoreCase(role) && !classSQL.isClassOwnedByTeacher(classId, teacherId)) {
-            HttpUtil.json(ex, 403, Map.of("error", "Forbidden: not your class"));
+        if (!ADMIN_ROLE.equalsIgnoreCase(role) && !classSQL.isClassOwnedByTeacher(classId, teacherId)) {
+            HttpUtil.json(ex, 403, Map.of(ERROR, "Forbidden: not your class"));
             return;
         }
 
@@ -85,13 +89,13 @@ public class TeacherSessionsHandler implements HttpHandler {
         HttpUtil.json(ex, 200, Map.of("data", sessions));
     }
 
-    private void handleCreate(HttpExchange ex, com.auth0.jwt.interfaces.DecodedJWT jwt) throws Exception {
+    private void handleCreate(HttpExchange ex, com.auth0.jwt.interfaces.DecodedJWT jwt) throws JWTVerificationException, IOException {
 
         Map<String, Object> body = om.readValue(ex.getRequestBody(), new TypeReference<>() {});
 
-        Object classIdRaw = body.get("classId");
+        Object classIdRaw = body.get(CLASS_ID);
         if (classIdRaw == null) {
-            HttpUtil.json(ex, 400, Map.of("error", "classId is required"));
+            HttpUtil.json(ex, 400, Map.of(ERROR, "classId is required"));
             return;
         }
 
@@ -104,8 +108,8 @@ public class TeacherSessionsHandler implements HttpHandler {
                 : jwt.getClaim("id").asLong();
 
         String role = jwt.getClaim("role").isNull() ? "" : jwt.getClaim("role").asString();
-        if (!"ADMIN".equalsIgnoreCase(role) && !classSQL.isClassOwnedByTeacher(classId, teacherId)) {
-            HttpUtil.json(ex, 403, Map.of("error", "Forbidden: not your class"));
+        if (!ADMIN_ROLE.equalsIgnoreCase(role) && !classSQL.isClassOwnedByTeacher(classId, teacherId)) {
+            HttpUtil.json(ex, 403, Map.of(ERROR, "Forbidden: not your class"));
             return;
         }
 
@@ -117,7 +121,7 @@ public class TeacherSessionsHandler implements HttpHandler {
         if (end == null) end = start.plusHours(1);
 
         if (!end.isAfter(start)) {
-            HttpUtil.json(ex, 400, Map.of("error", "endTime must be after startTime"));
+            HttpUtil.json(ex, 400, Map.of(ERROR, "endTime must be after startTime"));
             return;
         }
 
@@ -127,7 +131,7 @@ public class TeacherSessionsHandler implements HttpHandler {
 
         HttpUtil.json(ex, 201, Map.of(
                 "sessionId", sessionId,
-                "classId", classId,
+                CLASS_ID, classId,
                 "date", LocalDate.now().toString(),
                 "startTime", start.toString(),
                 "endTime", end.toString(),

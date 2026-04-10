@@ -18,6 +18,7 @@ public class LoginHandler implements HttpHandler {
     private final JwtService jwtService;
     private final ObjectMapper om = new ObjectMapper();
     private final BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
+    private static  final String ERROR = "error";
 
     public LoginHandler(UserRepository users, JwtService jwtService) {
         this.users = users;
@@ -35,7 +36,7 @@ public class LoginHandler implements HttpHandler {
         try {
             body = om.readValue(ex.getRequestBody(), new TypeReference<>() {});
         } catch (Exception parseErr) {
-            HttpUtil.json(ex, 400, Map.of("error", "Invalid JSON"));
+            HttpUtil.json(ex, 400, Map.of(ERROR, "Invalid JSON"));
             return;
         }
 
@@ -47,14 +48,14 @@ public class LoginHandler implements HttpHandler {
         if (password != null) password = password.trim();
 
         if (email == null || email.isBlank() || password == null || password.isBlank()) {
-            HttpUtil.json(ex, 400, Map.of("error", "Email and password are required"));
+            HttpUtil.json(ex, 400, Map.of(ERROR, "Email and password are required"));
             return;
         }
 
         User user = users.findByEmail(email).orElse(null);
 
         if (user == null || !encoder.matches(password, user.getPasswordHash())) {
-            HttpUtil.json(ex, 401, Map.of("error", "Invalid credentials"));
+            HttpUtil.json(ex, 401, Map.of(ERROR, "Invalid credentials"));
             return;
         }
 

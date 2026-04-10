@@ -16,6 +16,7 @@ public class StartSessionHandler implements HttpHandler {
 
     private final JwtService jwtService;
     private final SessionService sessionService;
+    private static final String ERROR = "error";
 
     public StartSessionHandler(JwtService jwtService, SessionService sessionService) {
         this.jwtService = jwtService;
@@ -29,7 +30,7 @@ public class StartSessionHandler implements HttpHandler {
             Auth.requireRole(jwt, "TEACHER");
 
             if (!"POST".equalsIgnoreCase(ex.getRequestMethod())) {
-                HttpUtil.json(ex, 405, Map.of("error", "Method not allowed"));
+                HttpUtil.json(ex, 405, Map.of(ERROR, "Method not allowed"));
                 return;
             }
 
@@ -37,7 +38,7 @@ public class StartSessionHandler implements HttpHandler {
 
             Number sessionIdRaw = (Number) body.get("sessionId");
             if (sessionIdRaw == null) {
-                HttpUtil.json(ex, 400, Map.of("error", "sessionId is required"));
+                HttpUtil.json(ex, 400, Map.of(ERROR, "sessionId is required"));
                 return;
             }
 
@@ -51,10 +52,10 @@ public class StartSessionHandler implements HttpHandler {
             ));
 
         } catch (SecurityException se) {
-            HttpUtil.json(ex, 403, Map.of("error", se.getMessage()));
+            HttpUtil.json(ex, 403, Map.of(ERROR, se.getMessage()));
         } catch (Exception e) {
             e.printStackTrace();
-            HttpUtil.json(ex, 500, Map.of("error", "Server error"));
+            HttpUtil.json(ex, 500, Map.of(ERROR, "Server error"));
         }
     }
 }
