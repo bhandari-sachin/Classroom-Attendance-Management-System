@@ -81,7 +81,6 @@ public class ReportHandler implements HttpHandler {
         } catch (IllegalArgumentException badReq) {
             HttpUtil.json(ex, 400, java.util.Map.of(ERROR, badReq.getMessage()));
         } catch (Exception e) {
-            e.printStackTrace();
             HttpUtil.json(ex, 500, java.util.Map.of(ERROR, "Server error"));
         }
     }

@@ -4,6 +4,7 @@ import com.auth0.jwt.interfaces.DecodedJWT;
 import com.sun.net.httpserver.HttpExchange;
 import config.ClassSQL;
 import config.SessionSQL;
+import exception.DatabaseException;
 import model.Session;
 import security.JwtService;
 
@@ -55,7 +56,7 @@ public class TeacherSessionsListHandler extends BaseHandler {
         try {
             sessions = Collections.singletonList(sessionSQL.findById(classId));
         } catch (SQLException e) {
-            throw new RuntimeException(e);
+            throw new DatabaseException("Failed to fetch session by classId: " + classId, e);
         }
 
         List<Map<String, Object>> payload = new ArrayList<>();
@@ -80,7 +81,10 @@ public class TeacherSessionsListHandler extends BaseHandler {
             if (kv.length == 2 && kv[0].equals(key)) {
                 try {
                     return Long.parseLong(kv[1]);
-                } catch (Exception ignored) {}
+                } catch (Exception ignored) {
+                    // If the query parameter exists but is not a valid number,
+                    // Returning null is handled by the caller as "missing/invalid input".
+                }
             }
         }
         return null;

@@ -1,4 +1,4 @@
-package http;
+package exception;
 
 public class ApiException extends RuntimeException {
     private final int status;

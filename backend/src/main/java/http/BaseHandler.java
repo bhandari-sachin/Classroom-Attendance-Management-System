@@ -3,6 +3,7 @@ package http;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
+import exception.ApiException;
 import security.JwtService;
 
 import java.io.IOException;
@@ -12,6 +13,9 @@ abstract class BaseHandler implements HttpHandler {
 
     protected abstract void handleRequest(HttpExchange ex, RequestContext ctx) throws IOException;
 
+    private static final String ERROR = "error";
+    private static final String TEACHER = "TEACHER";
+    private static final String ADMIN = "ADMIN";
     protected final JwtService jwtService;
     private final String[] methods;
 
@@ -19,8 +23,6 @@ abstract class BaseHandler implements HttpHandler {
         this.jwtService = jwtService;
         this.methods = methods;
     }
-
-    private static final String ERROR = "error";
 
     @Override
     public void handle(HttpExchange ex) throws IOException {
@@ -39,7 +41,6 @@ abstract class BaseHandler implements HttpHandler {
         } catch (SecurityException se) {
             HttpUtil.json(ex, 403, Map.of(ERROR, se.getMessage()));
         } catch (Exception e) {
-            e.printStackTrace();
             HttpUtil.json(ex, 500, Map.of(ERROR, e.getMessage()));
         }
     }
@@ -66,27 +67,19 @@ abstract class BaseHandler implements HttpHandler {
     }
 
     protected DecodedJWT requireTeacher(HttpExchange ex, RequestContext ctx) {
-        return requireRole(ex, ctx, "TEACHER");
+        return requireRole(ex, ctx, TEACHER);
     }
 
     protected DecodedJWT requireAdmin(HttpExchange ex, RequestContext ctx) {
-        return requireRole(ex, ctx, "ADMIN");
+        return requireRole(ex, ctx, ADMIN);
     }
 
     protected DecodedJWT requireAnyAuthenticated(HttpExchange ex, RequestContext ctx) {
-        return requireRole(ex, ctx, "STUDENT", "TEACHER", "ADMIN");
+        return requireRole(ex, ctx, "STUDENT", TEACHER, ADMIN);
     }
 
     protected DecodedJWT requireTeacherOrAdmin(HttpExchange ex, RequestContext ctx) {
-        return requireRole(ex, ctx, "TEACHER", "ADMIN");
-    }
-
-    protected boolean isMethod(HttpExchange ex, String method) {
-        return method.equalsIgnoreCase(ex.getRequestMethod());
-    }
-
-    protected void methodNotAllowed(HttpExchange ex) throws IOException {
-        HttpUtil.send(ex, 405, "Method Not Allowed");
+        return requireRole(ex, ctx, TEACHER, ADMIN);
     }
 
     protected static class RequestContext {

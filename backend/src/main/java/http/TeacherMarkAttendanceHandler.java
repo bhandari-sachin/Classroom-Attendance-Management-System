@@ -1,11 +1,9 @@
 package http;
 
-import com.auth0.jwt.interfaces.DecodedJWT;
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
-import security.Auth;
+import exception.ApiException;
 import security.JwtService;
 import service.AttendanceService;
 

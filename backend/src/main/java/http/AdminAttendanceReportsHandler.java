@@ -1,14 +1,13 @@
 package http;
 
-import com.auth0.jwt.interfaces.DecodedJWT;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import config.AttendanceSQL;
+import exception.ApiException;
 import security.JwtService;
 
 import java.io.IOException;
 import java.util.List;
-import java.util.Map;
 
 public class AdminAttendanceReportsHandler extends BaseHandler implements HttpHandler {
 

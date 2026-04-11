@@ -5,6 +5,7 @@ import com.sun.net.httpserver.HttpExchange;
 import config.AttendanceSQL;
 import config.ClassSQL;
 import config.SessionSQL;
+import exception.ApiException;
 import model.Session;
 import security.JwtService;
 
