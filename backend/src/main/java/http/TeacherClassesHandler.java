@@ -1,5 +1,6 @@
 package http;
 
+import com.auth0.jwt.interfaces.DecodedJWT;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import config.ClassSQL;
@@ -9,40 +10,31 @@ import security.JwtService;
 import java.io.IOException;
 import java.util.Map;
 
-public class TeacherClassesHandler implements HttpHandler {
+public class TeacherClassesHandler extends BaseHandler implements HttpHandler {
 
-    private final JwtService jwtService;
     private final ClassSQL classSQL;
 
     public TeacherClassesHandler(JwtService jwtService, ClassSQL classSQL) {
-        this.jwtService = jwtService;
+        super(jwtService);
         this.classSQL = classSQL;
     }
 
     @Override
-    public void handle(HttpExchange ex) throws IOException {
-        try {
-            var jwt = Auth.requireJwt(ex, jwtService);
-            Auth.requireRole(jwt, "TEACHER", "ADMIN");
+    protected boolean supportsMethod(String method) {
+        return method.equalsIgnoreCase("GET");
+    }
 
-            if (!"GET".equalsIgnoreCase(ex.getRequestMethod())) {
-                HttpUtil.send(ex, 405, "Method Not Allowed");
-                return;
-            }
+    @Override
+    protected String[] roles() {
+        return new String[]{"ADMIN", "TEACHER"};
+    }
 
-            long teacherId = jwt.getClaim("id").isNull()
-                    ? Long.parseLong(jwt.getSubject())
-                    : jwt.getClaim("id").asLong();
+    @Override
+    protected void handleRequest(HttpExchange ex, RequestContext ctx) throws IOException {
+        Long teacherId = ctx.getUserId();
 
-            var list = classSQL.listForTeacher(teacherId);
+        var list = classSQL.listForTeacher(teacherId);
 
-            HttpUtil.json(ex, 200, list);
-
-        } catch (SecurityException se) {
-            HttpUtil.json(ex, 401, Map.of("error", se.getMessage()));
-        } catch (Exception e) {
-            e.printStackTrace();
-            HttpUtil.json(ex, 500, Map.of("error", "Server error"));
-        }
+        HttpUtil.json(ex, 200, list);
     }
 }

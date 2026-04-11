@@ -1,116 +1,107 @@
 package http;
 
+import com.auth0.jwt.interfaces.DecodedJWT;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import config.ClassSQL;
 import config.SessionSQL;
-import security.Auth;
 import security.JwtService;
 
 import java.io.IOException;
-import com.auth0.jwt.exceptions.JWTVerificationException;
-import java.net.URI;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.Map;
 import java.util.UUID;
 
-public class TeacherSessionsHandler implements HttpHandler {
+public class TeacherSessionsHandler extends BaseHandler implements HttpHandler {
 
-    private final JwtService jwtService;
     private final ClassSQL classSQL;
     private final SessionSQL sessionSQL;
     private final ObjectMapper om = new ObjectMapper();
-    private static final String ERROR = "error";
     private static final String ADMIN_ROLE = "ADMIN";
     private static final String CLASS_ID = "classId";
 
     public TeacherSessionsHandler(JwtService jwtService, ClassSQL classSQL, SessionSQL sessionSQL) {
-        this.jwtService = jwtService;
+        super(jwtService);
         this.classSQL = classSQL;
         this.sessionSQL = sessionSQL;
     }
 
     @Override
-    public void handle(HttpExchange ex) throws IOException {
-        try {
-            var jwt = Auth.requireJwt(ex, jwtService);
-            Auth.requireRole(jwt, "TEACHER", ADMIN_ROLE);
-
-            String method = ex.getRequestMethod();
-
-            if ("GET".equalsIgnoreCase(method)) {
-                handleList(ex, jwt);
-                return;
-            }
-
-            if ("POST".equalsIgnoreCase(method)) {
-                handleCreate(ex, jwt);
-                return;
-            }
-
-            HttpUtil.send(ex, 405, "Method Not Allowed");
-
-        } catch (SecurityException se) {
-            HttpUtil.json(ex, 401, Map.of(ERROR, se.getMessage()));
-        } catch (IllegalArgumentException bad) {
-            HttpUtil.json(ex, 400, Map.of(ERROR, bad.getMessage()));
-        } catch (Exception e) {
-            e.printStackTrace();
-            HttpUtil.json(ex, 500, Map.of(ERROR, "Server error"));
-        }
+    protected boolean supportsMethod(String method) {
+        return method.equalsIgnoreCase("GET")
+                || method.equalsIgnoreCase("POST");
     }
 
-    private void handleList(HttpExchange ex, com.auth0.jwt.interfaces.DecodedJWT jwt) throws JWTVerificationException, IOException {
-        URI uri = ex.getRequestURI();
-        String qs = uri.getQuery(); // classId=123
+    @Override
+    protected String[] roles() {
+        return new String[]{"TEACHER", "ADMIN"};
+    }
 
-        Long classId = Query.getLong(qs, CLASS_ID);
+    @Override
+    protected void handleRequest(HttpExchange ex, RequestContext ctx) throws IOException {
+        String method = ex.getRequestMethod();
+
+        if ("GET".equalsIgnoreCase(method)) {
+            handleList(ex, ctx);
+            return;
+        }
+
+        if ("POST".equalsIgnoreCase(method)) {
+            handleCreate(ex, ctx);
+            return;
+        }
+
+        throw new ApiException(405, "Method Not Allowed");
+    }
+
+
+    private void handleList(HttpExchange ex, RequestContext ctx) throws IOException {
+
+        Long classId = ctx.getLongQuery(CLASS_ID);
         if (classId == null) {
-            HttpUtil.json(ex, 400, Map.of(ERROR, "classId is required"));
-            return;
+            throw new ApiException(400, "classId is required");
         }
 
-        long teacherId = (jwt.getClaim("id").isNull() || jwt.getClaim("id").asLong() == null)
-                ? Long.parseLong(jwt.getSubject())
-                : jwt.getClaim("id").asLong();
+        Long teacherId = ctx.getUserId();
+        DecodedJWT jwt = ctx.getJwt();
 
-        String role = jwt.getClaim("role").isNull() ? "" : jwt.getClaim("role").asString();
-        if (!ADMIN_ROLE.equalsIgnoreCase(role) && !classSQL.isClassOwnedByTeacher(classId, teacherId)) {
-            HttpUtil.json(ex, 403, Map.of(ERROR, "Forbidden: not your class"));
-            return;
+        String role = jwt.getClaim("role").isNull()
+                ? ""
+                : jwt.getClaim("role").asString();
+
+        if (!ADMIN_ROLE.equalsIgnoreCase(role)
+                && !classSQL.isClassOwnedByTeacher(classId, teacherId)) {
+            throw new ApiException(403, "Forbidden: not your class");
         }
 
-        // ✅ Your existing method returns List<Map<String,Object>>
         var sessions = sessionSQL.listForClass(classId);
 
         HttpUtil.json(ex, 200, Map.of("data", sessions));
     }
 
-    private void handleCreate(HttpExchange ex, com.auth0.jwt.interfaces.DecodedJWT jwt) throws JWTVerificationException, IOException {
+    private void handleCreate(HttpExchange ex, RequestContext ctx) throws IOException {
+        DecodedJWT jwt = ctx.getJwt();
 
-        Map<String, Object> body = om.readValue(ex.getRequestBody(), new TypeReference<>() {});
+        Map<String, Object> body =
+                om.readValue(ex.getRequestBody(), new TypeReference<>() {});
 
         Object classIdRaw = body.get(CLASS_ID);
         if (classIdRaw == null) {
-            HttpUtil.json(ex, 400, Map.of(ERROR, "classId is required"));
-            return;
+            throw new ApiException(400, "classId is required");
         }
 
         long classId = (classIdRaw instanceof Number n)
                 ? n.longValue()
                 : Long.parseLong(String.valueOf(classIdRaw));
 
-        long teacherId = (jwt.getClaim("id").isNull() || jwt.getClaim("id").asLong() == null)
-                ? Long.parseLong(jwt.getSubject())
-                : jwt.getClaim("id").asLong();
+        long teacherId = ctx.getUserId();
 
         String role = jwt.getClaim("role").isNull() ? "" : jwt.getClaim("role").asString();
         if (!ADMIN_ROLE.equalsIgnoreCase(role) && !classSQL.isClassOwnedByTeacher(classId, teacherId)) {
-            HttpUtil.json(ex, 403, Map.of(ERROR, "Forbidden: not your class"));
-            return;
+            throw new ApiException(403, "Forbidden: not your class");
         }
 
         // optional start/end times from UI
@@ -121,8 +112,7 @@ public class TeacherSessionsHandler implements HttpHandler {
         if (end == null) end = start.plusHours(1);
 
         if (!end.isAfter(start)) {
-            HttpUtil.json(ex, 400, Map.of(ERROR, "endTime must be after startTime"));
-            return;
+            throw new ApiException(400, "endTime must be after startTime");
         }
 
         String code = UUID.randomUUID().toString().replace("-", "").substring(0, 8).toUpperCase();

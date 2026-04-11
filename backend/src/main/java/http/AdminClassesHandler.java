@@ -5,7 +5,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import config.ClassSQL;
-import security.Auth;
 import security.JwtService;
 
 import java.io.IOException;
@@ -13,35 +12,33 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-public class AdminClassesHandler implements HttpHandler {
+public class AdminClassesHandler extends BaseHandler implements HttpHandler {
 
-    private final JwtService jwtService;
     private final ClassSQL classSQL;
     private final ObjectMapper om = new ObjectMapper();
     private static final String ERROR = "error";
-    private static final String PATH_PREFIX = "/api/admin/classes/";
+    private static final String PATH_PREFIX = "/api/admin/classes";
     private static final String NOT_ALLOWED = "Method Not Allowed";
 
     public AdminClassesHandler(JwtService jwtService, ClassSQL classSQL) {
-        this.jwtService = jwtService;
+        super(jwtService);
         this.classSQL = classSQL;
     }
 
     @Override
-    public void handle(HttpExchange ex) throws IOException {
-        try {
-            var jwt = Auth.requireJwt(ex, jwtService);
-            Auth.requireRole(jwt, "ADMIN");
-            routeRequest(ex);
+    protected boolean supportsMethod(String method) {
+        return method.equalsIgnoreCase("GET")
+                || method.equalsIgnoreCase("POST");
+    }
 
-        } catch (SecurityException sec) {
-            HttpUtil.json(ex, 401, Map.of(ERROR, sec.getMessage()));
-        } catch (IllegalArgumentException bad) {
-            HttpUtil.json(ex, 400, Map.of(ERROR, bad.getMessage()));
-        } catch (Exception e) {
-            e.printStackTrace();
-            HttpUtil.json(ex, 500, Map.of(ERROR, "Server error"));
-        }
+    @Override
+    protected String[] roles() {
+        return new String[]{"ADMIN"};
+    }
+
+    @Override
+    protected void handleRequest(HttpExchange ex, RequestContext ctx) throws IOException {
+        routeRequest(ex);
     }
 
     private void routeRequest(HttpExchange ex) throws IOException {
@@ -74,7 +71,7 @@ public class AdminClassesHandler implements HttpHandler {
             return;
         }
 
-        HttpUtil.send(ex, 404, "Not Found");
+        throw new ApiException(404, "Not Found");
     }
 
     private void handleRoot(String method, HttpExchange ex) throws IOException {
@@ -88,7 +85,7 @@ public class AdminClassesHandler implements HttpHandler {
             return;
         }
 
-        HttpUtil.send(ex, 405, NOT_ALLOWED);
+        throw new ApiException(405, NOT_ALLOWED);
     }
 
     private void handleGetAllClasses(HttpExchange ex) throws IOException {
@@ -127,12 +124,12 @@ public class AdminClassesHandler implements HttpHandler {
         Integer maxCapacity = optInt(body.get("maxCapacity"));
 
         if (isBlank(classCode) || isBlank(name) || isBlank(teacherEmail)) {
-            throw new IllegalArgumentException("classCode, name, and teacherEmail are required");
+            throw new ApiException(400, "classCode, name, and teacherEmail are required");
         }
 
         Long teacherId = classSQL.findTeacherIdByEmail(teacherEmail);
         if (teacherId == null) {
-            throw new IllegalArgumentException("Teacher not found (or not TEACHER): " + teacherEmail);
+            throw new ApiException(400, "Teacher not found: " + teacherEmail);
         }
 
         long newId = classSQL.createClass(classCode, name, teacherId, semester, academicYear, maxCapacity);
@@ -146,8 +143,7 @@ public class AdminClassesHandler implements HttpHandler {
     private void handleAvailableStudents(HttpExchange ex, String path) throws IOException {
         String classCode = extractClassCode(path, "/available-students");
         if (isBlank(classCode)) {
-            HttpUtil.json(ex, 400, Map.of(ERROR, "Missing class code"));
-            return;
+            throw new ApiException(400, "Missing class code");
         }
 
         List<Map<String, Object>> students = classSQL.listStudentsNotEnrolledInClass(classCode);
@@ -157,8 +153,7 @@ public class AdminClassesHandler implements HttpHandler {
     private void handleEnrollStudents(HttpExchange ex, String path) throws IOException {
         String classCode = extractClassCode(path, "/enroll");
         if (isBlank(classCode)) {
-            HttpUtil.json(ex, 400, Map.of(ERROR, "Missing class code"));
-            return;
+            throw new ApiException(400, "Missing class code");
         }
 
         List<String> studentEmails;

@@ -10,35 +10,29 @@ import security.JwtService;
 import java.io.IOException;
 import java.util.Map;
 
-public class StudentTeachersHandler implements HttpHandler {
+public class StudentTeachersHandler extends BaseHandler implements HttpHandler {
 
-    private final JwtService jwtService;
     private final UserRepository userRepository;
 
     public StudentTeachersHandler(JwtService jwtService, UserRepository userRepository) {
-        this.jwtService = jwtService;
+        super(jwtService);
         this.userRepository = userRepository;
     }
 
     @Override
-    public void handle(HttpExchange ex) throws IOException {
-        try {
-            DecodedJWT jwt = Auth.requireJwt(ex, jwtService);
-            Auth.requireRole(jwt, "STUDENT", "TEACHER", "ADMIN"); // allow all logged in users
+    protected boolean supportsMethod(String method) {
+        return method.equalsIgnoreCase("GET");
+    }
 
-            if (!"GET".equalsIgnoreCase(ex.getRequestMethod())) {
-                HttpUtil.send(ex, 405, "Method Not Allowed");
-                return;
-            }
+    @Override
+    protected String[] roles() {
+        return new String[]{"ADMIN", "STUDENT", "TEACHER"};
+    }
 
-            var teachers = userRepository.findAllTeachers();
-            HttpUtil.json(ex, 200, teachers);
+    @Override
+    protected void handleRequest(HttpExchange ex, RequestContext ctx) throws IOException {
+        var teachers = userRepository.findAllTeachers();
 
-        } catch (SecurityException se) {
-            HttpUtil.json(ex, 401, Map.of("error", se.getMessage()));
-        } catch (Exception e) {
-            e.printStackTrace();
-            HttpUtil.json(ex, 500, Map.of("error", "Server error"));
-        }
+        HttpUtil.json(ex, 200, teachers);
     }
 }

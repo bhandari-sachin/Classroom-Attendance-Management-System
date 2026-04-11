@@ -1,6 +1,7 @@
 package http;
 
-import security.Auth;
+import com.auth0.jwt.interfaces.DecodedJWT;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import security.JwtService;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
@@ -9,53 +10,48 @@ import service.AttendanceService;
 import java.io.IOException;
 import java.util.Map;
 
-public class MarkAttendanceHandler implements HttpHandler {
+public class MarkAttendanceHandler extends BaseHandler implements HttpHandler {
 
-    private final JwtService jwtService;
     private final AttendanceService attendanceService;
-    private static final String ERROR = "error";
+    private final ObjectMapper om = new ObjectMapper();
 
     public MarkAttendanceHandler(JwtService jwtService, AttendanceService attendanceService) {
-        this.jwtService = jwtService;
+        super(jwtService);
         this.attendanceService = attendanceService;
     }
 
     @Override
-    public void handle(HttpExchange ex) throws IOException {
+    protected boolean supportsMethod(String method) {
+        return method.equalsIgnoreCase("POST");
+    }
+
+    @Override
+    protected String[] roles() {
+        return new String[]{"STUDENT"};
+    }
+
+    @Override
+    protected void handleRequest(HttpExchange ex, RequestContext ctx) throws IOException {
+        Map<String, Object> body = parseBody(ex);
+
+        String code = (String) body.get("code");
+
+        if (code == null || code.isBlank()) {
+            throw new ApiException(400, "Attendance code required");
+        }
+
+        Long studentId = ctx.getUserId();
+
+        attendanceService.markByCode(studentId, code);
+
+        HttpUtil.json(ex, 200, Map.of("status", "attendance marked"));
+    }
+
+    private Map<String, Object> parseBody(HttpExchange ex) {
         try {
-            var jwt = Auth.requireJwt(ex, jwtService);
-            Auth.requireRole(jwt, "STUDENT");
-
-            if (!"POST".equalsIgnoreCase(ex.getRequestMethod())) {
-                HttpUtil.send(ex, 405, "Method Not Allowed");
-                return;
-            }
-
-            Map<String, Object> body =
-                    new com.fasterxml.jackson.databind.ObjectMapper()
-                            .readValue(ex.getRequestBody(), Map.class);
-
-            String code = (String) body.get("code");
-            if (code == null || code.isBlank()) {
-                HttpUtil.json(ex, 400, Map.of(ERROR, "Attendance code required"));
-                return;
-            }
-
-            Long studentId = jwt.getClaim("id").isNull()
-                    ? Long.valueOf(jwt.getSubject())
-                    : jwt.getClaim("id").asLong();
-
-            attendanceService.markByCode(studentId, code);
-
-            HttpUtil.json(ex, 200, Map.of("status", "attendance marked"));
-
-        } catch (SecurityException se) {
-            HttpUtil.json(ex, 403, Map.of(ERROR, se.getMessage()));
-        } catch (IllegalArgumentException bad) {
-            HttpUtil.json(ex, 400, Map.of(ERROR, bad.getMessage()));
+            return om.readValue(ex.getRequestBody(), Map.class);
         } catch (Exception e) {
-            e.printStackTrace();
-            HttpUtil.json(ex, 500, Map.of(ERROR, "Server error"));
+            throw new ApiException(400, "Invalid JSON");
         }
     }
 }

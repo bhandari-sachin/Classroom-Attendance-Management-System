@@ -1,5 +1,6 @@
 package http;
 
+import com.auth0.jwt.interfaces.DecodedJWT;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
@@ -10,52 +11,53 @@ import service.SessionService;
 import java.io.IOException;
 import java.util.Map;
 
-public class StartSessionHandler implements HttpHandler {
+public class StartSessionHandler extends BaseHandler implements HttpHandler {
 
     private static final ObjectMapper om = new ObjectMapper();
-
-    private final JwtService jwtService;
     private final SessionService sessionService;
-    private static final String ERROR = "error";
 
     public StartSessionHandler(JwtService jwtService, SessionService sessionService) {
-        this.jwtService = jwtService;
+        super(jwtService);
         this.sessionService = sessionService;
     }
 
     @Override
-    public void handle(HttpExchange ex) throws IOException {
+    protected boolean supportsMethod(String method) {
+        return method.equalsIgnoreCase("POST");
+    }
+
+    @Override
+    protected String[] roles() {
+        return new String[]{"TEACHER"};
+    }
+
+    @Override
+    protected void handleRequest(HttpExchange ex, RequestContext ctx) throws IOException {
+
+        Map<String, Object> body = parseBody(ex);
+
+        Number sessionIdRaw = (Number) body.get("sessionId");
+
+        if (sessionIdRaw == null) {
+            throw new ApiException(400, "sessionId is required");
+        }
+
+        Long sessionId = sessionIdRaw.longValue();
+
+        String code = sessionService.startSession(sessionId);
+
+        HttpUtil.json(ex, 200, Map.of(
+                "message", "Session started successfully",
+                "sessionId", sessionId,
+                "code", code
+        ));
+    }
+
+    private Map<String, Object> parseBody(HttpExchange ex) {
         try {
-            var jwt = Auth.requireJwt(ex, jwtService);
-            Auth.requireRole(jwt, "TEACHER");
-
-            if (!"POST".equalsIgnoreCase(ex.getRequestMethod())) {
-                HttpUtil.json(ex, 405, Map.of(ERROR, "Method not allowed"));
-                return;
-            }
-
-            Map<String, Object> body = om.readValue(ex.getRequestBody(), Map.class);
-
-            Number sessionIdRaw = (Number) body.get("sessionId");
-            if (sessionIdRaw == null) {
-                HttpUtil.json(ex, 400, Map.of(ERROR, "sessionId is required"));
-                return;
-            }
-
-            Long sessionId = sessionIdRaw.longValue();
-            String code = sessionService.startSession(sessionId);
-
-            HttpUtil.json(ex, 200, Map.of(
-                    "message", "Session started successfully",
-                    "sessionId", sessionId,
-                    "code", code
-            ));
-
-        } catch (SecurityException se) {
-            HttpUtil.json(ex, 403, Map.of(ERROR, se.getMessage()));
+            return om.readValue(ex.getRequestBody(), Map.class);
         } catch (Exception e) {
-            e.printStackTrace();
-            HttpUtil.json(ex, 500, Map.of(ERROR, "Server error"));
+            throw new ApiException(400, "Invalid JSON");
         }
     }
 }
