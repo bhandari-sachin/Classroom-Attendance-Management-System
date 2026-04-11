@@ -1,6 +1,7 @@
 package service;
 
 import dto.AuthResponse;
+import exception.ApiException;
 import model.User;
 import model.UserRole;
 import repository.UserRepository;
@@ -22,10 +23,10 @@ public class AuthService {
     public AuthResponse login(String email, String password) {
 
         User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("Invalid credentials"));
+                .orElseThrow(() -> new ApiException(401, "Invalid credentials"));
 
         if (!passwordEncoder.matches(password, user.getPasswordHash())) {
-            throw new RuntimeException("Invalid credentials");
+            throw new ApiException(401, "Invalid credentials");
         }
 
         String token = jwtService.issueToken(
@@ -51,16 +52,16 @@ public class AuthService {
                        String studentCode) {
 
         if (userRepository.existsByEmail(email)) {
-            throw new RuntimeException("Email already exists");
+            throw new ApiException(400, "Email already exists");
         }
 
         if (userType == UserRole.ADMIN) {
-            throw new RuntimeException("Admin cannot self-register");
+            throw new ApiException(403, "Admin cannot self-register");
         }
 
         if (userType == UserRole.STUDENT) {
             if (studentCode == null || studentCode.isBlank()) {
-                throw new RuntimeException("Student code is required for students");
+                throw new ApiException(400, "Student code is required for students");
             }
         } else {
             studentCode = null;
@@ -83,6 +84,6 @@ public class AuthService {
 
 
     public void logout() {
-
+        // JWT is stateless; logout handled client-side by discarding token
     }
 }
