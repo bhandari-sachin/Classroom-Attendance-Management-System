@@ -17,24 +17,15 @@ public class TeacherSessionsListHandler extends BaseHandler {
     private final SessionSQL sessionSQL;
 
     public TeacherSessionsListHandler(JwtService jwtService, ClassSQL classSQL, SessionSQL sessionSQL) {
-        super(jwtService);
+        super(jwtService, "GET");
         this.classSQL = classSQL;
         this.sessionSQL = sessionSQL;
     }
 
     @Override
-    protected boolean supportsMethod(String method) {
-        return method.equalsIgnoreCase("GET");
-    }
-
-    @Override
-    protected String[] roles() {
-        return new String[]{"TEACHER", "ADMIN"};
-    }
-
-    @Override
     protected void handleRequest(HttpExchange ex, RequestContext ctx) throws IOException {
 
+        requireTeacherOrAdmin(ex, ctx);
         DecodedJWT jwt = ctx.getJwt();
 
         String query = ex.getRequestURI().getQuery(); // classId=123

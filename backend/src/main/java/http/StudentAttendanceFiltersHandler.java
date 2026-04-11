@@ -17,22 +17,13 @@ public class StudentAttendanceFiltersHandler extends BaseHandler implements Http
     private static final String VALUE = "value";
 
     public StudentAttendanceFiltersHandler(JwtService jwtService, ClassSQL classSQL) {
-        super(jwtService);
+        super(jwtService, "GET");
         this.classSQL = classSQL;
     }
 
     @Override
-    protected boolean supportsMethod(String method) {
-        return method.equalsIgnoreCase("GET");
-    }
-
-    @Override
-    protected String[] roles() {
-        return new String[]{"STUDENT"};
-    }
-
-    @Override
     protected void handleRequest(HttpExchange ex, RequestContext ctx) throws IOException {
+        requireStudent(ex, ctx);
         Long studentId = ctx.getUserId();
 
         List<Map<String, Object>> classes = classSQL.listClassesForStudent(studentId);

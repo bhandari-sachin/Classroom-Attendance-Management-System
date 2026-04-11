@@ -17,23 +17,14 @@ public class StartSessionHandler extends BaseHandler implements HttpHandler {
     private final SessionService sessionService;
 
     public StartSessionHandler(JwtService jwtService, SessionService sessionService) {
-        super(jwtService);
+        super(jwtService, "POST");
         this.sessionService = sessionService;
-    }
-
-    @Override
-    protected boolean supportsMethod(String method) {
-        return method.equalsIgnoreCase("POST");
-    }
-
-    @Override
-    protected String[] roles() {
-        return new String[]{"TEACHER"};
     }
 
     @Override
     protected void handleRequest(HttpExchange ex, RequestContext ctx) throws IOException {
 
+        requireTeacher(ex, ctx);
         Map<String, Object> body = parseBody(ex);
 
         Number sessionIdRaw = (Number) body.get("sessionId");

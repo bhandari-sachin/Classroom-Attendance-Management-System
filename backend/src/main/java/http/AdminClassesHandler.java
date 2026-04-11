@@ -21,23 +21,13 @@ public class AdminClassesHandler extends BaseHandler implements HttpHandler {
     private static final String NOT_ALLOWED = "Method Not Allowed";
 
     public AdminClassesHandler(JwtService jwtService, ClassSQL classSQL) {
-        super(jwtService);
+        super(jwtService, "GET", "POST");
         this.classSQL = classSQL;
     }
 
     @Override
-    protected boolean supportsMethod(String method) {
-        return method.equalsIgnoreCase("GET")
-                || method.equalsIgnoreCase("POST");
-    }
-
-    @Override
-    protected String[] roles() {
-        return new String[]{"ADMIN"};
-    }
-
-    @Override
     protected void handleRequest(HttpExchange ex, RequestContext ctx) throws IOException {
+        requireAdmin(ex, ctx);
         routeRequest(ex);
     }
 

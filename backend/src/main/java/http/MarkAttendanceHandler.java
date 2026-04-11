@@ -16,22 +16,13 @@ public class MarkAttendanceHandler extends BaseHandler implements HttpHandler {
     private final ObjectMapper om = new ObjectMapper();
 
     public MarkAttendanceHandler(JwtService jwtService, AttendanceService attendanceService) {
-        super(jwtService);
+        super(jwtService, "POST");
         this.attendanceService = attendanceService;
     }
 
     @Override
-    protected boolean supportsMethod(String method) {
-        return method.equalsIgnoreCase("POST");
-    }
-
-    @Override
-    protected String[] roles() {
-        return new String[]{"STUDENT"};
-    }
-
-    @Override
     protected void handleRequest(HttpExchange ex, RequestContext ctx) throws IOException {
+        requireStudent(ex, ctx);
         Map<String, Object> body = parseBody(ex);
 
         String code = (String) body.get("code");

@@ -11,10 +11,13 @@ import java.util.Map;
 abstract class BaseHandler implements HttpHandler {
 
     protected abstract void handleRequest(HttpExchange ex, RequestContext ctx) throws IOException;
-    protected final JwtService jwtService;
 
-    protected BaseHandler(JwtService jwtService) {
+    protected final JwtService jwtService;
+    private final String[] methods;
+
+    protected BaseHandler(JwtService jwtService, String... methods) {
         this.jwtService = jwtService;
+        this.methods = methods;
     }
 
     private static final String ERROR = "error";
@@ -22,28 +25,12 @@ abstract class BaseHandler implements HttpHandler {
     @Override
     public void handle(HttpExchange ex) throws IOException {
         try {
-            String reqMethod = ex.getRequestMethod();
-
-            if (!supportsMethod(reqMethod)) {
+            if (!isAllowedMethod(ex)) {
                 HttpUtil.send(ex, 405, "Method Not Allowed");
                 return;
             }
 
-            String auth = ex.getRequestHeaders().getFirst("Authorization");
-
-            if (auth == null || auth.isBlank() || !auth.startsWith("Bearer ")) {
-                throw new SecurityException("Missing or invalid Authorization header");
-            }
-
-            String token = auth.substring(7);
-
-            if (token.isBlank()) {
-                throw new SecurityException("Empty JWT token");
-            }
-
-            DecodedJWT jwt = security.Auth.requireJwt(ex, jwtService);
-            security.Auth.requireRole(jwt, roles());
-            RequestContext ctx = new RequestContext(ex, jwt);
+            RequestContext ctx = new RequestContext(ex);
 
             handleRequest(ex, ctx);
 
@@ -57,21 +44,70 @@ abstract class BaseHandler implements HttpHandler {
         }
     }
 
-    protected abstract String[] roles();
-    protected abstract boolean supportsMethod(String method);
+    private boolean isAllowedMethod(HttpExchange ex) {
+        String reqMethod = ex.getRequestMethod();
+        for (String m : methods) {
+            if (m.equalsIgnoreCase(reqMethod)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    protected DecodedJWT requireRole(HttpExchange ex, RequestContext ctx, String... roles) {
+        DecodedJWT jwt = security.Auth.requireJwt(ex, jwtService);
+        security.Auth.requireRole(jwt, roles);
+        ctx.setJwt(jwt);
+        return jwt;
+    }
+
+    protected DecodedJWT requireStudent(HttpExchange ex, RequestContext ctx) {
+        return requireRole(ex, ctx, "STUDENT");
+    }
+
+    protected DecodedJWT requireTeacher(HttpExchange ex, RequestContext ctx) {
+        return requireRole(ex, ctx, "TEACHER");
+    }
+
+    protected DecodedJWT requireAdmin(HttpExchange ex, RequestContext ctx) {
+        return requireRole(ex, ctx, "ADMIN");
+    }
+
+    protected DecodedJWT requireAnyAuthenticated(HttpExchange ex, RequestContext ctx) {
+        return requireRole(ex, ctx, "STUDENT", "TEACHER", "ADMIN");
+    }
+
+    protected DecodedJWT requireTeacherOrAdmin(HttpExchange ex, RequestContext ctx) {
+        return requireRole(ex, ctx, "TEACHER", "ADMIN");
+    }
+
+    protected boolean isMethod(HttpExchange ex, String method) {
+        return method.equalsIgnoreCase(ex.getRequestMethod());
+    }
+
+    protected void methodNotAllowed(HttpExchange ex) throws IOException {
+        HttpUtil.send(ex, 405, "Method Not Allowed");
+    }
 
     protected static class RequestContext {
 
         private final HttpExchange ex;
-        private final DecodedJWT jwt; // may be null
+        private DecodedJWT jwt;
 
-        public RequestContext(HttpExchange ex, DecodedJWT jwt) {
+        public RequestContext(HttpExchange ex) {
             this.ex = ex;
+        }
+
+        void setJwt(DecodedJWT jwt) {
             this.jwt = jwt;
         }
 
         public DecodedJWT getJwt() {
             return jwt;
+        }
+
+        public boolean isAuthenticated() {
+            return jwt != null;
         }
 
         public Long getUserId() {

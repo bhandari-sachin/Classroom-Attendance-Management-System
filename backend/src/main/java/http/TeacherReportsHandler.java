@@ -19,24 +19,15 @@ public class TeacherReportsHandler extends BaseHandler {
             AttendanceSQL attendanceSQL,
             ClassSQL classSQL
     ) {
-        super(jwtService);
+        super(jwtService, "GET");
         this.attendanceSQL = attendanceSQL;
         this.classSQL = classSQL;
     }
 
     @Override
-    protected boolean supportsMethod(String method) {
-        return method.equalsIgnoreCase("GET");
-    }
-
-    @Override
-    protected String[] roles() {
-        return new String[]{"TEACHER", "ADMIN"};
-    }
-
-    @Override
     protected void handleRequest(HttpExchange ex, RequestContext ctx) throws IOException {
 
+        requireTeacherOrAdmin(ex, ctx);
         Long classId = ctx.getClassId();
 
         if (classId == null) {

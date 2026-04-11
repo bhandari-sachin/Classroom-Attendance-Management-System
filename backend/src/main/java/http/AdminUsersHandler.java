@@ -15,22 +15,14 @@ public class AdminUsersHandler extends BaseHandler {
     private final UserRepository users;
 
     public AdminUsersHandler(UserRepository users, JwtService jwtService) {
-        super(jwtService);
+        super(jwtService, "GET");
         this.users = users;
     }
 
     @Override
-    protected boolean supportsMethod(String method) {
-        return method.equalsIgnoreCase("GET");
-    }
-
-    @Override
-    protected String[] roles() {
-        return new String[]{"ADMIN"};
-    }
-
-    @Override
     protected void handleRequest(HttpExchange ex, RequestContext ctx) throws IOException {
+
+        requireAdmin(ex, ctx);
 
         int students = users.countByRole(UserRole.STUDENT);
         int teachers = users.countByRole(UserRole.TEACHER);

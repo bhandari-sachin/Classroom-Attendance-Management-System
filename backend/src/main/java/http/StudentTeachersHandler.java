@@ -15,22 +15,13 @@ public class StudentTeachersHandler extends BaseHandler implements HttpHandler {
     private final UserRepository userRepository;
 
     public StudentTeachersHandler(JwtService jwtService, UserRepository userRepository) {
-        super(jwtService);
+        super(jwtService, "GET");
         this.userRepository = userRepository;
     }
 
     @Override
-    protected boolean supportsMethod(String method) {
-        return method.equalsIgnoreCase("GET");
-    }
-
-    @Override
-    protected String[] roles() {
-        return new String[]{"ADMIN", "STUDENT", "TEACHER"};
-    }
-
-    @Override
     protected void handleRequest(HttpExchange ex, RequestContext ctx) throws IOException {
+        requireAnyAuthenticated(ex, ctx);
         var teachers = userRepository.findAllTeachers();
 
         HttpUtil.json(ex, 200, teachers);

@@ -16,23 +16,14 @@ public class TeacherDashboardStatsHandler extends BaseHandler implements HttpHan
     private final AttendanceSQL attendanceSQL;
 
     public TeacherDashboardStatsHandler(JwtService jwtService, ClassSQL classSQL, AttendanceSQL attendanceSQL) {
-        super(jwtService);
+        super(jwtService, "GET");
         this.classSQL = classSQL;
         this.attendanceSQL = attendanceSQL;
     }
 
     @Override
-    protected boolean supportsMethod(String method) {
-        return method.equalsIgnoreCase("GET");
-    }
-
-    @Override
-    protected String[] roles() {
-        return new String[]{"ADMIN", "TEACHER"};
-    }
-
-    @Override
     protected void handleRequest(HttpExchange ex, RequestContext ctx) throws IOException {
+        requireTeacherOrAdmin(ex, ctx);
         Long teacherId = ctx.getUserId();
 
         int totalClasses = classSQL.countForTeacher(teacherId);

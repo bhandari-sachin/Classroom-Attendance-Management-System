@@ -24,24 +24,14 @@ public class TeacherSessionsHandler extends BaseHandler implements HttpHandler {
     private static final String CLASS_ID = "classId";
 
     public TeacherSessionsHandler(JwtService jwtService, ClassSQL classSQL, SessionSQL sessionSQL) {
-        super(jwtService);
+        super(jwtService, "GET", "POST");
         this.classSQL = classSQL;
         this.sessionSQL = sessionSQL;
     }
 
     @Override
-    protected boolean supportsMethod(String method) {
-        return method.equalsIgnoreCase("GET")
-                || method.equalsIgnoreCase("POST");
-    }
-
-    @Override
-    protected String[] roles() {
-        return new String[]{"TEACHER", "ADMIN"};
-    }
-
-    @Override
     protected void handleRequest(HttpExchange ex, RequestContext ctx) throws IOException {
+        requireTeacherOrAdmin(ex, ctx);
         String method = ex.getRequestMethod();
 
         if ("GET".equalsIgnoreCase(method)) {

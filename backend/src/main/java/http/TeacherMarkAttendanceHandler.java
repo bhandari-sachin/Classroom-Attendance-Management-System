@@ -19,22 +19,13 @@ public class TeacherMarkAttendanceHandler extends BaseHandler implements HttpHan
     private static final String STATUS = "status";
 
     public TeacherMarkAttendanceHandler(JwtService jwtService, AttendanceService attendanceService) {
-        super(jwtService);
+        super(jwtService, "POST");
         this.attendanceService = attendanceService;
     }
 
     @Override
-    protected boolean supportsMethod(String method) {
-        return method.equalsIgnoreCase("POST");
-    }
-
-    @Override
-    protected String[] roles() {
-        return new String[]{"TEACHER"};
-    }
-
-    @Override
     protected void handleRequest(HttpExchange ex, RequestContext ctx) throws IOException {
+        requireTeacher(ex, ctx);
         Map<String, Object> body = parseBody(ex);
 
         Number studentIdRaw = (Number) body.get("studentId");

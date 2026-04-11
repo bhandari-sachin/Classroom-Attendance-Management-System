@@ -15,22 +15,13 @@ public class TeacherClassesHandler extends BaseHandler implements HttpHandler {
     private final ClassSQL classSQL;
 
     public TeacherClassesHandler(JwtService jwtService, ClassSQL classSQL) {
-        super(jwtService);
+        super(jwtService, "GET");
         this.classSQL = classSQL;
     }
 
     @Override
-    protected boolean supportsMethod(String method) {
-        return method.equalsIgnoreCase("GET");
-    }
-
-    @Override
-    protected String[] roles() {
-        return new String[]{"ADMIN", "TEACHER"};
-    }
-
-    @Override
     protected void handleRequest(HttpExchange ex, RequestContext ctx) throws IOException {
+        requireTeacherOrAdmin(ex, ctx);
         Long teacherId = ctx.getUserId();
 
         var list = classSQL.listForTeacher(teacherId);

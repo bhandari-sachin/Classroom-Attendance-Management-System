@@ -15,22 +15,13 @@ public class StudentAttendanceSummaryHandler extends BaseHandler implements Http
     private final AttendanceService attendanceService;
 
     public StudentAttendanceSummaryHandler(JwtService jwtService, AttendanceService attendanceService) {
-        super(jwtService);
+        super(jwtService, "GET");
         this.attendanceService = attendanceService;
     }
 
     @Override
-    protected boolean supportsMethod(String method) {
-        return method.equalsIgnoreCase("GET");
-    }
-
-    @Override
-    protected String[] roles() {
-        return new String[]{"STUDENT"};
-    }
-
-    @Override
     protected void handleRequest(HttpExchange ex, RequestContext ctx) throws IOException {
+        requireStudent(ex, ctx);
         Long studentId = ctx.getUserId();
         Long classId = ctx.getClassId();
         String period = ctx.getPeriod();

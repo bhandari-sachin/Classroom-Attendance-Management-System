@@ -15,23 +15,14 @@ public class AdminAttendanceReportsHandler extends BaseHandler implements HttpHa
     private final AttendanceSQL attendanceSQL;
 
     public AdminAttendanceReportsHandler(JwtService jwtService, AttendanceSQL attendanceSQL) {
-        super(jwtService);
+        super(jwtService, "GET");
         this.attendanceSQL = attendanceSQL;
     }
 
     @Override
-    protected boolean supportsMethod(String method) {
-        return method.equalsIgnoreCase("GET");
-    }
-
-    @Override
-    protected String[] roles() {
-        return new String[]{"ADMIN"};
-    }
-
-
-    @Override
     public void handleRequest(HttpExchange ex, RequestContext ctx) throws IOException {
+
+        requireAdmin(ex, ctx);
 
         Long classId = ctx.getClassId();
         String period = ctx.getPeriod();
@@ -40,10 +31,6 @@ public class AdminAttendanceReportsHandler extends BaseHandler implements HttpHa
 
         if (classId == null) {
             throw new ApiException(400, "classId is required");
-        }
-
-        if (lang == null) {
-            lang = "en";
         }
 
         List<dto.AttendanceView> rows = attendanceSQL.getAdminAttendanceReport(classId, period, search, lang);

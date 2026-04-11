@@ -24,25 +24,16 @@ public class TeacherSessionReportHandler extends BaseHandler {
             SessionSQL sessionSQL,
             AttendanceSQL attendanceSQL
     ) {
-        super(jwtService);
+        super(jwtService, "GET");
         this.classSQL = classSQL;
         this.sessionSQL = sessionSQL;
         this.attendanceSQL = attendanceSQL;
     }
 
     @Override
-    protected boolean supportsMethod(String method) {
-        return method.equalsIgnoreCase("GET");
-    }
-
-    @Override
-    protected String[] roles() {
-        return new String[]{"TEACHER", "ADMIN"};
-    }
-
-    @Override
     protected void handleRequest(HttpExchange ex, RequestContext ctx) throws IOException {
 
+        requireTeacherOrAdmin(ex, ctx);
         Long sessionId = ctx.getLongQuery("sessionId");
         if (sessionId == null) {
             throw new ApiException(400, "sessionId is required");
