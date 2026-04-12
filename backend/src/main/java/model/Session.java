@@ -7,13 +7,13 @@ public class Session {
     private final long id;
     private final long classId;
     private final LocalDate sessionDate;
-    private String QRCode;
+    private String qrCode;
 
-    public Session(long id, long classId, LocalDate sessionDate, String QRCode) {
+    public Session(long id, long classId, LocalDate sessionDate, String qrCode) {
         this.id = id;
         this.classId = classId;
         this.sessionDate = sessionDate;
-        this.QRCode = QRCode;
+        this.qrCode = qrCode;
     }
 
     public long getId() {
@@ -29,10 +29,10 @@ public class Session {
     }
 
     public String getQrCode() {
-        return QRCode;
+        return qrCode;
     }
-    public void setQRCode(String QRCode) {
-        this.QRCode = QRCode;
+    public void setQRCode(String qrCode) {
+        this.qrCode = qrCode;
     }
 }
 
