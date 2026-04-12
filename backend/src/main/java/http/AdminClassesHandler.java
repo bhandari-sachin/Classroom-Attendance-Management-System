@@ -6,7 +6,7 @@ import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import config.ClassSQL;
 import config.ConfigLoader;
-import exception.ApiException;
+import backend.exception.ApiException;
 import security.JwtService;
 
 import java.io.IOException;

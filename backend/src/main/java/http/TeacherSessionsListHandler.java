@@ -4,7 +4,7 @@ import com.auth0.jwt.interfaces.DecodedJWT;
 import com.sun.net.httpserver.HttpExchange;
 import config.ClassSQL;
 import config.SessionSQL;
-import exception.DatabaseException;
+import backend.exception.DatabaseException;
 import model.Session;
 import security.JwtService;
 

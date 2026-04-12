@@ -1,7 +1,7 @@
 package service;
 
 import dto.AuthResponse;
-import exception.ApiException;
+import backend.exception.ApiException;
 import model.User;
 import model.UserRole;
 import repository.UserRepository;

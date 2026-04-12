@@ -4,7 +4,7 @@ import com.auth0.jwt.interfaces.DecodedJWT;
 import com.sun.net.httpserver.HttpExchange;
 import config.AttendanceSQL;
 import config.ClassSQL;
-import exception.ApiException;
+import backend.exception.ApiException;
 import security.JwtService;
 
 import java.io.IOException;

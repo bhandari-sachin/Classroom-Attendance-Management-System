@@ -1,4 +1,4 @@
-package exception;
+package backend.exception;
 
 public class ConfigurationException extends RuntimeException {
 

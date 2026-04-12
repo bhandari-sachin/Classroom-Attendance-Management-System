@@ -3,7 +3,7 @@ package http;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
-import exception.ApiException;
+import backend.exception.ApiException;
 import security.JwtService;
 
 import java.io.IOException;

@@ -1,7 +1,7 @@
 package http;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import exception.ApiException;
+import backend.exception.ApiException;
 import security.JwtService;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;

@@ -1,6 +1,6 @@
 package config;
 
-import exception.ConfigurationException;
+import backend.exception.ConfigurationException;
 
 import java.util.Properties;
 import java.io.InputStream;
