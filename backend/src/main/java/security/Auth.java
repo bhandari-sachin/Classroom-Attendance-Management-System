@@ -4,7 +4,9 @@ import com.auth0.jwt.interfaces.DecodedJWT;
 import com.sun.net.httpserver.HttpExchange;
 
 public class Auth {
-    private Auth () {}
+    private Auth () {
+        // Private constructor to prevent instantiation
+    }
 
     public static DecodedJWT requireJwt(HttpExchange ex, JwtService jwtService) {
         String auth = ex.getRequestHeaders().getFirst("Authorization");

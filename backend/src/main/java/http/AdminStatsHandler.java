@@ -1,6 +1,5 @@
 package http;
 
-import com.auth0.jwt.interfaces.DecodedJWT;
 import com.sun.net.httpserver.HttpExchange;
 import dto.AttendanceStats;
 import security.JwtService;

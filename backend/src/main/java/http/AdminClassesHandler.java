@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import config.ClassSQL;
+import config.ConfigLoader;
 import exception.ApiException;
 import security.JwtService;
 
@@ -18,7 +19,7 @@ public class AdminClassesHandler extends BaseHandler implements HttpHandler {
     private final ClassSQL classSQL;
     private final ObjectMapper om = new ObjectMapper();
     private static final String ERROR = "error";
-    private static final String PATH_PREFIX = "/api/admin/classes";
+    private static final String PATH_PREFIX = ConfigLoader.get("api.admin.classes");
     private static final String NOT_ALLOWED = "Method Not Allowed";
 
     public AdminClassesHandler(JwtService jwtService, ClassSQL classSQL) {
