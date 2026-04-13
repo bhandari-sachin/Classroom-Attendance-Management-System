@@ -12,8 +12,18 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class AdminClassesHandler implements HttpHandler {
+
+    private static final Logger LOGGER = Logger.getLogger(AdminClassesHandler.class.getName());
+    private static final String PATH_PREFIX = "/api/admin/classes/";
+    private static final String PATH_AVAILABLE_STUDENTS = "/available-students";
+    private static final String PATH_ENROLL = "/enroll";
+    private static final String METHOD_NOT_ALLOWED = "Method Not Allowed";
+    private static final String ERROR = "error";
+    private static final String STATUS = "status";
 
     private final JwtService jwtService;
     private final ClassSQL classSQL;
@@ -30,57 +40,54 @@ public class AdminClassesHandler implements HttpHandler {
             var jwt = Auth.requireJwt(ex, jwtService);
             Auth.requireRole(jwt, "ADMIN");
 
-            String method = ex.getRequestMethod();
-            String path = ex.getRequestURI().getPath();
-
-            // /api/admin/classes
-            if ("/api/admin/classes".equals(path)) {
-                if ("GET".equalsIgnoreCase(method)) {
-                    handleGetAllClasses(ex);
-                    return;
-                }
-
-                if ("POST".equalsIgnoreCase(method)) {
-                    handleCreateClass(ex);
-                    return;
-                }
-
-                HttpUtil.send(ex, 405, "Method Not Allowed");
-                return;
-            }
-
-            // /api/admin/classes/{classCode}/available-students
-            if (path.startsWith("/api/admin/classes/") && path.endsWith("/available-students")) {
-                if ("GET".equalsIgnoreCase(method)) {
-                    handleAvailableStudents(ex, path);
-                    return;
-                }
-
-                HttpUtil.send(ex, 405, "Method Not Allowed");
-                return;
-            }
-
-            // /api/admin/classes/{classCode}/enroll
-            if (path.startsWith("/api/admin/classes/") && path.endsWith("/enroll")) {
-                if ("POST".equalsIgnoreCase(method)) {
-                    handleEnrollStudents(ex, path);
-                    return;
-                }
-
-                HttpUtil.send(ex, 405, "Method Not Allowed");
-                return;
-            }
-
-            HttpUtil.send(ex, 404, "Not Found");
+            routeRequest(ex);
 
         } catch (SecurityException sec) {
-            HttpUtil.json(ex, 401, Map.of("error", sec.getMessage()));
+            HttpUtil.json(ex, 401, Map.of(ERROR, sec.getMessage()));
         } catch (IllegalArgumentException bad) {
-            HttpUtil.json(ex, 400, Map.of("error", bad.getMessage()));
+            HttpUtil.json(ex, 400, Map.of(ERROR, bad.getMessage()));
         } catch (Exception e) {
-            e.printStackTrace();
-            HttpUtil.json(ex, 500, Map.of("error", "Server error"));
+            LOGGER.log(Level.SEVERE, "Failed to handle admin classes request", e);
+            HttpUtil.json(ex, 500, Map.of(ERROR, "Server error"));
         }
+    }
+
+    private void routeRequest(HttpExchange ex) throws IOException {
+        String method = ex.getRequestMethod();
+        String path = ex.getRequestURI().getPath();
+
+        if ("/api/admin/classes".equals(path)) {
+            if ("GET".equalsIgnoreCase(method)) {
+                handleGetAllClasses(ex);
+                return;
+            }
+            if ("POST".equalsIgnoreCase(method)) {
+                handleCreateClass(ex);
+                return;
+            }
+            HttpUtil.send(ex, 405, METHOD_NOT_ALLOWED);
+            return;
+        }
+
+        if (path.startsWith(PATH_PREFIX) && path.endsWith(PATH_AVAILABLE_STUDENTS)) {
+            if ("GET".equalsIgnoreCase(method)) {
+                handleAvailableStudents(ex, path);
+                return;
+            }
+            HttpUtil.send(ex, 405, METHOD_NOT_ALLOWED);
+            return;
+        }
+
+        if (path.startsWith(PATH_PREFIX) && path.endsWith(PATH_ENROLL)) {
+            if ("POST".equalsIgnoreCase(method)) {
+                handleEnrollStudents(ex, path);
+                return;
+            }
+            HttpUtil.send(ex, 405, METHOD_NOT_ALLOWED);
+            return;
+        }
+
+        HttpUtil.send(ex, 404, "Not Found");
     }
 
     private void handleGetAllClasses(HttpExchange ex) throws IOException {
@@ -89,13 +96,13 @@ public class AdminClassesHandler implements HttpHandler {
         List<Map<String, Object>> payload = new ArrayList<>();
         for (var c : list) {
             payload.add(Map.of(
-                    "id", c.id,
-                    "classCode", n(c.classCode),
-                    "name", n(c.name),
-                    "teacherEmail", n(c.teacherEmail),
-                    "semester", n(c.semester),
-                    "academicYear", n(c.academicYear),
-                    "students", c.studentsCount
+                    "id", c.getId(),
+                    "classCode", n(c.getClassCode()),
+                    "name", n(c.getName()),
+                    "teacherEmail", n(c.getTeacherEmail()),
+                    "semester", n(c.getSemester()),
+                    "academicYear", n(c.getAcademicYear()),
+                    "students", c.getStudentsCount()
             ));
         }
 
@@ -106,8 +113,8 @@ public class AdminClassesHandler implements HttpHandler {
         Map<String, Object> body;
         try {
             body = om.readValue(ex.getRequestBody(), new TypeReference<>() {});
-        } catch (Exception parseErr) {
-            HttpUtil.json(ex, 400, Map.of("error", "Invalid JSON"));
+        } catch (IOException parseErr) {
+            HttpUtil.json(ex, 400, Map.of(ERROR, "Invalid JSON"));
             return;
         }
 
@@ -130,15 +137,15 @@ public class AdminClassesHandler implements HttpHandler {
         long newId = classSQL.createClass(classCode, name, teacherId, semester, academicYear, maxCapacity);
 
         HttpUtil.json(ex, 201, Map.of(
-                "status", "created",
+                STATUS, "created",
                 "id", newId
         ));
     }
 
     private void handleAvailableStudents(HttpExchange ex, String path) throws IOException {
-        String classCode = extractClassCode(path, "/available-students");
+        String classCode = extractClassCode(path, PATH_AVAILABLE_STUDENTS);
         if (isBlank(classCode)) {
-            HttpUtil.json(ex, 400, Map.of("error", "Missing class code"));
+            HttpUtil.json(ex, 400, Map.of(ERROR, "Missing class code"));
             return;
         }
 
@@ -147,33 +154,32 @@ public class AdminClassesHandler implements HttpHandler {
     }
 
     private void handleEnrollStudents(HttpExchange ex, String path) throws IOException {
-        String classCode = extractClassCode(path, "/enroll");
+        String classCode = extractClassCode(path, PATH_ENROLL);
         if (isBlank(classCode)) {
-            HttpUtil.json(ex, 400, Map.of("error", "Missing class code"));
+            HttpUtil.json(ex, 400, Map.of(ERROR, "Missing class code"));
             return;
         }
 
         List<String> studentEmails;
         try {
-            studentEmails = om.readValue(ex.getRequestBody(), new TypeReference<List<String>>() {});
-        } catch (Exception parseErr) {
-            HttpUtil.json(ex, 400, Map.of("error", "Invalid JSON body, expected array of student emails"));
+            studentEmails = om.readValue(ex.getRequestBody(), new TypeReference<>() {});
+        } catch (IOException parseErr) {
+            HttpUtil.json(ex, 400, Map.of(ERROR, "Invalid JSON body, expected array of student emails"));
             return;
         }
 
         classSQL.enrollStudentsByEmails(classCode, studentEmails);
 
         HttpUtil.json(ex, 200, Map.of(
-                "status", "ok",
+                STATUS, "ok",
                 "message", "Students enrolled successfully"
         ));
     }
 
     private String extractClassCode(String path, String suffix) {
-        String prefix = "/api/admin/classes/";
-        if (!path.startsWith(prefix) || !path.endsWith(suffix)) return null;
+        if (!path.startsWith(PATH_PREFIX) || !path.endsWith(suffix)) return null;
 
-        String middle = path.substring(prefix.length(), path.length() - suffix.length());
+        String middle = path.substring(PATH_PREFIX.length(), path.length() - suffix.length());
         if (middle.endsWith("/")) {
             middle = middle.substring(0, middle.length() - 1);
         }
@@ -205,7 +211,7 @@ public class AdminClassesHandler implements HttpHandler {
             String s = String.valueOf(v).trim();
             if (s.isBlank()) return null;
             return Integer.parseInt(s);
-        } catch (Exception e) {
+        } catch (NumberFormatException e) {
             return null;
         }
     }

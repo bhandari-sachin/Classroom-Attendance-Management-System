@@ -1,16 +1,19 @@
 package config;
 
-import config.DatabaseConnection;
-
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class LocalizationSQL {
+
+    private static final Logger LOGGER = Logger.getLogger(LocalizationSQL.class.getName());
 
     public static Map<String, String> getLabels(String language) {
         String sql = """
@@ -32,8 +35,8 @@ public class LocalizationSQL {
                 }
             }
 
-        } catch (Exception e) {
-            e.printStackTrace();
+        } catch (SQLException e) {
+            LOGGER.log(Level.SEVERE, "Failed to load UI labels", e);
         }
 
         return labels;
@@ -62,8 +65,8 @@ public class LocalizationSQL {
                 ));
             }
 
-        } catch (Exception e) {
-            e.printStackTrace();
+        } catch (SQLException e) {
+            LOGGER.log(Level.SEVERE, "Failed to load active languages", e);
         }
 
         return languages;
@@ -89,8 +92,8 @@ public class LocalizationSQL {
                 }
             }
 
-        } catch (Exception e) {
-            e.printStackTrace();
+        } catch (SQLException e) {
+            LOGGER.log(Level.SEVERE, "Failed to load user type label", e);
         }
 
         return code;
@@ -116,8 +119,8 @@ public class LocalizationSQL {
                 }
             }
 
-        } catch (Exception e) {
-            e.printStackTrace();
+        } catch (SQLException e) {
+            LOGGER.log(Level.SEVERE, "Failed to load attendance status label", e);
         }
 
         return code;

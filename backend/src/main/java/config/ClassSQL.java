@@ -4,20 +4,34 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.Statement;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class ClassSQL {
 
+    private static final Logger LOGGER = Logger.getLogger(ClassSQL.class.getName());
+    private static final String COL_ID = "id";
+    private static final String COL_CLASS_CODE = "class_code";
+    private static final String COL_NAME = "name";
+    private static final String COL_TEACHER_EMAIL = "teacher_email";
+    private static final String COL_SEMESTER = "semester";
+    private static final String COL_ACADEMIC_YEAR = "academic_year";
+    private static final String COL_STUDENTS_COUNT = "students_count";
+    private static final String COL_EMAIL = "email";
+    private static final String COL_STUDENT_CODE = "student_code";
+
     public static class ClassView {
-        public long id;
-        public String classCode;
-        public String name;
-        public String teacherEmail;
-        public String semester;
-        public String academicYear;
-        public int studentsCount;
+        private final long id;
+        private final String classCode;
+        private final String name;
+        private final String teacherEmail;
+        private final String semester;
+        private final String academicYear;
+        private final int studentsCount;
 
         public ClassView(long id, String classCode, String name,
                          String teacherEmail, String semester, String academicYear, int studentsCount) {
@@ -28,6 +42,34 @@ public class ClassSQL {
             this.semester = semester;
             this.academicYear = academicYear;
             this.studentsCount = studentsCount;
+        }
+
+        public long getId() {
+            return id;
+        }
+
+        public String getClassCode() {
+            return classCode;
+        }
+
+        public String getName() {
+            return name;
+        }
+
+        public String getTeacherEmail() {
+            return teacherEmail;
+        }
+
+        public String getSemester() {
+            return semester;
+        }
+
+        public String getAcademicYear() {
+            return academicYear;
+        }
+
+        public int getStudentsCount() {
+            return studentsCount;
         }
     }
 
@@ -54,17 +96,17 @@ public class ClassSQL {
             ResultSet rs = stmt.executeQuery();
             while (rs.next()) {
                 out.add(new ClassView(
-                        rs.getLong("id"),
-                        rs.getString("class_code"),
-                        rs.getString("name"),
-                        rs.getString("teacher_email"),
-                        rs.getString("semester"),
-                        rs.getString("academic_year"),
-                        rs.getInt("students_count")
+                        rs.getLong(COL_ID),
+                        rs.getString(COL_CLASS_CODE),
+                        rs.getString(COL_NAME),
+                        rs.getString(COL_TEACHER_EMAIL),
+                        rs.getString(COL_SEMESTER),
+                        rs.getString(COL_ACADEMIC_YEAR),
+                        rs.getInt(COL_STUDENTS_COUNT)
                 ));
             }
-        } catch (Exception e) {
-            e.printStackTrace();
+        } catch (SQLException e) {
+            LOGGER.log(Level.SEVERE, "Failed to list classes for admin", e);
         }
 
         return out;
@@ -86,11 +128,11 @@ public class ClassSQL {
 
             ps.setString(1, teacherEmail);
             try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next()) return rs.getLong("id");
+                if (rs.next()) return rs.getLong(COL_ID);
             }
 
-        } catch (Exception e) {
-            e.printStackTrace();
+        } catch (SQLException e) {
+            LOGGER.log(Level.SEVERE, "Failed to find teacher by email", e);
         }
         return null;
     }
@@ -131,11 +173,11 @@ public class ClassSQL {
                 if (keys.next()) return keys.getLong(1);
             }
 
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to create class: " + e.getMessage(), e);
+        } catch (SQLException e) {
+            throw new IllegalStateException("Failed to create class: " + e.getMessage(), e);
         }
 
-        throw new RuntimeException("Failed to create class: no id returned");
+        throw new IllegalStateException("Failed to create class: no id returned");
     }
     // ===== TEACHER: list my classes =====
     public List<java.util.Map<String, Object>> listForTeacher(long teacherId) {
@@ -155,14 +197,14 @@ public class ClassSQL {
             try (var rs = ps.executeQuery()) {
                 while (rs.next()) {
                     out.add(java.util.Map.of(
-                            "id", rs.getLong("id"),
-                            "classCode", rs.getString("class_code"),
-                            "name", rs.getString("name")
+                            "id", rs.getLong(COL_ID),
+                            "classCode", rs.getString(COL_CLASS_CODE),
+                            "name", rs.getString(COL_NAME)
                     ));
                 }
             }
-        } catch (Exception e) {
-            e.printStackTrace();
+        } catch (SQLException e) {
+            LOGGER.log(Level.SEVERE, "Failed to list classes for teacher", e);
         }
         return out;
     }
@@ -178,8 +220,8 @@ public class ClassSQL {
                 rs.next();
                 return rs.getInt(1) > 0;
             }
-        } catch (Exception e) {
-            e.printStackTrace();
+        } catch (SQLException e) {
+            LOGGER.log(Level.SEVERE, "Failed to verify class ownership", e);
             return false;
         }
     }
@@ -208,16 +250,16 @@ public class ClassSQL {
             try (java.sql.ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
                     out.add(java.util.Map.of(
-                            "id", rs.getLong("id"),
+                            "id", rs.getLong(COL_ID),
                             "firstName", rs.getString("first_name"),
                             "lastName", rs.getString("last_name"),
-                            "email", rs.getString("email"),
-                            "studentCode", rs.getString("student_code")
+                            "email", rs.getString(COL_EMAIL),
+                            "studentCode", rs.getString(COL_STUDENT_CODE)
                     ));
                 }
             }
-        } catch (Exception e) {
-            e.printStackTrace();
+        } catch (SQLException e) {
+            LOGGER.log(Level.SEVERE, "Failed to list students for class", e);
         }
 
         return out;
@@ -231,8 +273,8 @@ public class ClassSQL {
                 rs.next();
                 return rs.getInt(1);
             }
-        } catch (Exception e) {
-            e.printStackTrace();
+        } catch (SQLException e) {
+            LOGGER.log(Level.SEVERE, "Failed to count classes for teacher", e);
             return 0;
         }
     }
@@ -252,8 +294,8 @@ public class ClassSQL {
                 rs.next();
                 return rs.getInt(1);
             }
-        } catch (Exception e) {
-            e.printStackTrace();
+        } catch (SQLException e) {
+            LOGGER.log(Level.SEVERE, "Failed to count students for teacher", e);
             return 0;
         }
     }
@@ -285,8 +327,8 @@ public class ClassSQL {
 
             return result;
 
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to load classes for student", e);
+        } catch (SQLException | IllegalArgumentException e) {
+            throw new IllegalStateException("Failed to load classes for student", e);
         }
     }
     public List<Map<String, Object>> listStudentsNotEnrolledInClass(String classCode) {
@@ -318,17 +360,17 @@ public class ClassSQL {
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
                     out.add(Map.of(
-                            "id", rs.getLong("id"),
+                            "id", rs.getLong(COL_ID),
                             "firstName", rs.getString("first_name"),
                             "lastName", rs.getString("last_name"),
-                            "email", rs.getString("email"),
-                            "studentCode", rs.getString("student_code") == null ? "" : rs.getString("student_code")
+                            "email", rs.getString(COL_EMAIL),
+                            "studentCode", rs.getString(COL_STUDENT_CODE) == null ? "" : rs.getString(COL_STUDENT_CODE)
                     ));
                 }
             }
-        } catch (Exception e) {
-            e.printStackTrace();
-            throw new RuntimeException("Failed to load available students", e);
+        } catch (SQLException | RuntimeException e) {
+            LOGGER.log(Level.SEVERE, "Failed to load available students", e);
+            throw new IllegalStateException("Failed to load available students", e);
         }
 
         return out;
@@ -348,10 +390,10 @@ public class ClassSQL {
             ps.setString(1, classCode);
 
             try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next()) return rs.getLong("id");
+                if (rs.next()) return rs.getLong(COL_ID);
             }
-        } catch (Exception e) {
-            e.printStackTrace();
+        } catch (SQLException e) {
+            LOGGER.log(Level.SEVERE, "Failed to find class by code", e);
         }
 
         return null;
@@ -372,10 +414,10 @@ public class ClassSQL {
             ps.setString(1, email);
 
             try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next()) return rs.getLong("id");
+                if (rs.next()) return rs.getLong(COL_ID);
             }
-        } catch (Exception e) {
-            e.printStackTrace();
+        } catch (SQLException e) {
+            LOGGER.log(Level.SEVERE, "Failed to find student by email", e);
         }
 
         return null;
@@ -398,8 +440,8 @@ public class ClassSQL {
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) return rs.getInt(1) > 0;
             }
-        } catch (Exception e) {
-            e.printStackTrace();
+        } catch (SQLException e) {
+            LOGGER.log(Level.SEVERE, "Failed to check enrollment existence", e);
         }
 
         return false;
@@ -418,8 +460,8 @@ public class ClassSQL {
             ps.setLong(2, studentId);
             ps.executeUpdate();
 
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to enroll student", e);
+        } catch (SQLException e) {
+            throw new IllegalStateException("Failed to enroll student", e);
         }
     }
 
