@@ -110,13 +110,18 @@ public class AuthService {
 
     /**
      * Sends the request and returns the response body.
-     * Throws an exception for HTTP error responses.
+     * Throws a specific exception for HTTP error responses.
      */
     private String send(HttpRequest request) throws IOException, InterruptedException {
         HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
 
         if (response.statusCode() >= 400) {
-            throw new RuntimeException("HTTP " + response.statusCode() + ": " + response.body());
+            throw new AuthServiceException(
+                    "Authentication request failed with HTTP "
+                            + response.statusCode()
+                            + ": "
+                            + response.body()
+            );
         }
 
         return response.body();
@@ -125,7 +130,7 @@ public class AuthService {
     /**
      * Parses login response JSON into AuthState.
      */
-    private AuthState parseAuthState(String json) {
+    private AuthState parseAuthState(String json) throws AuthServiceException {
         try {
             Map<String, Object> map = objectMapper.readValue(json, new TypeReference<>() {});
 
@@ -134,17 +139,19 @@ public class AuthService {
             String name = valueAsString(map.get("name"));
 
             if (token == null || token.isBlank()) {
-                throw new IllegalStateException("Login response is missing token.");
+                throw new AuthServiceException("Login response is missing token.");
             }
 
             if (roleValue == null || roleValue.isBlank()) {
-                throw new IllegalStateException("Login response is missing role.");
+                throw new AuthServiceException("Login response is missing role.");
             }
 
             return new AuthState(token, Role.fromString(roleValue), name);
 
+        } catch (AuthServiceException e) {
+            throw e;
         } catch (Exception e) {
-            throw new RuntimeException("Failed to parse login response: " + json, e);
+            throw new AuthServiceException("Failed to parse login response: " + json, e);
         }
     }
 

@@ -200,6 +200,15 @@ public class LoginPage extends StackPane {
                     router.go(RoleRedirect.routeFor(state.getRole()));
                 });
 
+            } catch (InterruptedException ex) {
+                Thread.currentThread().interrupt();
+                Platform.runLater(() -> {
+                    showError(
+                            errorLabel,
+                            t("login.error.failed", "Login interrupted.")
+                    );
+                    loginButton.setDisable(false);
+                });
             } catch (Exception ex) {
                 Platform.runLater(() -> {
                     showError(

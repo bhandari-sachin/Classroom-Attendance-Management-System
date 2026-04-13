@@ -54,7 +54,7 @@ public class LanguageApi {
 
         return objectMapper.readValue(
                 response.body(),
-                new TypeReference<List<LanguageItem>>() {}
+                new TypeReference<>() {}
         );
     }
 

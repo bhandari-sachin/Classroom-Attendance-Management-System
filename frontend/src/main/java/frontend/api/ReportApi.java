@@ -126,7 +126,7 @@ public class ReportApi {
         if (response.statusCode() >= 400) {
             try (InputStream errorStream = response.body()) {
                 String errorBody = new String(errorStream.readAllBytes(), StandardCharsets.UTF_8);
-                throw new RuntimeException("Export failed (HTTP " + response.statusCode() + "): " + errorBody);
+                throw new ApiException("Export failed (HTTP " + response.statusCode() + "): " + errorBody);
             }
         }
 

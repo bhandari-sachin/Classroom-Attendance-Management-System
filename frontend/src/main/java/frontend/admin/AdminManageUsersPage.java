@@ -118,31 +118,31 @@ public class AdminManageUsersPage {
                         summary.getChildren().setAll(
                                 AdminUI.smallSummaryCard(
                                         t("admin.users.summary.students", "Students"),
-                                        String.valueOf(data.students),
+                                        String.valueOf(data.getStudents()),
                                         "🎓",
                                         "accent-green"
                                 ),
                                 AdminUI.smallSummaryCard(
                                         t("admin.users.summary.teachers", "Teachers"),
-                                        String.valueOf(data.teachers),
+                                        String.valueOf(data.getTeachers()),
                                         "👥",
                                         "accent-purple"
                                 ),
                                 AdminUI.smallSummaryCard(
                                         t("admin.users.summary.admins", "Admins"),
-                                        String.valueOf(data.admins),
+                                        String.valueOf(data.getAdmins()),
                                         "🛡",
                                         "accent-orange"
                                 )
                         );
 
                         rows.clear();
-                        if (data.users != null) {
-                            for (AdminUserDto u : data.users) {
-                                String userCell = (u.name == null ? "" : u.name) + "\n" + (u.email == null ? "" : u.email);
+                        if (data.getUsers() != null) {
+                            for (AdminUserDto u : data.getUsers()) {
+                                String userCell = nullToEmpty(u.getName()) + "\n" + nullToEmpty(u.getEmail());
 
-                                String localizedRole = localizeRole(u.role);
-                                String enrolledText = localizeEnrolled(u.enrolled);
+                                String localizedRole = localizeRole(u.getRole());
+                                String enrolledText = localizeEnrolled(u.getEnrolled());
 
                                 rows.add(new UserRow(
                                         userCell,
@@ -216,6 +216,10 @@ public class AdminManageUsersPage {
 
     private static String safe(String s) {
         return s == null ? "" : s.toLowerCase();
+    }
+
+    private static String nullToEmpty(String s) {
+        return s == null ? "" : s;
     }
 
     private static String t(String key, String fallback) {

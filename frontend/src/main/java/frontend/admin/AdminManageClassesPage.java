@@ -105,13 +105,13 @@ public class AdminManageClassesPage {
                     Platform.runLater(() -> {
                         rows.clear();
                         for (AdminClassDto c : list) {
-                            String schedule = joinNonEmpty(c.semester, c.academicYear);
+                            String schedule = joinNonEmpty(c.getSemester(), c.getAcademicYear());
                             rows.add(new ClassRow(
-                                    nullToEmpty(c.name),
-                                    nullToEmpty(c.classCode),
-                                    nullToEmpty(c.teacherEmail),
+                                    nullToEmpty(c.getName()),
+                                    nullToEmpty(c.getClassCode()),
+                                    nullToEmpty(c.getTeacherEmail()),
                                     schedule,
-                                    String.valueOf(c.students)
+                                    String.valueOf(c.getStudents())
                             ));
                         }
                     });
@@ -283,8 +283,8 @@ public class AdminManageClassesPage {
                 if (empty || item == null) {
                     setText(null);
                 } else {
-                    String fullName = (nullToEmpty(item.firstName) + " " + nullToEmpty(item.lastName)).trim();
-                    setText(fullName + "  |  " + nullToEmpty(item.email) + "  |  " + nullToEmpty(item.studentCode));
+                    String fullName = (nullToEmpty(item.getFirstName()) + " " + nullToEmpty(item.getLastName())).trim();
+                    setText(fullName + "  |  " + nullToEmpty(item.getEmail()) + "  |  " + nullToEmpty(item.getStudentCode()));
                 }
             }
         });
@@ -307,10 +307,10 @@ public class AdminManageClassesPage {
                 if (student == null) return false;
                 if (s.isBlank()) return true;
 
-                String fullName = (nullToEmpty(student.firstName) + " " + nullToEmpty(student.lastName)).toLowerCase();
+                String fullName = (nullToEmpty(student.getFirstName()) + " " + nullToEmpty(student.getLastName())).toLowerCase();
                 return fullName.contains(s)
-                        || safe(student.email).contains(s)
-                        || safe(student.studentCode).contains(s);
+                        || safe(student.getEmail()).contains(s)
+                        || safe(student.getStudentCode()).contains(s);
             });
         });
 
@@ -345,7 +345,7 @@ public class AdminManageClassesPage {
 
             List<AdminStudentDto> selectedStudents = new ArrayList<>(listView.getSelectionModel().getSelectedItems());
             List<String> studentEmails = selectedStudents.stream()
-                    .map(s -> s.email)
+                    .map(AdminStudentDto::getEmail)
                     .filter(v -> v != null && !v.isBlank())
                     .collect(Collectors.toList());
 

@@ -32,21 +32,4 @@ public final class RouteGuard {
         }
     }
 
-    /**
-     * Returns true if user is authenticated and has access.
-     */
-    public static boolean canAccess(AuthState state, Set<Role> allowed) {
-        return state != null
-                && allowed != null
-                && allowed.contains(state.getRole());
-    }
-
-    /**
-     * Ensures the user is authenticated (no role check).
-     */
-    public static void requireAuthenticated(AuthState state) {
-        if (state == null) {
-            throw new IllegalStateException("User is not authenticated");
-        }
-    }
 }

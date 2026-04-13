@@ -47,6 +47,7 @@ public class MainApp extends Application {
     private static final double INITIAL_HEIGHT = 700;
     private static final double MIN_WIDTH = 900;
     private static final double MIN_HEIGHT = 650;
+    private static final String LOGIN_ROUTE = "login";
 
     @Override
     public void start(Stage stage) {
@@ -66,7 +67,7 @@ public class MainApp extends Application {
 
         configureInitialRoute(router, store);
 
-        stage.setTitle(t("common.app.title", "Classroom Attendance Management System"));
+        stage.setTitle(t());
         stage.setScene(scene);
         stage.setMinWidth(MIN_WIDTH);
         stage.setMinHeight(MIN_HEIGHT);
@@ -103,7 +104,7 @@ public class MainApp extends Application {
      * Registers public routes that do not require authentication.
      */
     private void registerPublicRoutes(AppRouter router, AuthService authService, JwtStore store) {
-        router.register("login", () -> new LoginPage(router, authService, store));
+        router.register(LOGIN_ROUTE, () -> new LoginPage(router, authService, store));
         router.register("signup", () -> new SignupPage(router, authService, store));
     }
 
@@ -158,18 +159,14 @@ public class MainApp extends Application {
      * For demo/preview mode, uncomment setupDemoUser(...).</p>
      */
     private void configureInitialRoute(AppRouter router, JwtStore store) {
-        // Demo preview mode:
-        // setupDemoUser(store, Role.ADMIN);
-
         AuthState state = store.load().orElse(null);
         if (state == null) {
-            router.go("login");
+            router.go(LOGIN_ROUTE);
             return;
         }
 
         router.go(RoleRedirect.routeFor(state.getRole()));
     }
-
 
     /**
      * Returns authenticated state or throws if missing.
@@ -192,7 +189,7 @@ public class MainApp extends Application {
             AuthState state = store.load().orElse(null);
 
             if (state == null) {
-                router.go("login");
+                router.go(LOGIN_ROUTE);
                 return new StackPane();
             }
 
@@ -208,11 +205,12 @@ public class MainApp extends Application {
     /**
      * Returns a translated value, or fallback if the key is missing.
      */
-    private String t(String key, String fallback) {
-        String value = FrontendI18n.t(key);
-        return key.equals(value) ? fallback : value;
+    private String t() {
+        String value = FrontendI18n.t("common.app.title");
+        return "common.app.title".equals(value) ? "Classroom Attendance Management System" : value;
     }
 
+    @SuppressWarnings("unused")
     public static void main(String[] args) {
         launch(args);
     }

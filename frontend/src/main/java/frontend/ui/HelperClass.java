@@ -10,7 +10,4 @@ public class HelperClass {
         return Local.getBundle(UiPreferences.getLanguage()).getString(key);
     }
 
-    public void setLocale(String lang) {
-        UiPreferences.setLanguage(lang);
-    }
 }

@@ -20,32 +20,79 @@ import java.util.Map;
 
 /**
  * API client for admin-related frontend requests.
- *
- * <p>This class handles authenticated HTTP calls to admin endpoints such as:
- * attendance statistics, class management, user management, reports,
- * and student enrollment.</p>
  */
-public class AdminApi {
+public record AdminApi(
+        String baseUrl,
+        JwtStore store,
+        HttpClient client,
+        ObjectMapper objectMapper,
+        AdminApi.Paths paths
+) {
 
     private static final String AUTHORIZATION = "Authorization";
     private static final String BEARER_PREFIX = "Bearer ";
     private static final String CONTENT_TYPE = "Content-Type";
     private static final String APPLICATION_JSON = "application/json";
-
-    private final String baseUrl;
-    private final JwtStore store;
-    private final HttpClient client;
-    private final ObjectMapper objectMapper;
+    private static final String PATH_SEPARATOR = "/";
+    private static final String QUERY_PREFIX = "?";
+    private static final String PARAM_SEPARATOR = "&";
+    private static final String CLASS_ID_PARAM = "classId=";
+    private static final String PERIOD_PARAM = "period=";
+    private static final String SEARCH_PARAM = "search=";
+    private static final String AVAILABLE_STUDENTS_SUFFIX = "available-students";
+    private static final String ENROLL_SUFFIX = "enroll";
 
     public AdminApi(String baseUrl, JwtStore store) {
-        this(baseUrl, store, HttpClient.newHttpClient(), new ObjectMapper());
+        this(baseUrl, store, HttpClient.newHttpClient(), new ObjectMapper(), Paths.defaults());
     }
 
-    public AdminApi(String baseUrl, JwtStore store, HttpClient client, ObjectMapper objectMapper) {
-        this.baseUrl = stripTrailingSlash(baseUrl);
-        this.store = store;
-        this.client = client;
-        this.objectMapper = objectMapper;
+    public AdminApi {
+        baseUrl = stripTrailingSlash(baseUrl);
+        if (store == null) {
+            throw new IllegalArgumentException("JwtStore must not be null.");
+        }
+        if (client == null) {
+            throw new IllegalArgumentException("HttpClient must not be null.");
+        }
+        if (objectMapper == null) {
+            throw new IllegalArgumentException("ObjectMapper must not be null.");
+        }
+        if (paths == null) {
+            throw new IllegalArgumentException("Paths must not be null.");
+        }
+    }
+
+    /**
+     * Customizable endpoint paths for AdminApi.
+     */
+    public record Paths(
+            String classesPath,
+            String usersPath,
+            String attendanceStatsPath,
+            String attendanceReportPath
+    ) {
+        public Paths {
+            classesPath = requirePath(classesPath, "classesPath");
+            usersPath = requirePath(usersPath, "usersPath");
+            attendanceStatsPath = requirePath(attendanceStatsPath, "attendanceStatsPath");
+            attendanceReportPath = requirePath(attendanceReportPath, "attendanceReportPath");
+        }
+
+        public static Paths defaults() {
+            return new Paths(
+                    "/api/admin/classes",
+                    "/api/admin/users",
+                    "/api/admin/attendance/stats",
+                    "/api/admin/attendance/report"
+            );
+        }
+
+        private static String requirePath(String value, String fieldName) {
+            if (value == null || value.isBlank()) {
+                throw new IllegalArgumentException(fieldName + " must not be null or blank.");
+            }
+            return value;
+        }
     }
 
     /**
@@ -75,7 +122,7 @@ public class AdminApi {
     }
 
     /**
-     * Sends an authenticated POST request with JSON body and returns the response body.
+     * Sends an authenticated POST request with JSON body.
      */
     private void postJson(String path, Object body) throws IOException, InterruptedException {
         String json = objectMapper.writeValueAsString(body);
@@ -89,14 +136,14 @@ public class AdminApi {
     }
 
     /**
-     * Sends the request and returns the body.
-     * Throws an exception for HTTP error responses.
+     * Sends the request and returns the response body.
+     * Throws ApiException for HTTP error responses.
      */
     private String send(HttpRequest request) throws IOException, InterruptedException {
         HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
 
         if (response.statusCode() >= 400) {
-            throw new RuntimeException("HTTP " + response.statusCode() + ": " + response.body());
+            throw new ApiException("HTTP " + response.statusCode() + ": " + response.body());
         }
 
         return response.body();
@@ -114,25 +161,25 @@ public class AdminApi {
     /**
      * Encodes a URL path segment safely.
      */
-    private String encodePathSegment(String value) {
+    private static String encodePathSegment(String value) {
+        return URLEncoder.encode(value, StandardCharsets.UTF_8);
+    }
+
+    /**
+     * Encodes a query parameter value safely.
+     */
+    private static String encodeQueryParam(String value) {
         return URLEncoder.encode(value, StandardCharsets.UTF_8);
     }
 
     /**
      * Removes a trailing slash from the base URL to avoid double slashes in paths.
      */
-    private String stripTrailingSlash(String url) {
+    private static String stripTrailingSlash(String url) {
         if (url == null || url.isBlank()) {
             throw new IllegalArgumentException("Base URL must not be null or blank.");
         }
-        return url.endsWith("/") ? url.substring(0, url.length() - 1) : url;
-    }
-
-    /**
-     * Returns attendance statistics as raw JSON.
-     */
-    public String getAttendanceStatsJson() throws IOException, InterruptedException {
-        return get("/api/admin/attendance/stats");
+        return url.endsWith(PATH_SEPARATOR) ? url.substring(0, url.length() - 1) : url;
     }
 
     /**
@@ -140,7 +187,7 @@ public class AdminApi {
      */
     public Map<String, Object> getAttendanceStats() throws IOException, InterruptedException {
         return objectMapper.readValue(
-                get("/api/admin/attendance/stats"),
+                get(paths.attendanceStatsPath()),
                 new TypeReference<>() {}
         );
     }
@@ -150,7 +197,7 @@ public class AdminApi {
      */
     public List<AdminClassDto> getAdminClasses() throws IOException, InterruptedException {
         return objectMapper.readValue(
-                get("/api/admin/classes"),
+                get(paths.classesPath()),
                 new TypeReference<>() {}
         );
     }
@@ -160,7 +207,7 @@ public class AdminApi {
      */
     public List<Map<String, Object>> getAdminClassesRaw() throws IOException, InterruptedException {
         return objectMapper.readValue(
-                get("/api/admin/classes"),
+                get(paths.classesPath()),
                 new TypeReference<>() {}
         );
     }
@@ -170,7 +217,7 @@ public class AdminApi {
      */
     public AdminUsersResponseDto getAdminUsers() throws IOException, InterruptedException {
         return objectMapper.readValue(
-                get("/api/admin/users"),
+                get(paths.usersPath()),
                 AdminUsersResponseDto.class
         );
     }
@@ -180,7 +227,7 @@ public class AdminApi {
      */
     public Map<String, Object> getAdminUsersRaw() throws IOException, InterruptedException {
         return objectMapper.readValue(
-                get("/api/admin/users"),
+                get(paths.usersPath()),
                 new TypeReference<>() {}
         );
     }
@@ -204,7 +251,7 @@ public class AdminApi {
                 "maxCapacity", maxCapacity == null ? 0 : maxCapacity
         );
 
-        postJson("/api/admin/classes", requestBody);
+        postJson(paths.classesPath(), requestBody);
     }
 
     /**
@@ -213,14 +260,21 @@ public class AdminApi {
     public List<Map<String, Object>> getAttendanceReport(Long classId, String period, String search)
             throws IOException, InterruptedException {
 
-        StringBuilder path = new StringBuilder("/api/admin/attendance/report?classId=" + classId);
+        StringBuilder path = new StringBuilder(paths.attendanceReportPath())
+                .append(QUERY_PREFIX)
+                .append(CLASS_ID_PARAM)
+                .append(classId);
 
         if (period != null && !period.isBlank()) {
-            path.append("&period=").append(URLEncoder.encode(period, StandardCharsets.UTF_8));
+            path.append(PARAM_SEPARATOR)
+                    .append(PERIOD_PARAM)
+                    .append(encodeQueryParam(period));
         }
 
         if (search != null && !search.isBlank()) {
-            path.append("&search=").append(URLEncoder.encode(search, StandardCharsets.UTF_8));
+            path.append(PARAM_SEPARATOR)
+                    .append(SEARCH_PARAM)
+                    .append(encodeQueryParam(search));
         }
 
         return objectMapper.readValue(
@@ -235,7 +289,11 @@ public class AdminApi {
     public List<AdminStudentDto> getAllStudentsNotInClass(String classCode)
             throws IOException, InterruptedException {
 
-        String path = "/api/admin/classes/" + encodePathSegment(classCode) + "/available-students";
+        String path = paths.classesPath()
+                + PATH_SEPARATOR
+                + encodePathSegment(classCode)
+                + PATH_SEPARATOR
+                + AVAILABLE_STUDENTS_SUFFIX;
 
         return objectMapper.readValue(
                 get(path),
@@ -249,7 +307,12 @@ public class AdminApi {
     public void enrollStudentsToClass(String classCode, List<String> studentEmails)
             throws IOException, InterruptedException {
 
-        String path = "/api/admin/classes/" + encodePathSegment(classCode) + "/enroll";
+        String path = paths.classesPath()
+                + PATH_SEPARATOR
+                + encodePathSegment(classCode)
+                + PATH_SEPARATOR
+                + ENROLL_SUFFIX;
+
         postJson(path, studentEmails);
     }
 }

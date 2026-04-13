@@ -15,26 +15,53 @@ import java.util.Map;
 
 /**
  * API client for student-teacher related requests.
- *
- * <p>This class retrieves the list of teachers available to the student.</p>
  */
-public class StudentTeacherApi {
+public record StudentTeacherApi(
+        String baseUrl,
+        HttpClient client,
+        ObjectMapper objectMapper,
+        Paths paths
+) {
 
     private static final String AUTHORIZATION = "Authorization";
     private static final String BEARER_PREFIX = "Bearer ";
 
-    private final HttpClient client;
-    private final ObjectMapper objectMapper;
-    private final String baseUrl;
-
     public StudentTeacherApi(String baseUrl) {
-        this(baseUrl, HttpClient.newHttpClient(), new ObjectMapper());
+        this(baseUrl, HttpClient.newHttpClient(), new ObjectMapper(), Paths.defaults());
     }
 
-    public StudentTeacherApi(String baseUrl, HttpClient client, ObjectMapper objectMapper) {
-        this.baseUrl = stripTrailingSlash(baseUrl);
-        this.client = client;
-        this.objectMapper = objectMapper;
+    public StudentTeacherApi {
+        baseUrl = stripTrailingSlash(baseUrl);
+
+        if (client == null) {
+            throw new IllegalArgumentException("HttpClient must not be null.");
+        }
+        if (objectMapper == null) {
+            throw new IllegalArgumentException("ObjectMapper must not be null.");
+        }
+        if (paths == null) {
+            throw new IllegalArgumentException("Paths must not be null.");
+        }
+    }
+
+    /**
+     * Configurable API paths.
+     */
+    public record Paths(String teachersPath) {
+
+        public Paths {
+            requirePath(teachersPath);
+        }
+
+        public static Paths defaults() {
+            return new Paths("/api/student/teachers");
+        }
+
+        private static void requirePath(String value) {
+            if (value == null || value.isBlank()) {
+                throw new IllegalArgumentException("teachersPath" + " must not be null or blank.");
+            }
+        }
     }
 
     /**
@@ -51,45 +78,32 @@ public class StudentTeacherApi {
         );
     }
 
-    /**
-     * Sends an authenticated GET request and returns the response body.
-     */
     private String get(JwtStore jwtStore, AuthState state)
             throws IOException, InterruptedException {
 
-        HttpRequest request = authorizedRequest("/api/student/teachers", jwtStore, state)
+        HttpRequest request = authorizedRequest(jwtStore, state)
                 .GET()
                 .build();
 
         return send(request);
     }
 
-    /**
-     * Builds an authenticated request with the current JWT token.
-     */
-    private HttpRequest.Builder authorizedRequest(String path, JwtStore jwtStore, AuthState state) {
+    private HttpRequest.Builder authorizedRequest(JwtStore jwtStore, AuthState state) {
         return HttpRequest.newBuilder()
-                .uri(URI.create(baseUrl + path))
+                .uri(URI.create(baseUrl + paths.teachersPath()))
                 .header(AUTHORIZATION, BEARER_PREFIX + resolveToken(jwtStore, state));
     }
 
-    /**
-     * Sends the request and returns the response body.
-     * Throws an exception for HTTP error responses.
-     */
     private String send(HttpRequest request) throws IOException, InterruptedException {
         HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
 
         if (response.statusCode() >= 400) {
-            throw new RuntimeException("HTTP " + response.statusCode() + ": " + response.body());
+            throw new ApiException("HTTP " + response.statusCode() + ": " + response.body());
         }
 
         return response.body();
     }
 
-    /**
-     * Resolves the JWT token from the store first, then falls back to the provided auth state.
-     */
     private String resolveToken(JwtStore jwtStore, AuthState state) {
         String token = jwtStore.load()
                 .map(AuthState::getToken)
@@ -102,10 +116,7 @@ public class StudentTeacherApi {
         return token;
     }
 
-    /**
-     * Removes a trailing slash from the base URL to avoid malformed URLs.
-     */
-    private String stripTrailingSlash(String url) {
+    private static String stripTrailingSlash(String url) {
         if (url == null || url.isBlank()) {
             throw new IllegalArgumentException("Base URL must not be null or blank.");
         }

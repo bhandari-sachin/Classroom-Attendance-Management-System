@@ -47,8 +47,4 @@ public class JwtStore {
         preferences.remove(KEY_ROLE);
         preferences.remove(KEY_NAME);
     }
-
-    public boolean isLoggedIn() {
-        return load().isPresent();
-    }
 }

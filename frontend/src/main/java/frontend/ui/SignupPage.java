@@ -20,6 +20,7 @@ import javafx.scene.control.TextField;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 
+import java.io.IOException;
 import java.util.Optional;
 
 /**
@@ -38,6 +39,7 @@ public class SignupPage extends StackPane {
     private static final int CARD_PADDING = 22;
     private static final int CARD_SPACING = 10;
     private static final int FIELD_SPACING = 6;
+    private static final int MAX_ERROR_MESSAGE_LENGTH = 200;
 
     public SignupPage(AppRouter router, AuthService authService, JwtStore jwtStore) {
         validateAutoLogin(router, jwtStore);
@@ -45,47 +47,26 @@ public class SignupPage extends StackPane {
         Label titleLabel = createTitleLabel();
         Label subtitleLabel = createSubtitleLabel();
 
-        TextField firstNameField = createTextField("signup.firstname.placeholder", "First name");
-        TextField lastNameField = createTextField("signup.lastname.placeholder", "Last name");
-        TextField emailField = createTextField("signup.email.placeholder", "Email");
-        PasswordField passwordField = createPasswordField();
+        SignupFormFields fields = createSignupFormFields();
+        SignupMessages messages = createSignupMessages();
 
-        ComboBox<Role> roleComboBox = createRoleComboBox();
+        bindStudentCodeVisibility(fields.roleComboBox, fields.studentCodeLabel, fields.studentCodeField);
 
-        Label studentCodeLabel = createFieldLabel(t("signup.studentcode.label", "Student Code"));
-        TextField studentCodeField = createTextField("signup.studentcode.placeholder", "Enter student code");
-        bindStudentCodeVisibility(roleComboBox, studentCodeLabel, studentCodeField);
-
-        Label errorLabel = createMessageLabel("error");
-        Label infoLabel = createMessageLabel("subtitle");
-
-        Button signupButton = createSignupButton(
-                router,
-                authService,
-                firstNameField,
-                lastNameField,
-                emailField,
-                passwordField,
-                roleComboBox,
-                studentCodeField,
-                errorLabel,
-                infoLabel
-        );
-
+        Button signupButton = createSignupButton(router, authService, fields, messages);
         Button loginButton = createLoginButton(router);
 
         VBox card = createCard(
                 titleLabel,
                 subtitleLabel,
-                field(t("signup.firstname.label", "First Name"), firstNameField),
-                field(t("signup.lastname.label", "Last Name"), lastNameField),
-                field(t("signup.email.label", "Email"), emailField),
-                field(t("signup.password.label", "Password"), passwordField),
-                field(t("signup.role.label", "Role"), roleComboBox),
-                studentCodeLabel,
-                studentCodeField,
-                errorLabel,
-                infoLabel,
+                field(t("signup.firstname.label", "First Name"), fields.firstNameField),
+                field(t("signup.lastname.label", "Last Name"), fields.lastNameField),
+                field(t("signup.email.label", "Email"), fields.emailField),
+                field(t("signup.password.label", "Password"), fields.passwordField),
+                field(t("signup.role.label", "Role"), fields.roleComboBox),
+                fields.studentCodeLabel,
+                fields.studentCodeField,
+                messages.errorLabel,
+                messages.infoLabel,
                 signupButton,
                 loginButton
         );
@@ -118,6 +99,39 @@ public class SignupPage extends StackPane {
         Label subtitle = new Label(t("signup.subtitle", "Sign up to continue"));
         subtitle.getStyleClass().add("subtitle");
         return subtitle;
+    }
+
+    /**
+     * Creates all signup form fields.
+     */
+    private SignupFormFields createSignupFormFields() {
+        TextField firstNameField = createTextField("signup.firstname.placeholder", "First name");
+        TextField lastNameField = createTextField("signup.lastname.placeholder", "Last name");
+        TextField emailField = createTextField("signup.email.placeholder", "Email");
+        PasswordField passwordField = createPasswordField();
+        ComboBox<Role> roleComboBox = createRoleComboBox();
+        Label studentCodeLabel = createFieldLabel(t("signup.studentcode.label", "Student Code"));
+        TextField studentCodeField = createTextField("signup.studentcode.placeholder", "Enter student code");
+
+        return new SignupFormFields(
+                firstNameField,
+                lastNameField,
+                emailField,
+                passwordField,
+                roleComboBox,
+                studentCodeLabel,
+                studentCodeField
+        );
+    }
+
+    /**
+     * Creates all message labels.
+     */
+    private SignupMessages createSignupMessages() {
+        return new SignupMessages(
+                createMessageLabel("error"),
+                createMessageLabel("subtitle")
+        );
     }
 
     /**
@@ -202,14 +216,8 @@ public class SignupPage extends StackPane {
      */
     private Button createSignupButton(AppRouter router,
                                       AuthService authService,
-                                      TextField firstNameField,
-                                      TextField lastNameField,
-                                      TextField emailField,
-                                      PasswordField passwordField,
-                                      ComboBox<Role> roleComboBox,
-                                      TextField studentCodeField,
-                                      Label errorLabel,
-                                      Label infoLabel) {
+                                      SignupFormFields fields,
+                                      SignupMessages messages) {
 
         Button signupButton = new Button(t("signup.button.submit", "Sign Up"));
         signupButton.getStyleClass().add("primary-btn");
@@ -218,14 +226,8 @@ public class SignupPage extends StackPane {
         signupButton.setOnAction(event -> attemptSignup(
                 router,
                 authService,
-                firstNameField,
-                lastNameField,
-                emailField,
-                passwordField,
-                roleComboBox,
-                studentCodeField,
-                errorLabel,
-                infoLabel,
+                fields,
+                messages,
                 signupButton
         ));
 
@@ -259,65 +261,100 @@ public class SignupPage extends StackPane {
      */
     private void attemptSignup(AppRouter router,
                                AuthService authService,
-                               TextField firstNameField,
-                               TextField lastNameField,
-                               TextField emailField,
-                               PasswordField passwordField,
-                               ComboBox<Role> roleComboBox,
-                               TextField studentCodeField,
-                               Label errorLabel,
-                               Label infoLabel,
+                               SignupFormFields fields,
+                               SignupMessages messages,
                                Button signupButton) {
 
-        hideMessage(errorLabel);
-        hideMessage(infoLabel);
+        hideMessage(messages.errorLabel);
+        hideMessage(messages.infoLabel);
 
-        String firstName = safeTrim(firstNameField.getText());
-        String lastName = safeTrim(lastNameField.getText());
-        String email = safeTrim(emailField.getText());
-        String password = passwordField.getText() == null ? "" : passwordField.getText();
-        Role role = roleComboBox.getValue();
-        String studentCode = safeTrim(studentCodeField.getText());
+        SignupData signupData = extractSignupData(fields);
 
-        String validationError = validateSignupInput(firstName, lastName, email, password, role, studentCode);
+        String validationError = validateSignupInput(
+                signupData.firstName(),
+                signupData.lastName(),
+                signupData.email(),
+                signupData.password(),
+                signupData.role(),
+                signupData.studentCode()
+        );
+
         if (validationError != null) {
-            showMessage(errorLabel, validationError);
+            showMessage(messages.errorLabel, validationError);
             return;
         }
 
         signupButton.setDisable(true);
 
-        Thread signupThread = new Thread(() -> {
-            try {
-                authService.signup(
-                        firstName,
-                        lastName,
-                        email,
-                        password,
-                        role,
-                        role == Role.STUDENT ? studentCode : null
-                );
-
-                Platform.runLater(() -> {
-                    signupButton.setDisable(false);
-                    showMessage(infoLabel, t("signup.success.created", "Account created successfully."));
-                    router.go("login");
-                });
-
-            } catch (Exception ex) {
-                Platform.runLater(() -> {
-                    signupButton.setDisable(false);
-                    showMessage(
-                            errorLabel,
-                            t("signup.error.failed", "Signup failed:") + " " + cleanMessage(ex.getMessage())
-                    );
-                });
-            }
-        });
+        Thread signupThread = new Thread(() -> performSignup(
+                router,
+                authService,
+                signupData,
+                messages,
+                signupButton
+        ));
 
         signupThread.setName("signup-thread");
         signupThread.setDaemon(true);
         signupThread.start();
+    }
+
+    /**
+     * Performs the signup request in a background thread.
+     */
+    private void performSignup(AppRouter router,
+                               AuthService authService,
+                               SignupData signupData,
+                               SignupMessages messages,
+                               Button signupButton) {
+        try {
+            authService.signup(
+                    signupData.firstName(),
+                    signupData.lastName(),
+                    signupData.email(),
+                    signupData.password(),
+                    signupData.role(),
+                    signupData.role() == Role.STUDENT ? signupData.studentCode() : null
+            );
+
+            Platform.runLater(() -> {
+                signupButton.setDisable(false);
+                showMessage(messages.infoLabel, t("signup.success.created", "Account created successfully."));
+                router.go("login");
+            });
+
+        } catch (InterruptedException ex) {
+            Thread.currentThread().interrupt();
+            Platform.runLater(() -> {
+                signupButton.setDisable(false);
+                showMessage(
+                        messages.errorLabel,
+                        t("signup.error.failed", "Signup failed:") + " " + t("signup.error.interrupted", "Operation was interrupted.")
+                );
+            });
+        } catch (IOException | RuntimeException ex) {
+            Platform.runLater(() -> {
+                signupButton.setDisable(false);
+                showMessage(
+                        messages.errorLabel,
+                        t("signup.error.failed", "Signup failed:") + " " + cleanMessage(ex.getMessage())
+                );
+            });
+        }
+    }
+
+    /**
+     * Extracts and normalizes signup input values.
+     */
+    private SignupData extractSignupData(SignupFormFields fields) {
+        String firstName = safeTrim(fields.firstNameField.getText());
+        String lastName = safeTrim(fields.lastNameField.getText());
+        String email = safeTrim(fields.emailField.getText());
+        String password = fields.passwordField.getText() == null ? "" : fields.passwordField.getText();
+        Role role = fields.roleComboBox.getValue();
+        String studentCode = safeTrim(fields.studentCodeField.getText());
+
+        return new SignupData(firstName, lastName, email, password, role, studentCode);
     }
 
     /**
@@ -401,7 +438,9 @@ public class SignupPage extends StackPane {
         if (message == null || message.isBlank()) {
             return "Unknown error";
         }
-        return message.length() > 200 ? message.substring(0, 200) + "..." : message;
+        return message.length() > MAX_ERROR_MESSAGE_LENGTH
+                ? message.substring(0, MAX_ERROR_MESSAGE_LENGTH) + "..."
+                : message;
     }
 
     /**
@@ -410,5 +449,58 @@ public class SignupPage extends StackPane {
     private static String t(String key, String fallback) {
         String value = FrontendI18n.t(key);
         return key.equals(value) ? fallback : value;
+    }
+
+    /**
+     * Holder for all signup form controls.
+     */
+    private static final class SignupFormFields {
+        private final TextField firstNameField;
+        private final TextField lastNameField;
+        private final TextField emailField;
+        private final PasswordField passwordField;
+        private final ComboBox<Role> roleComboBox;
+        private final Label studentCodeLabel;
+        private final TextField studentCodeField;
+
+        private SignupFormFields(TextField firstNameField,
+                                 TextField lastNameField,
+                                 TextField emailField,
+                                 PasswordField passwordField,
+                                 ComboBox<Role> roleComboBox,
+                                 Label studentCodeLabel,
+                                 TextField studentCodeField) {
+            this.firstNameField = firstNameField;
+            this.lastNameField = lastNameField;
+            this.emailField = emailField;
+            this.passwordField = passwordField;
+            this.roleComboBox = roleComboBox;
+            this.studentCodeLabel = studentCodeLabel;
+            this.studentCodeField = studentCodeField;
+        }
+    }
+
+    /**
+     * Holder for page message labels.
+     */
+    private static final class SignupMessages {
+        private final Label errorLabel;
+        private final Label infoLabel;
+
+        private SignupMessages(Label errorLabel, Label infoLabel) {
+            this.errorLabel = errorLabel;
+            this.infoLabel = infoLabel;
+        }
+    }
+
+    /**
+     * Signup input data.
+     */
+    private record SignupData(String firstName,
+                              String lastName,
+                              String email,
+                              String password,
+                              Role role,
+                              String studentCode) {
     }
 }

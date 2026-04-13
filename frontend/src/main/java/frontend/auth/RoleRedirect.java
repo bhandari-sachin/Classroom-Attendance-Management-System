@@ -27,13 +27,4 @@ public final class RoleRedirect {
         };
     }
 
-    /**
-     * Returns a safe route even if role is null.
-     */
-    public static String safeRouteFor(Role role) {
-        if (role == null) {
-            return "login"; // fallback route
-        }
-        return routeFor(role);
-    }
 }

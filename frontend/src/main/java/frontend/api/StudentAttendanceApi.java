@@ -16,31 +16,65 @@ import java.util.Map;
 
 /**
  * API client for student attendance operations.
- *
- * <p>This class handles:
- * attendance summary retrieval,
- * attendance record retrieval,
- * and attendance code submission.</p>
  */
-public class StudentAttendanceApi {
+public record StudentAttendanceApi(
+        String baseUrl,
+        HttpClient client,
+        ObjectMapper objectMapper,
+        StudentAttendanceApi.Paths paths
+) {
 
     private static final String AUTHORIZATION = "Authorization";
     private static final String BEARER_PREFIX = "Bearer ";
     private static final String CONTENT_TYPE = "Content-Type";
     private static final String APPLICATION_JSON = "application/json";
 
-    private final HttpClient client;
-    private final ObjectMapper objectMapper;
-    private final String baseUrl;
-
     public StudentAttendanceApi(String baseUrl) {
-        this(baseUrl, HttpClient.newHttpClient(), new ObjectMapper());
+        this(baseUrl, HttpClient.newHttpClient(), new ObjectMapper(), Paths.defaults());
     }
 
-    public StudentAttendanceApi(String baseUrl, HttpClient client, ObjectMapper objectMapper) {
-        this.baseUrl = stripTrailingSlash(baseUrl);
-        this.client = client;
-        this.objectMapper = objectMapper;
+    public StudentAttendanceApi {
+        baseUrl = stripTrailingSlash(baseUrl);
+
+        if (client == null) {
+            throw new IllegalArgumentException("HttpClient must not be null.");
+        }
+        if (objectMapper == null) {
+            throw new IllegalArgumentException("ObjectMapper must not be null.");
+        }
+        if (paths == null) {
+            throw new IllegalArgumentException("Paths must not be null.");
+        }
+    }
+
+    /**
+     * Customizable endpoint paths for StudentAttendanceApi.
+     */
+    public record Paths(
+            String summaryPath,
+            String recordsPath,
+            String markAttendancePath
+    ) {
+        public Paths {
+            requirePath(summaryPath, "summaryPath");
+            requirePath(recordsPath, "recordsPath");
+            requirePath(markAttendancePath, "markAttendancePath");
+        }
+
+        public static Paths defaults() {
+            return new Paths(
+                    "/api/student/attendance/summary",
+                    "/api/student/attendance/records",
+                    "/api/attendance/mark"
+            );
+        }
+
+        private static String requirePath(String value, String fieldName) {
+            if (value == null || value.isBlank()) {
+                throw new IllegalArgumentException(fieldName + " must not be null or blank.");
+            }
+            return value;
+        }
     }
 
     /**
@@ -49,7 +83,7 @@ public class StudentAttendanceApi {
     public Map<String, Object> getSummary(JwtStore jwtStore, AuthState state)
             throws IOException, InterruptedException {
 
-        String responseBody = get("/api/student/attendance/summary", jwtStore, state);
+        String responseBody = get(paths.summaryPath(), jwtStore, state);
 
         return objectMapper.readValue(
                 responseBody,
@@ -63,7 +97,7 @@ public class StudentAttendanceApi {
     public List<Map<String, Object>> getRecords(JwtStore jwtStore, AuthState state)
             throws IOException, InterruptedException {
 
-        String responseBody = get("/api/student/attendance/records", jwtStore, state);
+        String responseBody = get(paths.recordsPath(), jwtStore, state);
 
         return objectMapper.readValue(
                 responseBody,
@@ -82,7 +116,7 @@ public class StudentAttendanceApi {
         }
 
         Map<String, String> requestBody = Map.of("code", code.trim());
-        postJson(requestBody, jwtStore, state);
+        postAttendanceCode(requestBody, jwtStore, state);
     }
 
     /**
@@ -99,14 +133,14 @@ public class StudentAttendanceApi {
     }
 
     /**
-     * Sends an authenticated POST request with JSON body and returns the response body.
+     * Sends the attendance code as an authenticated POST request.
      */
-    private void postJson(Object body, JwtStore jwtStore, AuthState state)
+    private void postAttendanceCode(Object body, JwtStore jwtStore, AuthState state)
             throws IOException, InterruptedException {
 
         String jsonBody = objectMapper.writeValueAsString(body);
 
-        HttpRequest request = authorizedRequest("/api/attendance/mark", jwtStore, state)
+        HttpRequest request = authorizedRequest(paths.markAttendancePath(), jwtStore, state)
                 .header(CONTENT_TYPE, APPLICATION_JSON)
                 .POST(HttpRequest.BodyPublishers.ofString(jsonBody, StandardCharsets.UTF_8))
                 .build();
@@ -125,20 +159,20 @@ public class StudentAttendanceApi {
 
     /**
      * Sends the request and returns the response body.
-     * Throws an exception for HTTP error responses.
+     * Throws ApiException for HTTP error responses.
      */
     private String send(HttpRequest request) throws IOException, InterruptedException {
         HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
 
         if (response.statusCode() >= 400) {
-            throw new RuntimeException("HTTP " + response.statusCode() + ": " + response.body());
+            throw new ApiException("HTTP " + response.statusCode() + ": " + response.body());
         }
 
         return response.body();
     }
 
     /**
-     * Resolves the JWT token from the store first, then falls back to the provided auth state.
+     * Resolves the JWT token.
      */
     private String resolveToken(JwtStore jwtStore, AuthState state) {
         String token = jwtStore.load()
@@ -153,9 +187,9 @@ public class StudentAttendanceApi {
     }
 
     /**
-     * Removes a trailing slash from the base URL to avoid malformed URLs.
+     * Removes trailing slash from base URL.
      */
-    private String stripTrailingSlash(String url) {
+    private static String stripTrailingSlash(String url) {
         if (url == null || url.isBlank()) {
             throw new IllegalArgumentException("Base URL must not be null or blank.");
         }

@@ -126,7 +126,7 @@ class TeacherSessionReportHandlerTest {
 
         assertEquals(403, ex.statusCode);
         assertTrue(ex.responseBodyString().contains("Forbidden: not your session"));
-        verify(attendanceSQL, never()).getSessionReport(anyLong());
+        verify(attendanceSQL, never()).getSessionReport(anyLong(), anyString());
     }
 
 
@@ -149,7 +149,7 @@ class TeacherSessionReportHandlerTest {
         when(session.getSessionDate()).thenReturn(LocalDate.of(2026, 3, 3));
         when(sessionSQL.findById(5L)).thenReturn(session);
 
-        when(attendanceSQL.getSessionReport(5L)).thenThrow(new RuntimeException("DB down"));
+        when(attendanceSQL.getSessionReport(5L, "en")).thenThrow(new RuntimeException("DB down"));
 
         handler.handle(ex);
 

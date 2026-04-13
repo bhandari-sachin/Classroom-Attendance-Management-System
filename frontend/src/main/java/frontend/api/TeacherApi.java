@@ -25,25 +25,76 @@ import java.util.Map;
  * dashboard statistics,
  * and attendance marking.</p>
  */
-public class TeacherApi {
+public record TeacherApi(
+        String baseUrl,
+        HttpClient client,
+        ObjectMapper objectMapper,
+        TeacherApi.Paths paths
+) {
 
     private static final String AUTHORIZATION = "Authorization";
     private static final String BEARER_PREFIX = "Bearer ";
     private static final String CONTENT_TYPE = "Content-Type";
     private static final String APPLICATION_JSON = "application/json";
 
-    private final HttpClient client;
-    private final ObjectMapper objectMapper;
-    private final String baseUrl;
+    private static final String QUERY_PREFIX = "?";
+    private static final String CLASS_ID_PARAM = "classId=";
+    private static final String SESSION_ID_PARAM = "sessionId=";
 
     public TeacherApi(String baseUrl) {
-        this(baseUrl, HttpClient.newHttpClient(), new ObjectMapper());
+        this(baseUrl, HttpClient.newHttpClient(), new ObjectMapper(), Paths.defaults());
     }
 
-    public TeacherApi(String baseUrl, HttpClient client, ObjectMapper objectMapper) {
-        this.baseUrl = stripTrailingSlash(baseUrl);
-        this.client = client;
-        this.objectMapper = objectMapper;
+    public TeacherApi {
+        baseUrl = stripTrailingSlash(baseUrl);
+
+        if (client == null) {
+            throw new IllegalArgumentException("HttpClient must not be null.");
+        }
+        if (objectMapper == null) {
+            throw new IllegalArgumentException("ObjectMapper must not be null.");
+        }
+        if (paths == null) {
+            throw new IllegalArgumentException("Paths must not be null.");
+        }
+    }
+
+    /**
+     * Configurable API paths.
+     */
+    public record Paths(
+            String classesPath,
+            String studentsPath,
+            String sessionsPath,
+            String sessionReportPath,
+            String dashboardStatsPath,
+            String markAttendancePath
+    ) {
+        public Paths {
+            requirePath(classesPath, "classesPath");
+            requirePath(studentsPath, "studentsPath");
+            requirePath(sessionsPath, "sessionsPath");
+            requirePath(sessionReportPath, "sessionReportPath");
+            requirePath(dashboardStatsPath, "dashboardStatsPath");
+            requirePath(markAttendancePath, "markAttendancePath");
+        }
+
+        public static Paths defaults() {
+            return new Paths(
+                    "/api/teacher/classes",
+                    "/api/teacher/students",
+                    "/api/teacher/sessions",
+                    "/api/teacher/reports/session",
+                    "/api/teacher/dashboard/stats",
+                    "/api/teacher/attendance/mark"
+            );
+        }
+
+        private static void requirePath(String value, String fieldName) {
+            if (value == null || value.isBlank()) {
+                throw new IllegalArgumentException(fieldName + " must not be null or blank.");
+            }
+        }
     }
 
     /**
@@ -51,7 +102,7 @@ public class TeacherApi {
      */
     public List<Map<String, Object>> getMyClasses(JwtStore jwtStore, AuthState state)
             throws IOException, InterruptedException {
-        return readWrappedList("/api/teacher/classes", jwtStore, state);
+        return readWrappedList(paths.classesPath(), jwtStore, state);
     }
 
     /**
@@ -59,7 +110,8 @@ public class TeacherApi {
      */
     public List<Map<String, Object>> getStudentsForClass(JwtStore jwtStore, AuthState state, long classId)
             throws IOException, InterruptedException {
-        return readWrappedList("/api/teacher/students?classId=" + classId, jwtStore, state);
+        String path = paths.studentsPath() + QUERY_PREFIX + CLASS_ID_PARAM + classId;
+        return readWrappedList(path, jwtStore, state);
     }
 
     /**
@@ -67,7 +119,8 @@ public class TeacherApi {
      */
     public List<Map<String, Object>> getSessionsForClass(JwtStore jwtStore, AuthState state, long classId)
             throws IOException, InterruptedException {
-        return readWrappedList("/api/teacher/sessions?classId=" + classId, jwtStore, state);
+        String path = paths.sessionsPath() + QUERY_PREFIX + CLASS_ID_PARAM + classId;
+        return readWrappedList(path, jwtStore, state);
     }
 
     /**
@@ -79,6 +132,7 @@ public class TeacherApi {
         Map<String, Object> requestBody = Map.of("classId", classId);
 
         return readPost(
+                paths.sessionsPath(),
                 requestBody,
                 jwtStore,
                 state
@@ -90,7 +144,8 @@ public class TeacherApi {
      */
     public Map<String, Object> getSessionReport(JwtStore jwtStore, AuthState state, long sessionId)
             throws IOException, InterruptedException {
-        return readGet("/api/teacher/reports/session?sessionId=" + sessionId, jwtStore, state);
+        String path = paths.sessionReportPath() + QUERY_PREFIX + SESSION_ID_PARAM + sessionId;
+        return readGet(path, jwtStore, state);
     }
 
     /**
@@ -98,7 +153,7 @@ public class TeacherApi {
      */
     public Map<String, Object> getDashboardStats(JwtStore jwtStore, AuthState state)
             throws IOException, InterruptedException {
-        return readGet("/api/teacher/dashboard/stats", jwtStore, state);
+        return readGet(paths.dashboardStatsPath(), jwtStore, state);
     }
 
     /**
@@ -113,7 +168,7 @@ public class TeacherApi {
                 "status", status
         );
 
-        postJson("/api/teacher/attendance/mark", requestBody, jwtStore, state);
+        postJson(paths.markAttendancePath(), requestBody, jwtStore, state);
     }
 
     /**
@@ -159,10 +214,10 @@ public class TeacherApi {
     /**
      * Reads a POST endpoint and parses the response as a map.
      */
-    private Map<String, Object> readPost(Object body, JwtStore jwtStore, AuthState state)
+    private Map<String, Object> readPost(String path, Object body, JwtStore jwtStore, AuthState state)
             throws IOException, InterruptedException {
         return objectMapper.readValue(
-                postJson("/api/teacher/sessions", body, jwtStore, state),
+                postJson(path, body, jwtStore, state),
                 new TypeReference<>() {}
         );
     }
@@ -232,13 +287,13 @@ public class TeacherApi {
 
     /**
      * Sends the request and returns the response body.
-     * Throws an exception for HTTP error responses.
+     * Throws ApiException for HTTP error responses.
      */
     private String send(HttpRequest request) throws IOException, InterruptedException {
         HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
 
         if (response.statusCode() >= 400) {
-            throw new RuntimeException("HTTP " + response.statusCode() + ": " + response.body());
+            throw new ApiException("HTTP " + response.statusCode() + ": " + response.body());
         }
 
         return response.body();
@@ -262,7 +317,7 @@ public class TeacherApi {
     /**
      * Removes a trailing slash from the base URL to avoid malformed URLs.
      */
-    private String stripTrailingSlash(String url) {
+    private static String stripTrailingSlash(String url) {
         if (url == null || url.isBlank()) {
             throw new IllegalArgumentException("Base URL must not be null or blank.");
         }
