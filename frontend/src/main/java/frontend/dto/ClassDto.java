@@ -1,5 +1,7 @@
 package frontend.dto;
-
+/**
+ * DTO representing a class.
+ */
 public class ClassDto {
     public Long id;
     public String classCode;

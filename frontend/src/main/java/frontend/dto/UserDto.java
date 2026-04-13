@@ -1,5 +1,7 @@
 package frontend.dto;
-
+/**
+ * DTO representing a user.
+ */
 public class UserDto {
     public Long id;
     public String email;

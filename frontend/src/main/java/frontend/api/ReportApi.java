@@ -4,62 +4,152 @@ import frontend.auth.AuthState;
 import frontend.auth.JwtStore;
 import frontend.i18n.FrontendI18n;
 
-import java.io.FileOutputStream;
+import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.net.URI;
+import java.net.URLEncoder;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
 
+/**
+ * API client for exporting report files from the backend.
+ *
+ * <p>This class supports exporting:
+ * student reports,
+ * teacher reports,
+ * and admin reports.</p>
+ */
 public class ReportApi {
 
-    private final HttpClient client = HttpClient.newHttpClient();
+    private static final String AUTHORIZATION = "Authorization";
+    private static final String BEARER_PREFIX = "Bearer ";
+
+    private final HttpClient client;
     private final String baseUrl;
 
     public ReportApi(String baseUrl) {
-        this.baseUrl = baseUrl;
+        this(baseUrl, HttpClient.newHttpClient());
     }
 
-    private String token(JwtStore store, AuthState state) {
-        return store.load().map(AuthState::getToken).orElse(state.getToken());
+    public ReportApi(String baseUrl, HttpClient client) {
+        this.baseUrl = stripTrailingSlash(baseUrl);
+        this.client = client;
     }
 
-    public void exportStudentPdf(JwtStore store, AuthState state, String destPath) throws Exception {
-        String url = baseUrl + "/api/reports/export/student?format=pdf&lang=" + FrontendI18n.getLanguage();
-        download(url, token(store, state), destPath);
+    /**
+     * Exports the current student's report as PDF.
+     *
+     * @param store JWT storage
+     * @param state fallback auth state
+     * @param destinationPath local file path where the report will be saved
+     */
+    public void exportStudentPdf(JwtStore store, AuthState state, String destinationPath)
+            throws IOException, InterruptedException {
+
+        String path = "/api/reports/export/student"
+                + "?format=pdf"
+                + "&lang=" + encode(FrontendI18n.getLanguage());
+
+        downloadToFile(path, resolveToken(store, state), destinationPath);
     }
 
-    public void exportTeacherReport(JwtStore store, AuthState state, long classId, String format, String destPath) throws Exception {
-        String url = baseUrl + "/api/reports/export/teacher?classId=" + classId + "&format=" + format+ "&lang=" + FrontendI18n.getLanguage();
-        download(url, token(store, state), destPath);
+    /**
+     * Exports a teacher report for a specific class.
+     *
+     * @param store JWT storage
+     * @param state fallback auth state
+     * @param classId target class id
+     * @param format export format such as pdf or csv
+     * @param destinationPath local file path where the report will be saved
+     */
+    public void exportTeacherReport(JwtStore store, AuthState state, long classId, String format, String destinationPath)
+            throws IOException, InterruptedException {
+
+        String path = "/api/reports/export/teacher"
+                + "?classId=" + classId
+                + "&format=" + encode(format)
+                + "&lang=" + encode(FrontendI18n.getLanguage());
+
+        downloadToFile(path, resolveToken(store, state), destinationPath);
     }
 
-    public void exportAdminReport(JwtStore store, AuthState state, String format, String destPath) throws Exception {
-        String url = baseUrl + "/api/reports/export/admin?format=" + format + "&lang=" + FrontendI18n.getLanguage();
-        download(url, token(store, state), destPath);
+    /**
+     * Exports an admin report.
+     *
+     * @param store JWT storage
+     * @param state fallback auth state
+     * @param format export format such as pdf or csv
+     * @param destinationPath local file path where the report will be saved
+     */
+    public void exportAdminReport(JwtStore store, AuthState state, String format, String destinationPath)
+            throws IOException, InterruptedException {
+
+        String path = "/api/reports/export/admin"
+                + "?format=" + encode(format)
+                + "&lang=" + encode(FrontendI18n.getLanguage());
+
+        downloadToFile(path, resolveToken(store, state), destinationPath);
     }
 
-    private void download(String url, String token, String destPath) throws Exception {
-        HttpRequest req = HttpRequest.newBuilder()
-                .uri(URI.create(url))
-                .header("Authorization", "Bearer " + token)
+    /**
+     * Resolves the JWT token from the store first, then falls back to the provided auth state.
+     */
+    private String resolveToken(JwtStore store, AuthState state) {
+        String token = store.load()
+                .map(AuthState::getToken)
+                .orElse(state != null ? state.getToken() : null);
+
+        if (token == null || token.isBlank()) {
+            throw new IllegalStateException("JWT token is missing. Please log in again.");
+        }
+
+        return token;
+    }
+
+    /**
+     * Downloads a file from the given API path and saves it to the provided local path.
+     */
+    private void downloadToFile(String path, String token, String destinationPath)
+            throws IOException, InterruptedException {
+
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(baseUrl + path))
+                .header(AUTHORIZATION, BEARER_PREFIX + token)
                 .GET()
                 .build();
 
-        HttpResponse<InputStream> res = client.send(req, HttpResponse.BodyHandlers.ofInputStream());
+        HttpResponse<InputStream> response = client.send(request, HttpResponse.BodyHandlers.ofInputStream());
 
-        if (res.statusCode() >= 400) {
-            String body;
-            try (InputStream err = res.body()) {
-                body = new String(err.readAllBytes());
+        if (response.statusCode() >= 400) {
+            try (InputStream errorStream = response.body()) {
+                String errorBody = new String(errorStream.readAllBytes(), StandardCharsets.UTF_8);
+                throw new RuntimeException("Export failed (HTTP " + response.statusCode() + "): " + errorBody);
             }
-            throw new RuntimeException("Export failed (HTTP " + res.statusCode() + "): " + body);
         }
 
-        try (InputStream in = res.body();
-             FileOutputStream out = new FileOutputStream(destPath)) {
-            in.transferTo(out);
+        try (InputStream inputStream = response.body();
+             OutputStream outputStream = java.nio.file.Files.newOutputStream(java.nio.file.Path.of(destinationPath))) {
+            inputStream.transferTo(outputStream);
         }
     }
-}
 
+    /**
+     * Encodes a query parameter value safely for URLs.
+     */
+    private String encode(String value) {
+        return URLEncoder.encode(value == null ? "" : value, StandardCharsets.UTF_8);
+    }
+
+    /**
+     * Removes trailing slash from base URL to avoid double slashes.
+     */
+    private String stripTrailingSlash(String url) {
+        if (url == null || url.isBlank()) {
+            throw new IllegalArgumentException("Base URL must not be null or blank.");
+        }
+        return url.endsWith("/") ? url.substring(0, url.length() - 1) : url;
+    }
+}

@@ -5,161 +5,267 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import frontend.auth.AuthState;
 import frontend.auth.JwtStore;
 
+import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * API client for teacher-related operations.
+ *
+ * <p>This class handles teacher endpoints such as:
+ * classes,
+ * students,
+ * sessions,
+ * reports,
+ * dashboard statistics,
+ * and attendance marking.</p>
+ */
 public class TeacherApi {
 
-    private final HttpClient client = HttpClient.newHttpClient();
-    private final ObjectMapper om = new ObjectMapper();
+    private static final String AUTHORIZATION = "Authorization";
+    private static final String BEARER_PREFIX = "Bearer ";
+    private static final String CONTENT_TYPE = "Content-Type";
+    private static final String APPLICATION_JSON = "application/json";
+
+    private final HttpClient client;
+    private final ObjectMapper objectMapper;
     private final String baseUrl;
 
     public TeacherApi(String baseUrl) {
-        this.baseUrl = baseUrl;
+        this(baseUrl, HttpClient.newHttpClient(), new ObjectMapper());
     }
 
-    private String token(JwtStore jwtStore, AuthState state) {
-        return jwtStore.load().map(AuthState::getToken).orElse(state.getToken());
+    public TeacherApi(String baseUrl, HttpClient client, ObjectMapper objectMapper) {
+        this.baseUrl = stripTrailingSlash(baseUrl);
+        this.client = client;
+        this.objectMapper = objectMapper;
     }
 
-    @SuppressWarnings("unchecked")
-    private List<Map<String, Object>> unwrapList(String json) throws Exception {
-        // supports either:
-        // 1) { data: [ ... ] }
-        // 2) [ ... ]
-        if (json != null && json.trim().startsWith("[")) {
-            return om.readValue(json, new TypeReference<>() {});
-        }
-
-        Map<String, Object> map = om.readValue(json, new TypeReference<>() {});
-        Object data = map.get("data");
-        if (data == null) return List.of();
-        return (List<Map<String, Object>>) data;
+    /**
+     * Returns the teacher's classes.
+     */
+    public List<Map<String, Object>> getMyClasses(JwtStore jwtStore, AuthState state)
+            throws IOException, InterruptedException {
+        return readWrappedList("/api/teacher/classes", jwtStore, state);
     }
 
-    public String extractCode(Map<String, Object> res) {
-        // supports either:
-        // 1) { code: "ABC" }
-        // 2) { data: { code: "ABC" } }
-        if (res == null) return null;
-
-        Object direct = res.get("code");
-        if (direct != null) return String.valueOf(direct);
-
-        Object data = res.get("data");
-        if (data instanceof Map<?, ?> m) {
-            Object c = m.get("code");
-            if (c != null) return String.valueOf(c);
-        }
-        return null;
+    /**
+     * Returns the students for the given class.
+     */
+    public List<Map<String, Object>> getStudentsForClass(JwtStore jwtStore, AuthState state, long classId)
+            throws IOException, InterruptedException {
+        return readWrappedList("/api/teacher/students?classId=" + classId, jwtStore, state);
     }
 
-    public List<Map<String, Object>> getMyClasses(JwtStore jwtStore, AuthState state) throws Exception {
-        HttpRequest req = HttpRequest.newBuilder()
-                .uri(URI.create(baseUrl + "/api/teacher/classes"))
-                .header("Authorization", "Bearer " + token(jwtStore, state))
-                .GET()
-                .build();
-
-        HttpResponse<String> res = client.send(req, HttpResponse.BodyHandlers.ofString());
-        if (res.statusCode() >= 400) throw new RuntimeException(res.statusCode() + " " + res.body());
-        return unwrapList(res.body());
+    /**
+     * Returns the sessions for the given class.
+     */
+    public List<Map<String, Object>> getSessionsForClass(JwtStore jwtStore, AuthState state, long classId)
+            throws IOException, InterruptedException {
+        return readWrappedList("/api/teacher/sessions?classId=" + classId, jwtStore, state);
     }
 
-    public List<Map<String, Object>> getStudentsForClass(JwtStore jwtStore, AuthState state, long classId) throws Exception {
-        HttpRequest req = HttpRequest.newBuilder()
-                .uri(URI.create(baseUrl + "/api/teacher/students?classId=" + classId))
-                .header("Authorization", "Bearer " + token(jwtStore, state))
-                .GET()
-                .build();
+    /**
+     * Creates a new session for the given class.
+     */
+    public Map<String, Object> createSession(JwtStore jwtStore, AuthState state, long classId)
+            throws IOException, InterruptedException {
 
-        HttpResponse<String> res = client.send(req, HttpResponse.BodyHandlers.ofString());
-        if (res.statusCode() >= 400) throw new RuntimeException(res.statusCode() + " " + res.body());
-        return unwrapList(res.body());
+        Map<String, Object> requestBody = Map.of("classId", classId);
+
+        return readPost(
+                requestBody,
+                jwtStore,
+                state
+        );
     }
 
-    public List<Map<String, Object>> getSessionsForClass(JwtStore jwtStore, AuthState state, long classId) throws Exception {
-        HttpRequest req = HttpRequest.newBuilder()
-                .uri(URI.create(baseUrl + "/api/teacher/sessions?classId=" + classId))
-                .header("Authorization", "Bearer " + token(jwtStore, state))
-                .GET()
-                .build();
-
-        HttpResponse<String> res = client.send(req, HttpResponse.BodyHandlers.ofString());
-        if (res.statusCode() >= 400) throw new RuntimeException(res.statusCode() + " " + res.body());
-        return unwrapList(res.body());
+    /**
+     * Returns the report for the given session.
+     */
+    public Map<String, Object> getSessionReport(JwtStore jwtStore, AuthState state, long sessionId)
+            throws IOException, InterruptedException {
+        return readGet("/api/teacher/reports/session?sessionId=" + sessionId, jwtStore, state);
     }
 
-    public Map<String, Object> createSession(JwtStore jwtStore, AuthState state, long classId) throws Exception {
-        Map<String, Object> payload = new HashMap<>();
-        payload.put("classId", classId);
-
-        String jsonBody = om.writeValueAsString(payload);
-
-        HttpRequest req = HttpRequest.newBuilder()
-                .uri(URI.create(baseUrl + "/api/teacher/sessions"))
-                .header("Authorization", "Bearer " + token(jwtStore, state))
-                .header("Content-Type", "application/json")
-                .POST(HttpRequest.BodyPublishers.ofString(jsonBody, StandardCharsets.UTF_8))
-                .build();
-
-        HttpResponse<String> res = client.send(req, HttpResponse.BodyHandlers.ofString());
-        if (res.statusCode() >= 400) throw new RuntimeException(res.statusCode() + " " + res.body());
-
-        return om.readValue(res.body(), new TypeReference<>() {});
+    /**
+     * Returns teacher dashboard statistics.
+     */
+    public Map<String, Object> getDashboardStats(JwtStore jwtStore, AuthState state)
+            throws IOException, InterruptedException {
+        return readGet("/api/teacher/dashboard/stats", jwtStore, state);
     }
 
-    public Map<String, Object> getSessionReport(JwtStore jwtStore, AuthState state, long sessionId) throws Exception {
-        HttpRequest req = HttpRequest.newBuilder()
-                .uri(URI.create(baseUrl + "/api/teacher/reports/session?sessionId=" + sessionId))
-                .header("Authorization", "Bearer " + token(jwtStore, state))
-                .GET()
-                .build();
+    /**
+     * Marks attendance for a student in a session.
+     */
+    public void markAttendance(JwtStore jwtStore, AuthState state, long studentId, long sessionId, String status)
+            throws IOException, InterruptedException {
 
-        HttpResponse<String> res = client.send(req, HttpResponse.BodyHandlers.ofString());
-        if (res.statusCode() >= 400) throw new RuntimeException(res.statusCode() + " " + res.body());
-
-        return om.readValue(res.body(), new TypeReference<>() {});
-    }
-    public Map<String, Object> getDashboardStats(JwtStore jwtStore, AuthState state) throws Exception {
-        HttpRequest req = HttpRequest.newBuilder()
-                .uri(URI.create(baseUrl + "/api/teacher/dashboard/stats"))
-                .header("Authorization", "Bearer " + token(jwtStore, state))
-                .GET()
-                .build();
-
-        HttpResponse<String> res = client.send(req, HttpResponse.BodyHandlers.ofString());
-        if (res.statusCode() >= 400) throw new RuntimeException(res.body());
-
-        return om.readValue(res.body(), new TypeReference<>() {});
-    }
-    public void markAttendance(JwtStore jwtStore, AuthState state, long studentId, long sessionId, String status) throws Exception {
-        Map<String, Object> body = Map.of(
+        Map<String, Object> requestBody = Map.of(
                 "studentId", studentId,
                 "sessionId", sessionId,
                 "status", status
         );
 
-        String json = om.writeValueAsString(body);
-
-        HttpRequest req = HttpRequest.newBuilder()
-                .uri(URI.create(baseUrl + "/api/teacher/attendance/mark"))
-                .header("Authorization", "Bearer " + token(jwtStore, state))
-                .header("Content-Type", "application/json")
-                .POST(HttpRequest.BodyPublishers.ofString(json, StandardCharsets.UTF_8))
-                .build();
-
-        HttpResponse<String> res = client.send(req, HttpResponse.BodyHandlers.ofString());
-
-        if (res.statusCode() >= 400) {
-            throw new RuntimeException(res.statusCode() + " " + res.body());
-        }
+        postJson("/api/teacher/attendance/mark", requestBody, jwtStore, state);
     }
 
+    /**
+     * Extracts an attendance/session code from a response.
+     *
+     * <p>Supports both:
+     * { "code": "ABC123" }
+     * and
+     * { "data": { "code": "ABC123" } }</p>
+     */
+    public String extractCode(Map<String, Object> response) {
+        if (response == null) {
+            return null;
+        }
+
+        Object directCode = response.get("code");
+        if (directCode != null) {
+            return String.valueOf(directCode);
+        }
+
+        Object data = response.get("data");
+        if (data instanceof Map<?, ?> dataMap) {
+            Object nestedCode = dataMap.get("code");
+            if (nestedCode != null) {
+                return String.valueOf(nestedCode);
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Reads a GET endpoint and parses the response as a map.
+     */
+    private Map<String, Object> readGet(String path, JwtStore jwtStore, AuthState state)
+            throws IOException, InterruptedException {
+        return objectMapper.readValue(
+                get(path, jwtStore, state),
+                new TypeReference<>() {}
+        );
+    }
+
+    /**
+     * Reads a POST endpoint and parses the response as a map.
+     */
+    private Map<String, Object> readPost(Object body, JwtStore jwtStore, AuthState state)
+            throws IOException, InterruptedException {
+        return objectMapper.readValue(
+                postJson("/api/teacher/sessions", body, jwtStore, state),
+                new TypeReference<>() {}
+        );
+    }
+
+    /**
+     * Reads a response that may be either:
+     * 1) a raw list
+     * 2) an object containing a "data" list
+     */
+    @SuppressWarnings("unchecked")
+    private List<Map<String, Object>> readWrappedList(String path, JwtStore jwtStore, AuthState state)
+            throws IOException, InterruptedException {
+
+        String json = get(path, jwtStore, state);
+
+        if (json != null && json.trim().startsWith("[")) {
+            return objectMapper.readValue(json, new TypeReference<>() {});
+        }
+
+        Map<String, Object> wrapper = objectMapper.readValue(json, new TypeReference<>() {});
+        Object data = wrapper.get("data");
+
+        if (data == null) {
+            return List.of();
+        }
+
+        return (List<Map<String, Object>>) data;
+    }
+
+    /**
+     * Sends an authenticated GET request and returns the response body.
+     */
+    private String get(String path, JwtStore jwtStore, AuthState state)
+            throws IOException, InterruptedException {
+
+        HttpRequest request = authorizedRequest(path, jwtStore, state)
+                .GET()
+                .build();
+
+        return send(request);
+    }
+
+    /**
+     * Sends an authenticated POST request with JSON body and returns the response body.
+     */
+    private String postJson(String path, Object body, JwtStore jwtStore, AuthState state)
+            throws IOException, InterruptedException {
+
+        String jsonBody = objectMapper.writeValueAsString(body);
+
+        HttpRequest request = authorizedRequest(path, jwtStore, state)
+                .header(CONTENT_TYPE, APPLICATION_JSON)
+                .POST(HttpRequest.BodyPublishers.ofString(jsonBody, StandardCharsets.UTF_8))
+                .build();
+
+        return send(request);
+    }
+
+    /**
+     * Builds an authenticated request with the current JWT token.
+     */
+    private HttpRequest.Builder authorizedRequest(String path, JwtStore jwtStore, AuthState state) {
+        return HttpRequest.newBuilder()
+                .uri(URI.create(baseUrl + path))
+                .header(AUTHORIZATION, BEARER_PREFIX + resolveToken(jwtStore, state));
+    }
+
+    /**
+     * Sends the request and returns the response body.
+     * Throws an exception for HTTP error responses.
+     */
+    private String send(HttpRequest request) throws IOException, InterruptedException {
+        HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+
+        if (response.statusCode() >= 400) {
+            throw new RuntimeException("HTTP " + response.statusCode() + ": " + response.body());
+        }
+
+        return response.body();
+    }
+
+    /**
+     * Resolves the JWT token from the store first, then falls back to the provided auth state.
+     */
+    private String resolveToken(JwtStore jwtStore, AuthState state) {
+        String token = jwtStore.load()
+                .map(AuthState::getToken)
+                .orElse(state != null ? state.getToken() : null);
+
+        if (token == null || token.isBlank()) {
+            throw new IllegalStateException("JWT token is missing. Please log in again.");
+        }
+
+        return token;
+    }
+
+    /**
+     * Removes a trailing slash from the base URL to avoid malformed URLs.
+     */
+    private String stripTrailingSlash(String url) {
+        if (url == null || url.isBlank()) {
+            throw new IllegalArgumentException("Base URL must not be null or blank.");
+        }
+        return url.endsWith("/") ? url.substring(0, url.length() - 1) : url;
+    }
 }

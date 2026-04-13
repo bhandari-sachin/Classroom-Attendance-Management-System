@@ -1,191 +1,412 @@
 package frontend.ui;
 
-import frontend.auth.*;
+import frontend.auth.AppRouter;
+import frontend.auth.AuthService;
+import frontend.auth.AuthState;
+import frontend.auth.JwtStore;
+import frontend.auth.Role;
+import frontend.auth.RoleRedirect;
 import frontend.i18n.FrontendI18n;
 import javafx.application.Platform;
+import javafx.geometry.Insets;
 import javafx.geometry.Pos;
-import javafx.scene.control.*;
+import javafx.scene.control.Button;
+import javafx.scene.control.ComboBox;
+import javafx.scene.control.Control;
+import javafx.scene.control.Label;
+import javafx.scene.control.ListCell;
+import javafx.scene.control.PasswordField;
+import javafx.scene.control.TextField;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 
 import java.util.Optional;
 
+/**
+ * Signup page for creating a new user account.
+ *
+ * <p>This page allows the user to:
+ * enter personal details,
+ * select a role,
+ * optionally provide a student code,
+ * create an account,
+ * and navigate back to login.</p>
+ */
 public class SignupPage extends StackPane {
 
+    private static final double CARD_MAX_WIDTH = 420;
+    private static final int CARD_PADDING = 22;
+    private static final int CARD_SPACING = 10;
+    private static final int FIELD_SPACING = 6;
+
     public SignupPage(AppRouter router, AuthService authService, JwtStore jwtStore) {
+        validateAutoLogin(router, jwtStore);
 
-        VBox card = new VBox(10);
-        card.getStyleClass().add("card");
-        card.setMaxWidth(420);
-        card.setPadding(new javafx.geometry.Insets(22));
+        Label titleLabel = createTitleLabel();
+        Label subtitleLabel = createSubtitleLabel();
 
-        Label title = new Label(t("signup.title", "Create Account"));
-        title.getStyleClass().add("title");
+        TextField firstNameField = createTextField("signup.firstname.placeholder", "First name");
+        TextField lastNameField = createTextField("signup.lastname.placeholder", "Last name");
+        TextField emailField = createTextField("signup.email.placeholder", "Email");
+        PasswordField passwordField = createPasswordField();
 
-        Label sub = new Label(t("signup.subtitle", "Sign up to continue"));
-        sub.getStyleClass().add("subtitle");
+        ComboBox<Role> roleComboBox = createRoleComboBox();
 
-        TextField firstName = new TextField();
-        firstName.setPromptText(t("signup.firstname.placeholder", "First name"));
+        Label studentCodeLabel = createFieldLabel(t("signup.studentcode.label", "Student Code"));
+        TextField studentCodeField = createTextField("signup.studentcode.placeholder", "Enter student code");
+        bindStudentCodeVisibility(roleComboBox, studentCodeLabel, studentCodeField);
 
-        TextField lastName = new TextField();
-        lastName.setPromptText(t("signup.lastname.placeholder", "Last name"));
+        Label errorLabel = createMessageLabel("error");
+        Label infoLabel = createMessageLabel("subtitle");
 
-        TextField email = new TextField();
-        email.setPromptText(t("signup.email.placeholder", "Email"));
+        Button signupButton = createSignupButton(
+                router,
+                authService,
+                firstNameField,
+                lastNameField,
+                emailField,
+                passwordField,
+                roleComboBox,
+                studentCodeField,
+                errorLabel,
+                infoLabel
+        );
 
-        PasswordField password = new PasswordField();
-        password.setPromptText(t("signup.password.placeholder", "Password"));
+        Button loginButton = createLoginButton(router);
 
-        ComboBox<Role> role = new ComboBox<>();
-        role.getItems().addAll(Role.STUDENT, Role.TEACHER);
-        role.setValue(Role.STUDENT);
-        role.setMaxWidth(Double.MAX_VALUE);
-
-        role.setCellFactory(listView -> new ListCell<>() {
-            @Override
-            protected void updateItem(Role item, boolean empty) {
-                super.updateItem(item, empty);
-                if (empty || item == null) {
-                    setText(null);
-                } else {
-                    setText(item == Role.STUDENT
-                            ? t("signup.role.student", "Student")
-                            : t("signup.role.teacher", "Teacher"));
-                }
-            }
-        });
-
-        role.setButtonCell(new ListCell<>() {
-            @Override
-            protected void updateItem(Role item, boolean empty) {
-                super.updateItem(item, empty);
-                if (empty || item == null) {
-                    setText(null);
-                } else {
-                    setText(item == Role.STUDENT
-                            ? t("signup.role.student", "Student")
-                            : t("signup.role.teacher", "Teacher"));
-                }
-            }
-        });
-
-        Label studentCodeLabel = new Label(t("signup.studentcode.label", "Student Code"));
-        studentCodeLabel.getStyleClass().add("field-label");
-
-        TextField studentCode = new TextField();
-        studentCode.setPromptText(t("signup.studentcode.placeholder", "Enter student code"));
-
-        studentCodeLabel.visibleProperty().bind(role.valueProperty().isEqualTo(Role.STUDENT));
-        studentCode.visibleProperty().bind(role.valueProperty().isEqualTo(Role.STUDENT));
-        studentCodeLabel.managedProperty().bind(studentCodeLabel.visibleProperty());
-        studentCode.managedProperty().bind(studentCode.visibleProperty());
-
-        Label error = new Label();
-        error.getStyleClass().add("error");
-        error.setVisible(false);
-        error.setManaged(false);
-
-        Label info = new Label();
-        info.getStyleClass().add("subtitle");
-        info.setVisible(false);
-        info.setManaged(false);
-
-        Button signupBtn = new Button(t("signup.button.submit", "Sign Up"));
-        signupBtn.getStyleClass().add("primary-btn");
-        signupBtn.setMaxWidth(Double.MAX_VALUE);
-
-        Button goLogin = new Button(t("signup.button.login", "Back to Login"));
-        goLogin.getStyleClass().add("link-button");
-        goLogin.setOnAction(e -> router.go("login"));
-
-        signupBtn.setOnAction(e -> {
-            hideMsg(error);
-            hideMsg(info);
-
-            String fn = firstName.getText().trim();
-            String ln = lastName.getText().trim();
-            String em = email.getText().trim();
-            String pw = password.getText();
-            Role r = role.getValue();
-            String sc = studentCode.getText().trim();
-
-            if (fn.isBlank() || ln.isBlank() || em.isBlank() || pw.isBlank()) {
-                showMsg(error, t("signup.error.required_fields", "Please fill in all required fields."));
-                return;
-            }
-            if (!em.contains("@")) {
-                showMsg(error, t("signup.error.invalid_email", "Please enter a valid email address."));
-                return;
-            }
-            if (pw.length() < 6) {
-                showMsg(error, t("signup.error.password_short", "Password must be at least 6 characters."));
-                return;
-            }
-            if (r == Role.STUDENT && sc.isBlank()) {
-                showMsg(error, t("signup.error.student_code_required", "Student code is required."));
-                return;
-            }
-
-            signupBtn.setDisable(true);
-
-            new Thread(() -> {
-                try {
-                    authService.signup(fn, ln, em, pw, r, (r == Role.STUDENT ? sc : null));
-
-                    Platform.runLater(() -> {
-                        signupBtn.setDisable(false);
-                        showMsg(info, t("signup.success.created", "Account created successfully."));
-                        router.go("login");
-                    });
-                } catch (Exception ex) {
-                    Platform.runLater(() -> {
-                        signupBtn.setDisable(false);
-                        showMsg(error, t("signup.error.failed", "Signup failed:") + " " + ex.getMessage());
-                    });
-                }
-            }).start();
-        });
-
-        card.getChildren().addAll(
-                title, sub,
-                field(t("signup.firstname.label", "First Name"), firstName),
-                field(t("signup.lastname.label", "Last Name"), lastName),
-                field(t("signup.email.label", "Email"), email),
-                field(t("signup.password.label", "Password"), password),
-                field(t("signup.role.label", "Role"), role),
-                studentCodeLabel, studentCode,
-                error,
-                info,
-                signupBtn,
-                goLogin
+        VBox card = createCard(
+                titleLabel,
+                subtitleLabel,
+                field(t("signup.firstname.label", "First Name"), firstNameField),
+                field(t("signup.lastname.label", "Last Name"), lastNameField),
+                field(t("signup.email.label", "Email"), emailField),
+                field(t("signup.password.label", "Password"), passwordField),
+                field(t("signup.role.label", "Role"), roleComboBox),
+                studentCodeLabel,
+                studentCodeField,
+                errorLabel,
+                infoLabel,
+                signupButton,
+                loginButton
         );
 
         StackPane.setAlignment(card, Pos.CENTER);
         getChildren().add(card);
-
-        Optional<AuthState> existing = jwtStore.load();
-        existing.ifPresent(state -> router.go(RoleRedirect.routeFor(state.getRole())));
     }
 
-    private static VBox field(String label, Control input) {
-        Label l = new Label(label);
-        l.getStyleClass().add("field-label");
-        return new VBox(6, l, input);
+    /**
+     * Redirects the user immediately if an authentication state already exists.
+     */
+    private void validateAutoLogin(AppRouter router, JwtStore jwtStore) {
+        Optional<AuthState> existingState = jwtStore.load();
+        existingState.ifPresent(state -> router.go(RoleRedirect.routeFor(state.getRole())));
     }
 
-    private static void showMsg(Label lbl, String msg) {
-        lbl.setText(msg);
-        lbl.setVisible(true);
-        lbl.setManaged(true);
+    /**
+     * Creates the page title label.
+     */
+    private Label createTitleLabel() {
+        Label title = new Label(t("signup.title", "Create Account"));
+        title.getStyleClass().add("title");
+        return title;
     }
 
-    private static void hideMsg(Label lbl) {
-        lbl.setVisible(false);
-        lbl.setManaged(false);
-        lbl.setText("");
+    /**
+     * Creates the page subtitle label.
+     */
+    private Label createSubtitleLabel() {
+        Label subtitle = new Label(t("signup.subtitle", "Sign up to continue"));
+        subtitle.getStyleClass().add("subtitle");
+        return subtitle;
     }
 
+    /**
+     * Creates a standard text field with translated placeholder text.
+     */
+    private TextField createTextField(String placeholderKey, String fallbackPlaceholder) {
+        TextField textField = new TextField();
+        textField.setPromptText(t(placeholderKey, fallbackPlaceholder));
+        return textField;
+    }
+
+    /**
+     * Creates the password field.
+     */
+    private PasswordField createPasswordField() {
+        PasswordField passwordField = new PasswordField();
+        passwordField.setPromptText(t("signup.password.placeholder", "Password"));
+        return passwordField;
+    }
+
+    /**
+     * Creates a styled field label.
+     */
+    private Label createFieldLabel(String text) {
+        Label label = new Label(text);
+        label.getStyleClass().add("field-label");
+        return label;
+    }
+
+    /**
+     * Creates a styled message label.
+     */
+    private Label createMessageLabel(String styleClass) {
+        Label label = new Label();
+        label.getStyleClass().add(styleClass);
+        label.setVisible(false);
+        label.setManaged(false);
+        return label;
+    }
+
+    /**
+     * Creates the role selection combo box.
+     */
+    private ComboBox<Role> createRoleComboBox() {
+        ComboBox<Role> roleComboBox = new ComboBox<>();
+        roleComboBox.getItems().addAll(Role.STUDENT, Role.TEACHER);
+        roleComboBox.setValue(Role.STUDENT);
+        roleComboBox.setMaxWidth(Double.MAX_VALUE);
+
+        roleComboBox.setCellFactory(listView -> new ListCell<>() {
+            @Override
+            protected void updateItem(Role item, boolean empty) {
+                super.updateItem(item, empty);
+                setText(empty || item == null ? null : roleLabel(item));
+            }
+        });
+
+        roleComboBox.setButtonCell(new ListCell<>() {
+            @Override
+            protected void updateItem(Role item, boolean empty) {
+                super.updateItem(item, empty);
+                setText(empty || item == null ? null : roleLabel(item));
+            }
+        });
+
+        return roleComboBox;
+    }
+
+    /**
+     * Binds student code visibility so it only appears for students.
+     */
+    private void bindStudentCodeVisibility(ComboBox<Role> roleComboBox, Label studentCodeLabel, TextField studentCodeField) {
+        studentCodeLabel.visibleProperty().bind(roleComboBox.valueProperty().isEqualTo(Role.STUDENT));
+        studentCodeField.visibleProperty().bind(roleComboBox.valueProperty().isEqualTo(Role.STUDENT));
+
+        studentCodeLabel.managedProperty().bind(studentCodeLabel.visibleProperty());
+        studentCodeField.managedProperty().bind(studentCodeField.visibleProperty());
+    }
+
+    /**
+     * Creates the signup button and binds the signup action.
+     */
+    private Button createSignupButton(AppRouter router,
+                                      AuthService authService,
+                                      TextField firstNameField,
+                                      TextField lastNameField,
+                                      TextField emailField,
+                                      PasswordField passwordField,
+                                      ComboBox<Role> roleComboBox,
+                                      TextField studentCodeField,
+                                      Label errorLabel,
+                                      Label infoLabel) {
+
+        Button signupButton = new Button(t("signup.button.submit", "Sign Up"));
+        signupButton.getStyleClass().add("primary-btn");
+        signupButton.setMaxWidth(Double.MAX_VALUE);
+
+        signupButton.setOnAction(event -> attemptSignup(
+                router,
+                authService,
+                firstNameField,
+                lastNameField,
+                emailField,
+                passwordField,
+                roleComboBox,
+                studentCodeField,
+                errorLabel,
+                infoLabel,
+                signupButton
+        ));
+
+        return signupButton;
+    }
+
+    /**
+     * Creates the login navigation button.
+     */
+    private Button createLoginButton(AppRouter router) {
+        Button loginButton = new Button(t("signup.button.login", "Back to Login"));
+        loginButton.getStyleClass().add("link-button");
+        loginButton.setOnAction(event -> router.go("login"));
+        return loginButton;
+    }
+
+    /**
+     * Creates the main card container.
+     */
+    private VBox createCard(javafx.scene.Node... children) {
+        VBox card = new VBox(CARD_SPACING);
+        card.getStyleClass().add("card");
+        card.setMaxWidth(CARD_MAX_WIDTH);
+        card.setPadding(new Insets(CARD_PADDING));
+        card.getChildren().addAll(children);
+        return card;
+    }
+
+    /**
+     * Handles signup validation and backend request.
+     */
+    private void attemptSignup(AppRouter router,
+                               AuthService authService,
+                               TextField firstNameField,
+                               TextField lastNameField,
+                               TextField emailField,
+                               PasswordField passwordField,
+                               ComboBox<Role> roleComboBox,
+                               TextField studentCodeField,
+                               Label errorLabel,
+                               Label infoLabel,
+                               Button signupButton) {
+
+        hideMessage(errorLabel);
+        hideMessage(infoLabel);
+
+        String firstName = safeTrim(firstNameField.getText());
+        String lastName = safeTrim(lastNameField.getText());
+        String email = safeTrim(emailField.getText());
+        String password = passwordField.getText() == null ? "" : passwordField.getText();
+        Role role = roleComboBox.getValue();
+        String studentCode = safeTrim(studentCodeField.getText());
+
+        String validationError = validateSignupInput(firstName, lastName, email, password, role, studentCode);
+        if (validationError != null) {
+            showMessage(errorLabel, validationError);
+            return;
+        }
+
+        signupButton.setDisable(true);
+
+        Thread signupThread = new Thread(() -> {
+            try {
+                authService.signup(
+                        firstName,
+                        lastName,
+                        email,
+                        password,
+                        role,
+                        role == Role.STUDENT ? studentCode : null
+                );
+
+                Platform.runLater(() -> {
+                    signupButton.setDisable(false);
+                    showMessage(infoLabel, t("signup.success.created", "Account created successfully."));
+                    router.go("login");
+                });
+
+            } catch (Exception ex) {
+                Platform.runLater(() -> {
+                    signupButton.setDisable(false);
+                    showMessage(
+                            errorLabel,
+                            t("signup.error.failed", "Signup failed:") + " " + cleanMessage(ex.getMessage())
+                    );
+                });
+            }
+        });
+
+        signupThread.setName("signup-thread");
+        signupThread.setDaemon(true);
+        signupThread.start();
+    }
+
+    /**
+     * Validates signup form input and returns translated error message if invalid.
+     */
+    private String validateSignupInput(String firstName,
+                                       String lastName,
+                                       String email,
+                                       String password,
+                                       Role role,
+                                       String studentCode) {
+
+        if (firstName.isBlank() || lastName.isBlank() || email.isBlank() || password.isBlank()) {
+            return t("signup.error.required_fields", "Please fill in all required fields.");
+        }
+
+        if (!email.contains("@")) {
+            return t("signup.error.invalid_email", "Please enter a valid email address.");
+        }
+
+        if (password.length() < 6) {
+            return t("signup.error.password_short", "Password must be at least 6 characters.");
+        }
+
+        if (role == Role.STUDENT && studentCode.isBlank()) {
+            return t("signup.error.student_code_required", "Student code is required.");
+        }
+
+        return null;
+    }
+
+    /**
+     * Creates a labeled field block.
+     */
+    private static VBox field(String labelText, Control input) {
+        Label label = new Label(labelText);
+        label.getStyleClass().add("field-label");
+        return new VBox(FIELD_SPACING, label, input);
+    }
+
+    /**
+     * Returns the translated label for a role.
+     */
+    private String roleLabel(Role role) {
+        return switch (role) {
+            case STUDENT -> t("signup.role.student", "Student");
+            case TEACHER -> t("signup.role.teacher", "Teacher");
+            case ADMIN -> t("signup.role.admin", "Admin");
+        };
+    }
+
+    /**
+     * Shows a message label.
+     */
+    private static void showMessage(Label label, String message) {
+        label.setText(message);
+        label.setVisible(true);
+        label.setManaged(true);
+    }
+
+    /**
+     * Hides a message label.
+     */
+    private static void hideMessage(Label label) {
+        label.setVisible(false);
+        label.setManaged(false);
+        label.setText("");
+    }
+
+    /**
+     * Safely trims text input.
+     */
+    private static String safeTrim(String value) {
+        return value == null ? "" : value.trim();
+    }
+
+    /**
+     * Cleans long or empty exception messages before displaying them in UI.
+     */
+    private static String cleanMessage(String message) {
+        if (message == null || message.isBlank()) {
+            return "Unknown error";
+        }
+        return message.length() > 200 ? message.substring(0, 200) + "..." : message;
+    }
+
+    /**
+     * Returns a translated value, or a fallback if the key is missing.
+     */
     private static String t(String key, String fallback) {
         String value = FrontendI18n.t(key);
         return key.equals(value) ? fallback : value;

@@ -8,6 +8,7 @@ import frontend.dto.AdminClassDto;
 import frontend.dto.AdminStudentDto;
 import frontend.dto.AdminUsersResponseDto;
 
+import java.io.IOException;
 import java.net.URI;
 import java.net.URLEncoder;
 import java.net.http.HttpClient;
@@ -17,137 +18,184 @@ import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * API client for admin-related frontend requests.
+ *
+ * <p>This class handles authenticated HTTP calls to admin endpoints such as:
+ * attendance statistics, class management, user management, reports,
+ * and student enrollment.</p>
+ */
 public class AdminApi {
+
+    private static final String AUTHORIZATION = "Authorization";
+    private static final String BEARER_PREFIX = "Bearer ";
+    private static final String CONTENT_TYPE = "Content-Type";
+    private static final String APPLICATION_JSON = "application/json";
 
     private final String baseUrl;
     private final JwtStore store;
-    private final HttpClient client = HttpClient.newHttpClient();
-    private final ObjectMapper om = new ObjectMapper();
+    private final HttpClient client;
+    private final ObjectMapper objectMapper;
 
     public AdminApi(String baseUrl, JwtStore store) {
-        this.baseUrl = baseUrl;
+        this(baseUrl, store, HttpClient.newHttpClient(), new ObjectMapper());
+    }
+
+    public AdminApi(String baseUrl, JwtStore store, HttpClient client, ObjectMapper objectMapper) {
+        this.baseUrl = stripTrailingSlash(baseUrl);
         this.store = store;
+        this.client = client;
+        this.objectMapper = objectMapper;
     }
 
+    /**
+     * Returns the current JWT token or throws an exception if the user is not authenticated.
+     */
     private String tokenOrThrow() {
-        AuthState s = store.load().orElseThrow(() -> new RuntimeException("Not logged in"));
-        if (s.getToken() == null || s.getToken().isBlank())
-            throw new RuntimeException("Missing token");
-        return s.getToken();
-    }
+        AuthState authState = store.load()
+                .orElseThrow(() -> new IllegalStateException("No authentication state found. Please log in first."));
 
-    public String getAttendanceStatsJson() throws Exception {
-        AuthState s = store.load()
-                .orElseThrow(() -> new RuntimeException("No AuthState in JwtStore. Please login first."));
-
-        String token = s.getToken();
+        String token = authState.getToken();
         if (token == null || token.isBlank()) {
-            throw new RuntimeException("JWT token is missing or empty. Please login again.");
+            throw new IllegalStateException("JWT token is missing or empty. Please log in again.");
         }
 
-        HttpRequest req = HttpRequest.newBuilder()
-                .uri(URI.create(baseUrl + "/api/admin/attendance/stats"))
-                .header("Authorization", "Bearer " + token)
+        return token;
+    }
+
+    /**
+     * Sends an authenticated GET request and returns the response body as plain text.
+     */
+    private String get(String path) throws IOException, InterruptedException {
+        HttpRequest request = authorizedRequest(path)
                 .GET()
                 .build();
 
-        HttpResponse<String> res = client.send(req, HttpResponse.BodyHandlers.ofString());
-
-        if (res.statusCode() >= 400) {
-            throw new RuntimeException("HTTP " + res.statusCode() + ": " + res.body());
-        }
-
-        return res.body();
+        return send(request);
     }
 
-    public Map<String, Object> getAttendanceStats() throws Exception {
-        HttpRequest req = HttpRequest.newBuilder()
-                .uri(URI.create(baseUrl + "/api/admin/attendance/stats"))
-                .header("Authorization", "Bearer " + tokenOrThrow())
-                .GET()
+    /**
+     * Sends an authenticated POST request with JSON body and returns the response body.
+     */
+    private void postJson(String path, Object body) throws IOException, InterruptedException {
+        String json = objectMapper.writeValueAsString(body);
+
+        HttpRequest request = authorizedRequest(path)
+                .header(CONTENT_TYPE, APPLICATION_JSON)
+                .POST(HttpRequest.BodyPublishers.ofString(json, StandardCharsets.UTF_8))
                 .build();
 
-        HttpResponse<String> res = client.send(req, HttpResponse.BodyHandlers.ofString());
-
-        if (res.statusCode() >= 400) {
-            throw new RuntimeException("HTTP " + res.statusCode() + ": " + res.body());
-        }
-
-        return om.readValue(res.body(), new TypeReference<>() {});
+        send(request);
     }
 
-    public List<AdminClassDto> getAdminClasses() throws Exception {
-        HttpRequest req = HttpRequest.newBuilder()
-                .uri(URI.create(baseUrl + "/api/admin/classes"))
-                .header("Authorization", "Bearer " + tokenOrThrow())
-                .GET()
-                .build();
+    /**
+     * Sends the request and returns the body.
+     * Throws an exception for HTTP error responses.
+     */
+    private String send(HttpRequest request) throws IOException, InterruptedException {
+        HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
 
-        HttpResponse<String> res = client.send(req, HttpResponse.BodyHandlers.ofString());
-
-        if (res.statusCode() >= 400) {
-            throw new RuntimeException("HTTP " + res.statusCode() + ": " + res.body());
+        if (response.statusCode() >= 400) {
+            throw new RuntimeException("HTTP " + response.statusCode() + ": " + response.body());
         }
 
-        return om.readValue(res.body(), new TypeReference<>() {});
+        return response.body();
     }
 
-    public List<Map<String, Object>> getAdminClassesRaw() throws Exception {
-        HttpRequest req = HttpRequest.newBuilder()
-                .uri(URI.create(baseUrl + "/api/admin/classes"))
-                .header("Authorization", "Bearer " + tokenOrThrow())
-                .GET()
-                .build();
+    /**
+     * Creates a request builder with the Authorization header already set.
+     */
+    private HttpRequest.Builder authorizedRequest(String path) {
+        return HttpRequest.newBuilder()
+                .uri(URI.create(baseUrl + path))
+                .header(AUTHORIZATION, BEARER_PREFIX + tokenOrThrow());
+    }
 
-        HttpResponse<String> res = client.send(req, HttpResponse.BodyHandlers.ofString());
+    /**
+     * Encodes a URL path segment safely.
+     */
+    private String encodePathSegment(String value) {
+        return URLEncoder.encode(value, StandardCharsets.UTF_8);
+    }
 
-        if (res.statusCode() >= 400) {
-            throw new RuntimeException("HTTP " + res.statusCode() + ": " + res.body());
+    /**
+     * Removes a trailing slash from the base URL to avoid double slashes in paths.
+     */
+    private String stripTrailingSlash(String url) {
+        if (url == null || url.isBlank()) {
+            throw new IllegalArgumentException("Base URL must not be null or blank.");
         }
-
-        return om.readValue(res.body(), new TypeReference<>() {});
+        return url.endsWith("/") ? url.substring(0, url.length() - 1) : url;
     }
 
-    public AdminUsersResponseDto getAdminUsers() throws Exception {
-        HttpRequest req = HttpRequest.newBuilder()
-                .uri(URI.create(baseUrl + "/api/admin/users"))
-                .header("Authorization", "Bearer " + tokenOrThrow())
-                .GET()
-                .build();
-
-        HttpResponse<String> res = client.send(req, HttpResponse.BodyHandlers.ofString());
-
-        if (res.statusCode() >= 400) {
-            throw new RuntimeException("HTTP " + res.statusCode() + ": " + res.body());
-        }
-
-        return om.readValue(res.body(), AdminUsersResponseDto.class);
+    /**
+     * Returns attendance statistics as raw JSON.
+     */
+    public String getAttendanceStatsJson() throws IOException, InterruptedException {
+        return get("/api/admin/attendance/stats");
     }
 
-    public Map<String, Object> getAdminUsersRaw() throws Exception {
-        HttpRequest req = HttpRequest.newBuilder()
-                .uri(URI.create(baseUrl + "/api/admin/users"))
-                .header("Authorization", "Bearer " + tokenOrThrow())
-                .GET()
-                .build();
-
-        HttpResponse<String> res = client.send(req, HttpResponse.BodyHandlers.ofString());
-
-        if (res.statusCode() >= 400) {
-            throw new RuntimeException("HTTP " + res.statusCode() + ": " + res.body());
-        }
-
-        return om.readValue(res.body(), new TypeReference<>() {});
+    /**
+     * Returns attendance statistics as a generic map.
+     */
+    public Map<String, Object> getAttendanceStats() throws IOException, InterruptedException {
+        return objectMapper.readValue(
+                get("/api/admin/attendance/stats"),
+                new TypeReference<>() {}
+        );
     }
 
+    /**
+     * Returns the list of admin classes as typed DTOs.
+     */
+    public List<AdminClassDto> getAdminClasses() throws IOException, InterruptedException {
+        return objectMapper.readValue(
+                get("/api/admin/classes"),
+                new TypeReference<>() {}
+        );
+    }
+
+    /**
+     * Returns the list of admin classes as raw maps.
+     */
+    public List<Map<String, Object>> getAdminClassesRaw() throws IOException, InterruptedException {
+        return objectMapper.readValue(
+                get("/api/admin/classes"),
+                new TypeReference<>() {}
+        );
+    }
+
+    /**
+     * Returns admin users in a typed response DTO.
+     */
+    public AdminUsersResponseDto getAdminUsers() throws IOException, InterruptedException {
+        return objectMapper.readValue(
+                get("/api/admin/users"),
+                AdminUsersResponseDto.class
+        );
+    }
+
+    /**
+     * Returns admin users as a raw map.
+     */
+    public Map<String, Object> getAdminUsersRaw() throws IOException, InterruptedException {
+        return objectMapper.readValue(
+                get("/api/admin/users"),
+                new TypeReference<>() {}
+        );
+    }
+
+    /**
+     * Creates a new class.
+     */
     public void createClass(String classCode,
                             String name,
                             String teacherEmail,
                             String semester,
                             String academicYear,
-                            Integer maxCapacity) throws Exception {
+                            Integer maxCapacity) throws IOException, InterruptedException {
 
-        Map<String, Object> body = Map.of(
+        Map<String, Object> requestBody = Map.of(
                 "classCode", classCode,
                 "name", name,
                 "teacherEmail", teacherEmail,
@@ -156,84 +204,52 @@ public class AdminApi {
                 "maxCapacity", maxCapacity == null ? 0 : maxCapacity
         );
 
-        String json = om.writeValueAsString(body);
-
-        HttpRequest req = HttpRequest.newBuilder()
-                .uri(URI.create(baseUrl + "/api/admin/classes"))
-                .header("Authorization", "Bearer " + tokenOrThrow())
-                .header("Content-Type", "application/json")
-                .POST(HttpRequest.BodyPublishers.ofString(json, StandardCharsets.UTF_8))
-                .build();
-
-        HttpResponse<String> res = client.send(req, HttpResponse.BodyHandlers.ofString());
-
-        if (res.statusCode() >= 400) {
-            throw new RuntimeException("HTTP " + res.statusCode() + ": " + res.body());
-        }
+        postJson("/api/admin/classes", requestBody);
     }
 
-    public List<Map<String, Object>> getAttendanceReport(Long classId, String period, String search) throws Exception {
+    /**
+     * Returns the attendance report for a class with optional period and search filters.
+     */
+    public List<Map<String, Object>> getAttendanceReport(Long classId, String period, String search)
+            throws IOException, InterruptedException {
 
-        StringBuilder url = new StringBuilder(baseUrl + "/api/admin/attendance/report?classId=" + classId);
+        StringBuilder path = new StringBuilder("/api/admin/attendance/report?classId=" + classId);
 
         if (period != null && !period.isBlank()) {
-            url.append("&period=").append(URLEncoder.encode(period, StandardCharsets.UTF_8));
+            path.append("&period=").append(URLEncoder.encode(period, StandardCharsets.UTF_8));
         }
 
         if (search != null && !search.isBlank()) {
-            url.append("&search=").append(URLEncoder.encode(search, StandardCharsets.UTF_8));
+            path.append("&search=").append(URLEncoder.encode(search, StandardCharsets.UTF_8));
         }
 
-        HttpRequest req = HttpRequest.newBuilder()
-                .uri(URI.create(url.toString()))
-                .header("Authorization", "Bearer " + tokenOrThrow())
-                .GET()
-                .build();
-
-        HttpResponse<String> res = client.send(req, HttpResponse.BodyHandlers.ofString());
-
-        if (res.statusCode() >= 400) {
-            throw new RuntimeException("HTTP " + res.statusCode() + ": " + res.body());
-        }
-
-        return om.readValue(res.body(), new TypeReference<>() {});
-    }
-
-    public List<AdminStudentDto> getAllStudentsNotInClass(String classCode) throws Exception {
-
-        HttpRequest req = HttpRequest.newBuilder()
-                .uri(URI.create(baseUrl + "/api/admin/classes/" + classCode + "/available-students"))
-                .header("Authorization", "Bearer " + tokenOrThrow())
-                .GET()
-                .build();
-
-        HttpResponse<String> res = client.send(req, HttpResponse.BodyHandlers.ofString());
-
-        if (res.statusCode() >= 400) {
-            throw new RuntimeException("HTTP " + res.statusCode() + ": " + res.body());
-        }
-
-        return om.readValue(
-                res.body(),
-                om.getTypeFactory().constructCollectionType(List.class, AdminStudentDto.class)
+        return objectMapper.readValue(
+                get(path.toString()),
+                new TypeReference<>() {}
         );
     }
 
-    public void enrollStudentsToClass(String classCode, List<String> studentEmails) throws Exception {
+    /**
+     * Returns all students who are not yet enrolled in the given class.
+     */
+    public List<AdminStudentDto> getAllStudentsNotInClass(String classCode)
+            throws IOException, InterruptedException {
 
-        String json = om.writeValueAsString(studentEmails);
+        String path = "/api/admin/classes/" + encodePathSegment(classCode) + "/available-students";
 
-        HttpRequest req = HttpRequest.newBuilder()
-                .uri(URI.create(baseUrl + "/api/admin/classes/" + classCode + "/enroll"))
-                .header("Authorization", "Bearer " + tokenOrThrow())
-                .header("Content-Type", "application/json")
-                .POST(HttpRequest.BodyPublishers.ofString(json))
-                .build();
+        return objectMapper.readValue(
+                get(path),
+                objectMapper.getTypeFactory().constructCollectionType(List.class, AdminStudentDto.class)
+        );
+    }
 
-        HttpResponse<String> res = client.send(req, HttpResponse.BodyHandlers.ofString());
+    /**
+     * Enrolls the given students into the specified class.
+     */
+    public void enrollStudentsToClass(String classCode, List<String> studentEmails)
+            throws IOException, InterruptedException {
 
-        if (res.statusCode() >= 400) {
-            throw new RuntimeException("HTTP " + res.statusCode() + ": " + res.body());
-        }
+        String path = "/api/admin/classes/" + encodePathSegment(classCode) + "/enroll";
+        postJson(path, studentEmails);
     }
 }
