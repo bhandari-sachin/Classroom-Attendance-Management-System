@@ -49,4 +49,3 @@ public class AttendanceViewTest {
         Assertions.assertEquals(expectedStatus, view.getStatus());
     }
 }
-

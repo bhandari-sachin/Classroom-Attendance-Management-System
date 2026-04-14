@@ -59,4 +59,3 @@ public class ClassAttendanceSummaryTest {
         Assertions.assertEquals(expected, s.getRate(), 1e-9);
     }
 }
-
