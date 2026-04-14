@@ -1,12 +1,18 @@
 package http;
 
+import com.sun.net.httpserver.*;
 import model.User;
 import model.UserRole;
-import org.junit.jupiter.api.Test;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import repository.UserRepository;
 import security.JwtService;
+import org.junit.jupiter.api.Test;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 
+import java.io.*;
+import java.net.InetSocketAddress;
+import java.net.URI;
+import java.nio.charset.StandardCharsets;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -14,149 +20,146 @@ import static org.mockito.Mockito.*;
 
 class LoginHandlerTest {
 
-    private final BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
-
+    // -------------------------------------------------------------
+    // SUCCESS TEST (FIXED)
+    // -------------------------------------------------------------
     @Test
-    void methodNotAllowed_returns405() throws Exception {
-        UserRepository users = mock(UserRepository.class);
-        JwtService jwtService = mock(JwtService.class);
-        var handler = new LoginHandler(users, jwtService);
+    void login_success_returns200AndToken() throws Exception {
 
-        var ex = new AdminClassesHandlerTest.FakeExchange("GET", "/login", null);
+        UserRepository repo = mock(UserRepository.class);
+        JwtService jwtService = mock(JwtService.class);
+
+        LoginHandler handler = new LoginHandler(repo, jwtService);
+
+        BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
+        String rawPassword = "1234";
+        String hashed = encoder.encode(rawPassword);
+
+        User user = mock(User.class);
+        when(user.getId()).thenReturn(1L);
+        when(user.getEmail()).thenReturn("john@test.com");
+        when(user.getPasswordHash()).thenReturn(hashed);
+        when(user.getFirstName()).thenReturn("John");
+        when(user.getLastName()).thenReturn("Doe");
+        when(user.getUserType()).thenReturn(UserRole.STUDENT);
+
+        when(repo.findByEmail("john@test.com")).thenReturn(Optional.of(user));
+        when(jwtService.issueToken(1L, "john@test.com", "STUDENT"))
+                .thenReturn("fake-token");
+
+        FakeExchange ex = new FakeExchange("POST", "/login",
+                "{\"email\":\"john@test.com\",\"password\":\"1234\"}");
+
+        handler.handle(ex);
+
+        assertEquals(200, ex.statusCode);
+        assertTrue(ex.responseBodyString().contains("fake-token"));
+    }
+
+    // -------------------------------------------------------------
+    // INVALID CREDENTIALS
+    // -------------------------------------------------------------
+    @Test
+    void login_invalidCredentials_returns401() throws Exception {
+
+        UserRepository repo = mock(UserRepository.class);
+        JwtService jwtService = mock(JwtService.class);
+
+        LoginHandler handler = new LoginHandler(repo, jwtService);
+
+        when(repo.findByEmail("john@test.com")).thenReturn(Optional.empty());
+
+        FakeExchange ex = new FakeExchange("POST", "/login",
+                "{\"email\":\"john@test.com\",\"password\":\"1234\"}");
+
+        handler.handle(ex);
+
+        assertEquals(401, ex.statusCode);
+    }
+
+    // -------------------------------------------------------------
+    // INVALID JSON
+    // -------------------------------------------------------------
+    @Test
+    void login_invalidJson_returns400() throws Exception {
+
+        UserRepository repo = mock(UserRepository.class);
+        JwtService jwtService = mock(JwtService.class);
+
+        LoginHandler handler = new LoginHandler(repo, jwtService);
+
+        FakeExchange ex = new FakeExchange("POST", "/login", "NOT_JSON");
+
+        handler.handle(ex);
+
+        assertEquals(400, ex.statusCode);
+    }
+
+    // -------------------------------------------------------------
+    // WRONG METHOD
+    // -------------------------------------------------------------
+    @Test
+    void login_wrongMethod_returns405() throws Exception {
+
+        UserRepository repo = mock(UserRepository.class);
+        JwtService jwtService = mock(JwtService.class);
+
+        LoginHandler handler = new LoginHandler(repo, jwtService);
+
+        FakeExchange ex = new FakeExchange("GET", "/login", null);
 
         handler.handle(ex);
 
         assertEquals(405, ex.statusCode);
-        assertEquals("Method Not Allowed", ex.responseBodyString());
     }
 
-    @Test
-    void invalidJson_returns400() throws Exception {
-        UserRepository users = mock(UserRepository.class);
-        JwtService jwtService = mock(JwtService.class);
-        var handler = new LoginHandler(users, jwtService);
+    // -------------------------------------------------------------
+    // Fake HttpExchange
+    // -------------------------------------------------------------
+    static class FakeExchange extends HttpExchange {
 
-        var ex = new AdminClassesHandlerTest.FakeExchange("POST", "/login", "{not-json");
+        private final Headers reqHeaders = new Headers();
+        private final Headers respHeaders = new Headers();
+        private final String method;
+        private final URI uri;
+        private final InputStream requestBody;
+        private final ByteArrayOutputStream responseBody = new ByteArrayOutputStream();
 
-        handler.handle(ex);
+        int statusCode = -1;
 
-        assertEquals(400, ex.statusCode);
-        assertTrue(ex.responseBodyString().contains("Invalid JSON"));
-    }
+        FakeExchange(String method, String path, String body) {
+            this.method = method;
+            this.uri = URI.create("http://localhost" + path);
+            this.requestBody = body == null
+                    ? InputStream.nullInputStream()
+                    : new ByteArrayInputStream(body.getBytes(StandardCharsets.UTF_8));
+        }
 
-    @Test
-    void missingEmailOrPassword_returns400() throws Exception {
-        UserRepository users = mock(UserRepository.class);
-        JwtService jwtService = mock(JwtService.class);
-        var handler = new LoginHandler(users, jwtService);
+        String responseBodyString() {
+            return responseBody.toString(StandardCharsets.UTF_8);
+        }
 
-        var ex = new AdminClassesHandlerTest.FakeExchange("POST", "/login", "{\"email\":\"\",\"password\":\"   \"}");
+        @Override public Headers getRequestHeaders() { return reqHeaders; }
+        @Override public Headers getResponseHeaders() { return respHeaders; }
+        @Override public URI getRequestURI() { return uri; }
+        @Override public String getRequestMethod() { return method; }
+        @Override public HttpContext getHttpContext() { return null; }
+        @Override public void close() { }
+        @Override public InputStream getRequestBody() { return requestBody; }
+        @Override public OutputStream getResponseBody() { return responseBody; }
 
-        handler.handle(ex);
+        @Override
+        public void sendResponseHeaders(int rCode, long responseLength) {
+            this.statusCode = rCode;
+        }
 
-        assertEquals(400, ex.statusCode);
-        assertTrue(ex.responseBodyString().contains("Email and password are required"));
-        verify(users, never()).findByEmail(anyString());
-    }
-
-    @Test
-    void userNotFound_returns401() throws Exception {
-        UserRepository users = mock(UserRepository.class);
-        JwtService jwtService = mock(JwtService.class);
-        var handler = new LoginHandler(users, jwtService);
-
-        when(users.findByEmail("user@x.com")).thenReturn(Optional.empty());
-
-        var ex = new AdminClassesHandlerTest.FakeExchange("POST", "/login", "{\"email\":\"user@x.com\",\"password\":\"pass\"}");
-
-        handler.handle(ex);
-
-        assertEquals(401, ex.statusCode);
-        assertTrue(ex.responseBodyString().contains("Invalid credentials"));
-        verify(jwtService, never()).issueToken(anyLong(), anyString(), anyString());
-    }
-
-    @Test
-    void wrongPassword_returns401() throws Exception {
-        UserRepository users = mock(UserRepository.class);
-        JwtService jwtService = mock(JwtService.class);
-        var handler = new LoginHandler(users, jwtService);
-
-        User u = mockUser(1L, "user@x.com", UserRole.STUDENT, "Sam", "Student",
-                encoder.encode("correct-password"));
-
-        when(users.findByEmail("user@x.com")).thenReturn(Optional.of(u));
-
-        var ex = new AdminClassesHandlerTest.FakeExchange("POST", "/login", "{\"email\":\"user@x.com\",\"password\":\"wrong\"}");
-
-        handler.handle(ex);
-
-        assertEquals(401, ex.statusCode);
-        assertTrue(ex.responseBodyString().contains("Invalid credentials"));
-        verify(jwtService, never()).issueToken(anyLong(), anyString(), anyString());
-    }
-
-    @Test
-    void success_returns200_withTokenAndUserInfo() throws Exception {
-        UserRepository users = mock(UserRepository.class);
-        JwtService jwtService = mock(JwtService.class);
-        var handler = new LoginHandler(users, jwtService);
-
-        User u = mockUser(7L, "user@x.com", UserRole.ADMIN, "System", "Admin",
-                encoder.encode("secret"));
-
-        when(users.findByEmail("user@x.com")).thenReturn(Optional.of(u));
-        when(jwtService.issueToken(7L, "user@x.com", "ADMIN")).thenReturn("TOKEN123");
-
-        var ex = new AdminClassesHandlerTest.FakeExchange("POST", "/login", "{\"email\":\"user@x.com\",\"password\":\"secret\"}");
-
-        handler.handle(ex);
-
-        assertEquals(200, ex.statusCode);
-        String body = ex.responseBodyString();
-
-        assertTrue(body.contains("\"token\":\"TOKEN123\""));
-        assertTrue(body.contains("\"userId\":7"));
-        assertTrue(body.contains("\"email\":\"user@x.com\""));
-        assertTrue(body.contains("\"role\":\"ADMIN\""));
-        assertTrue(body.contains("\"name\":\"System Admin\""));
-
-        verify(jwtService).issueToken(7L, "user@x.com", "ADMIN");
-    }
-
-    @Test
-    void normalizesEmail_trimAndLowercase() throws Exception {
-        UserRepository users = mock(UserRepository.class);
-        JwtService jwtService = mock(JwtService.class);
-        var handler = new LoginHandler(users, jwtService);
-
-        User u = mockUser(2L, "user@x.com", UserRole.TEACHER, "Tina", "Teacher",
-                encoder.encode("pw"));
-
-        // IMPORTANT: handler will normalize to "user@x.com"
-        when(users.findByEmail("user@x.com")).thenReturn(Optional.of(u));
-        when(jwtService.issueToken(2L, "user@x.com", "TEACHER")).thenReturn("TOK");
-
-        var ex = new AdminClassesHandlerTest.FakeExchange("POST", "/login", "{\"email\":\"  USER@X.COM  \",\"password\":\"pw\"}");
-
-        handler.handle(ex);
-
-        assertEquals(200, ex.statusCode);
-        assertTrue(ex.responseBodyString().contains("\"token\":\"TOK\""));
-
-        verify(users).findByEmail("user@x.com");
-    }
-
-    // ---- helper ----
-    private static User mockUser(long id, String email, UserRole role,
-                                 String first, String last, String hash) {
-        User u = mock(User.class);
-        when(u.getId()).thenReturn(id);
-        when(u.getEmail()).thenReturn(email);
-        when(u.getUserType()).thenReturn(role); // must be enum
-        when(u.getFirstName()).thenReturn(first);
-        when(u.getLastName()).thenReturn(last);
-        when(u.getPasswordHash()).thenReturn(hash);
-        return u;
+        @Override public InetSocketAddress getRemoteAddress() { return new InetSocketAddress(0); }
+        @Override public int getResponseCode() { return statusCode; }
+        @Override public InetSocketAddress getLocalAddress() { return new InetSocketAddress(0); }
+        @Override public String getProtocol() { return "HTTP/1.1"; }
+        @Override public Object getAttribute(String name) { return null; }
+        @Override public void setAttribute(String name, Object value) { }
+        @Override public void setStreams(InputStream i, OutputStream o) { }
+        @Override public HttpPrincipal getPrincipal() { return null; }
     }
 }

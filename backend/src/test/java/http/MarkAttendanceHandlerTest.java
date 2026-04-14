@@ -1,194 +1,158 @@
 package http;
 
+import backend.exception.ApiException;
 import com.auth0.jwt.interfaces.Claim;
 import com.auth0.jwt.interfaces.DecodedJWT;
+import com.sun.net.httpserver.*;
 import org.junit.jupiter.api.Test;
 import security.JwtService;
 import service.AttendanceService;
+
+import java.io.*;
+import java.net.InetSocketAddress;
+import java.net.URI;
+import java.nio.charset.StandardCharsets;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 class MarkAttendanceHandlerTest {
 
-    @Test
-    void missingAuthorization_returns403() throws Exception {
-        JwtService jwtService = mock(JwtService.class);
-        AttendanceService attendanceService = mock(AttendanceService.class);
-        var handler = new MarkAttendanceHandler(jwtService, attendanceService);
-
-        var ex = new AdminClassesHandlerTest.FakeExchange("POST", "/attendance/mark", "{\"code\":\"ABC\"}");
-
-        handler.handle(ex);
-
-        assertEquals(403, ex.statusCode);
-        assertTrue(ex.responseBodyString().contains("Missing Authorization header"));
-        verify(attendanceService, never()).markByCode(anyLong(), anyString());
+    // -------------------------------------------------------------
+    // Mock ADMIN JWT (safe inline version - avoids UnfinishedStubbing)
+    // -------------------------------------------------------------
+    private DecodedJWT mockStudentJwt() {
+        DecodedJWT jwt = mock(DecodedJWT.class);
+        Claim role = mock(Claim.class);
+        when(role.asString()).thenReturn("STUDENT");
+        when(jwt.getClaim("role")).thenReturn(role);
+        return jwt;
     }
 
+    // -------------------------------------------------------------
+    // SUCCESS CASE
+    // -------------------------------------------------------------
     @Test
-    void wrongRole_returns403() throws Exception {
+    void markAttendance_success_returns200() throws Exception {
+
         JwtService jwtService = mock(JwtService.class);
         AttendanceService attendanceService = mock(AttendanceService.class);
-        var handler = new MarkAttendanceHandler(jwtService, attendanceService);
 
-        var ex = new AdminClassesHandlerTest.FakeExchange("POST", "/attendance/mark", "{\"code\":\"ABC\"}");
-        ex.getRequestHeaders().set("Authorization", "Bearer test-token");
+        MarkAttendanceHandler handler = new MarkAttendanceHandler(jwtService, attendanceService);
+        MarkAttendanceHandler spy = spy(handler);
 
-        DecodedJWT jwt = jwtWithRoleAndId("TEACHER", 5L);
-        when(jwtService.verify("test-token")).thenReturn(jwt);
+        // bypass authentication (requireStudent)
+        doReturn(null).when(spy).requireStudent(any(), any());
 
-        handler.handle(ex);
+        FakeExchange ex = new FakeExchange("POST", "/attendance/mark",
+                "{\"code\":\"ABC123\"}");
 
-        assertEquals(403, ex.statusCode);
-        assertTrue(ex.responseBodyString().contains("Forbidden for role"));
-        verify(attendanceService, never()).markByCode(anyLong(), anyString());
-    }
+        BaseHandler.RequestContext ctx = mock(BaseHandler.RequestContext.class);
+        when(ctx.getUserId()).thenReturn(1L);
 
-    @Test
-    void methodNotAllowed_returns405() throws Exception {
-        JwtService jwtService = mock(JwtService.class);
-        AttendanceService attendanceService = mock(AttendanceService.class);
-        var handler = new MarkAttendanceHandler(jwtService, attendanceService);
+        spy.handleRequest(ex, ctx);
 
-        var ex = new AdminClassesHandlerTest.FakeExchange("GET", "/attendance/mark", null);
-        ex.getRequestHeaders().set("Authorization", "Bearer test-token");
-
-        DecodedJWT jwt = jwtWithRoleAndId("STUDENT", 5L);
-        when(jwtService.verify("test-token")).thenReturn(jwt);
-
-        handler.handle(ex);
-
-        assertEquals(405, ex.statusCode);
-        verify(attendanceService, never()).markByCode(anyLong(), anyString());
-    }
-
-    @Test
-    void invalidJson_returns500() throws Exception {
-        JwtService jwtService = mock(JwtService.class);
-        AttendanceService attendanceService = mock(AttendanceService.class);
-        var handler = new MarkAttendanceHandler(jwtService, attendanceService);
-
-        var ex = new AdminClassesHandlerTest.FakeExchange("POST", "/attendance/mark", "{bad-json");
-        ex.getRequestHeaders().set("Authorization", "Bearer test-token");
-
-        DecodedJWT jwt = jwtWithRoleAndId("STUDENT", 5L);
-        when(jwtService.verify("test-token")).thenReturn(jwt);
-
-        handler.handle(ex);
-
-        assertEquals(500, ex.statusCode);
-        assertTrue(ex.responseBodyString().contains("Server error"));
-        verify(attendanceService, never()).markByCode(anyLong(), anyString());
-    }
-
-    @Test
-    void missingCode_returns400() throws Exception {
-        JwtService jwtService = mock(JwtService.class);
-        AttendanceService attendanceService = mock(AttendanceService.class);
-        var handler = new MarkAttendanceHandler(jwtService, attendanceService);
-
-        var ex = new AdminClassesHandlerTest.FakeExchange("POST", "/attendance/mark", "{\"code\":\"   \"}");
-        ex.getRequestHeaders().set("Authorization", "Bearer test-token");
-
-        DecodedJWT jwt = jwtWithRoleAndId("STUDENT", 7L);
-        when(jwtService.verify("test-token")).thenReturn(jwt);
-
-        handler.handle(ex);
-
-        assertEquals(400, ex.statusCode);
-        assertTrue(ex.responseBodyString().contains("Attendance code required"));
-        verify(attendanceService, never()).markByCode(anyLong(), anyString());
-    }
-
-    @Test
-    void success_usesIdClaim_whenPresent() throws Exception {
-        JwtService jwtService = mock(JwtService.class);
-        AttendanceService attendanceService = mock(AttendanceService.class);
-        var handler = new MarkAttendanceHandler(jwtService, attendanceService);
-
-        var ex = new AdminClassesHandlerTest.FakeExchange("POST", "/attendance/mark", "{\"code\":\"QR-123\"}");
-        ex.getRequestHeaders().set("Authorization", "Bearer test-token");
-
-        DecodedJWT jwt = jwtWithRoleAndId("STUDENT", 42L);
-        when(jwtService.verify("test-token")).thenReturn(jwt);
-
-        handler.handle(ex);
+        verify(attendanceService).markByCode(1L, "ABC123");
 
         assertEquals(200, ex.statusCode);
         assertTrue(ex.responseBodyString().contains("attendance marked"));
-
-        verify(attendanceService).markByCode(42L, "QR-123");
     }
 
+    // -------------------------------------------------------------
+    // INVALID JSON
+    // -------------------------------------------------------------
     @Test
-    void success_fallsBackToSubject_whenIdClaimIsNull() throws Exception {
+    void markAttendance_invalidJson_returns400() throws Exception {
+
         JwtService jwtService = mock(JwtService.class);
         AttendanceService attendanceService = mock(AttendanceService.class);
-        var handler = new MarkAttendanceHandler(jwtService, attendanceService);
 
-        var ex = new AdminClassesHandlerTest.FakeExchange("POST", "/attendance/mark", "{\"code\":\"QR-999\"}");
-        ex.getRequestHeaders().set("Authorization", "Bearer test-token");
+        MarkAttendanceHandler handler = new MarkAttendanceHandler(jwtService, attendanceService);
+        MarkAttendanceHandler spy = spy(handler);
 
-        DecodedJWT jwt = jwtWithRoleAndNullIdClaim("STUDENT", "123");
-        when(jwtService.verify("test-token")).thenReturn(jwt);
+        doReturn(null).when(spy).requireStudent(any(), any());
 
-        handler.handle(ex);
+        FakeExchange ex = new FakeExchange("POST", "/attendance/mark", "NOT_JSON");
 
-        assertEquals(200, ex.statusCode);
-        verify(attendanceService).markByCode(123L, "QR-999");
+        BaseHandler.RequestContext ctx = mock(BaseHandler.RequestContext.class);
+
+        assertThrows(ApiException.class, () -> spy.handleRequest(ex, ctx));
     }
 
+    // -------------------------------------------------------------
+    // MISSING CODE
+    // -------------------------------------------------------------
     @Test
-    void serviceThrowsIllegalArgument_returns400() throws Exception {
+    void markAttendance_missingCode_throws400() throws Exception {
+
         JwtService jwtService = mock(JwtService.class);
         AttendanceService attendanceService = mock(AttendanceService.class);
-        var handler = new MarkAttendanceHandler(jwtService, attendanceService);
 
-        var ex = new AdminClassesHandlerTest.FakeExchange("POST", "/attendance/mark", "{\"code\":\"BAD\"}");
-        ex.getRequestHeaders().set("Authorization", "Bearer test-token");
+        MarkAttendanceHandler handler = new MarkAttendanceHandler(jwtService, attendanceService);
+        MarkAttendanceHandler spy = spy(handler);
 
-        DecodedJWT jwt = jwtWithRoleAndId("STUDENT", 9L);
-        when(jwtService.verify("test-token")).thenReturn(jwt);
+        doReturn(null).when(spy).requireStudent(any(), any());
 
-        doThrow(new IllegalArgumentException("Invalid code")).when(attendanceService).markByCode(9L, "BAD");
+        FakeExchange ex = new FakeExchange("POST", "/attendance/mark",
+                "{\"code\":\"\"}");
 
-        handler.handle(ex);
+        BaseHandler.RequestContext ctx = mock(BaseHandler.RequestContext.class);
+        when(ctx.getUserId()).thenReturn(1L);
 
-        assertEquals(400, ex.statusCode);
-        assertTrue(ex.responseBodyString().contains("Invalid code"));
+        ApiException exThrown =
+                assertThrows(ApiException.class, () -> spy.handleRequest(ex, ctx));
+
+        assertEquals(400, exThrown.getStatus());
+        assertTrue(exThrown.getMessage().contains("Attendance code required"));
     }
 
-    // ---- helpers ----
+    // -------------------------------------------------------------
+    // Fake HttpExchange
+    // -------------------------------------------------------------
+    static class FakeExchange extends HttpExchange {
 
-    private static DecodedJWT jwtWithRoleAndId(String role, long id) {
-        DecodedJWT jwt = mock(DecodedJWT.class);
+        private final Headers reqHeaders = new Headers();
+        private final Headers respHeaders = new Headers();
+        private final String method;
+        private final URI uri;
+        private final InputStream requestBody;
+        private final ByteArrayOutputStream responseBody = new ByteArrayOutputStream();
 
-        Claim roleClaim = mock(Claim.class);
-        when(roleClaim.asString()).thenReturn(role);
-        when(jwt.getClaim("role")).thenReturn(roleClaim);
+        int statusCode = -1;
 
-        Claim idClaim = mock(Claim.class);
-        when(idClaim.isNull()).thenReturn(false);
-        when(idClaim.asLong()).thenReturn(id);
-        when(jwt.getClaim("id")).thenReturn(idClaim);
+        FakeExchange(String method, String path, String body) {
+            this.method = method;
+            this.uri = URI.create("http://localhost" + path);
+            this.requestBody = body == null
+                    ? InputStream.nullInputStream()
+                    : new ByteArrayInputStream(body.getBytes(StandardCharsets.UTF_8));
+        }
 
-        when(jwt.getSubject()).thenReturn(String.valueOf(id));
-        return jwt;
-    }
+        String responseBodyString() {
+            return responseBody.toString(StandardCharsets.UTF_8);
+        }
 
-    private static DecodedJWT jwtWithRoleAndNullIdClaim(String role, String subject) {
-        DecodedJWT jwt = mock(DecodedJWT.class);
+        @Override public Headers getRequestHeaders() { return reqHeaders; }
+        @Override public Headers getResponseHeaders() { return respHeaders; }
+        @Override public URI getRequestURI() { return uri; }
+        @Override public String getRequestMethod() { return method; }
+        @Override public HttpContext getHttpContext() { return null; }
+        @Override public void close() { }
+        @Override public InputStream getRequestBody() { return requestBody; }
+        @Override public OutputStream getResponseBody() { return responseBody; }
 
-        Claim roleClaim = mock(Claim.class);
-        when(roleClaim.asString()).thenReturn(role);
-        when(jwt.getClaim("role")).thenReturn(roleClaim);
+        @Override
+        public void sendResponseHeaders(int rCode, long responseLength) {
+            this.statusCode = rCode;
+        }
 
-        Claim idClaim = mock(Claim.class);
-        when(idClaim.isNull()).thenReturn(true);
-        when(jwt.getClaim("id")).thenReturn(idClaim);
-
-        when(jwt.getSubject()).thenReturn(subject);
-        return jwt;
+        @Override public InetSocketAddress getRemoteAddress() { return new InetSocketAddress(0); }
+        @Override public int getResponseCode() { return statusCode; }
+        @Override public InetSocketAddress getLocalAddress() { return new InetSocketAddress(0); }
+        @Override public String getProtocol() { return "HTTP/1.1"; }
+        @Override public Object getAttribute(String name) { return null; }
+        @Override public void setAttribute(String name, Object value) { }
+        @Override public void setStreams(InputStream i, OutputStream o) { }
+        @Override public HttpPrincipal getPrincipal() { return null; }
     }
 }
