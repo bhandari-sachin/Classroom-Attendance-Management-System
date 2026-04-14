@@ -49,10 +49,16 @@ class AdminClassesHandlerTest {
 
         RequestContext ctx = mock(RequestContext.class);
 
-        ClassSQL.ClassView cv = mock(ClassSQL.ClassView.class);
-        cv.id = 1L;
-        cv.classCode = "MATH101";
-        cv.name = "Math";
+        ClassSQL.ClassView cv =
+                new ClassSQL.ClassView(
+                        1L,
+                        "MATH101",
+                        "Math",
+                        "teacher@test.com",
+                        "Fall",
+                        "2025",
+                        30
+                );
 
         when(classSQL.listAllForAdmin()).thenReturn(List.of(cv));
 
