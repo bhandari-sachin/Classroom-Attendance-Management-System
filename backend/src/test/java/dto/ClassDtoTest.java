@@ -7,42 +7,24 @@ import static org.junit.jupiter.api.Assertions.*;
 class ClassDtoTest {
 
     @Test
-    void getId() {
-        ClassDto dto = new ClassDto(1L, "Databases", "CS101", "teacher@test.com", 25);
+    void testAllArgsConstructorAndGetters() {
+        ClassDto dto = new ClassDto(
+                1L,
+                "Mathematics",
+                "MATH101",
+                "teacher@example.com",
+                30
+        );
 
         assertEquals(1L, dto.getId());
+        assertEquals("Mathematics", dto.getName());
+        assertEquals("MATH101", dto.getClassCode());
+        assertEquals("teacher@example.com", dto.getTeacherEmail());
+        assertEquals(30, dto.getStudentCount());
     }
 
     @Test
-    void getName() {
-        ClassDto dto = new ClassDto(1L, "Databases", "CS101", "teacher@test.com", 25);
-
-        assertEquals("Databases", dto.getName());
-    }
-
-    @Test
-    void getClassCode() {
-        ClassDto dto = new ClassDto(1L, "Databases", "CS101", "teacher@test.com", 25);
-
-        assertEquals("CS101", dto.getClassCode());
-    }
-
-    @Test
-    void getTeacherEmail() {
-        ClassDto dto = new ClassDto(1L, "Databases", "CS101", "teacher@test.com", 25);
-
-        assertEquals("teacher@test.com", dto.getTeacherEmail());
-    }
-
-    @Test
-    void getStudentCount() {
-        ClassDto dto = new ClassDto(1L, "Databases", "CS101", "teacher@test.com", 25);
-
-        assertEquals(25, dto.getStudentCount());
-    }
-
-    @Test
-    void defaultConstructor_fieldsAreNull() {
+    void testNoArgsConstructor() {
         ClassDto dto = new ClassDto();
 
         assertNull(dto.getId());
