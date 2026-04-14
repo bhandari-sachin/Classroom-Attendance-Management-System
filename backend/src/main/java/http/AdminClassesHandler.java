@@ -5,7 +5,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import config.ClassSQL;
-import security.Auth;
+import config.ConfigLoader;
+import backend.exception.ApiException;
 import security.JwtService;
 
 import java.io.IOException;
@@ -13,74 +14,70 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-public class AdminClassesHandler implements HttpHandler {
+public class AdminClassesHandler extends BaseHandler implements HttpHandler {
 
-    private final JwtService jwtService;
     private final ClassSQL classSQL;
     private final ObjectMapper om = new ObjectMapper();
+    private static final String ERROR = "error";
+    private static final String PATH_PREFIX = ConfigLoader.get("api.admin.classes");
+    private static final String NOT_ALLOWED = "Method Not Allowed";
 
     public AdminClassesHandler(JwtService jwtService, ClassSQL classSQL) {
-        this.jwtService = jwtService;
+        super(jwtService, "GET", "POST");
         this.classSQL = classSQL;
     }
 
     @Override
-    public void handle(HttpExchange ex) throws IOException {
-        try {
-            var jwt = Auth.requireJwt(ex, jwtService);
-            Auth.requireRole(jwt, "ADMIN");
+    protected void handleRequest(HttpExchange ex, RequestContext ctx) throws IOException {
+        requireAdmin(ex, ctx);
+        routeRequest(ex);
+    }
 
-            String method = ex.getRequestMethod();
-            String path = ex.getRequestURI().getPath();
+    private void routeRequest(HttpExchange ex) throws IOException {
+        String method = ex.getRequestMethod();
+        String path = ex.getRequestURI().getPath();
 
-            // /api/admin/classes
-            if ("/api/admin/classes".equals(path)) {
-                if ("GET".equalsIgnoreCase(method)) {
-                    handleGetAllClasses(ex);
-                    return;
-                }
-
-                if ("POST".equalsIgnoreCase(method)) {
-                    handleCreateClass(ex);
-                    return;
-                }
-
-                HttpUtil.send(ex, 405, "Method Not Allowed");
-                return;
-            }
-
-            // /api/admin/classes/{classCode}/available-students
-            if (path.startsWith("/api/admin/classes/") && path.endsWith("/available-students")) {
-                if ("GET".equalsIgnoreCase(method)) {
-                    handleAvailableStudents(ex, path);
-                    return;
-                }
-
-                HttpUtil.send(ex, 405, "Method Not Allowed");
-                return;
-            }
-
-            // /api/admin/classes/{classCode}/enroll
-            if (path.startsWith("/api/admin/classes/") && path.endsWith("/enroll")) {
-                if ("POST".equalsIgnoreCase(method)) {
-                    handleEnrollStudents(ex, path);
-                    return;
-                }
-
-                HttpUtil.send(ex, 405, "Method Not Allowed");
-                return;
-            }
-
-            HttpUtil.send(ex, 404, "Not Found");
-
-        } catch (SecurityException sec) {
-            HttpUtil.json(ex, 401, Map.of("error", sec.getMessage()));
-        } catch (IllegalArgumentException bad) {
-            HttpUtil.json(ex, 400, Map.of("error", bad.getMessage()));
-        } catch (Exception e) {
-            e.printStackTrace();
-            HttpUtil.json(ex, 500, Map.of("error", "Server error"));
+        // /api/admin/classes
+        if (PATH_PREFIX.equals(path)) {
+            handleRoot(method, ex);
+            return;
         }
+
+        // /api/admin/classes/{classCode}/available-students
+        if (path.startsWith(PATH_PREFIX) && path.endsWith("/available-students")) {
+            if ("GET".equalsIgnoreCase(method)) {
+                handleAvailableStudents(ex, path);
+            } else {
+                HttpUtil.send(ex, 405, NOT_ALLOWED);
+            }
+            return;
+        }
+
+        // /api/admin/classes/{classCode}/enroll
+        if (path.startsWith(PATH_PREFIX) && path.endsWith("/enroll")) {
+            if ("POST".equalsIgnoreCase(method)) {
+                handleEnrollStudents(ex, path);
+            } else {
+                HttpUtil.send(ex, 405, NOT_ALLOWED);
+            }
+            return;
+        }
+
+        throw new ApiException(404, "Not Found");
+    }
+
+    private void handleRoot(String method, HttpExchange ex) throws IOException {
+        if ("GET".equalsIgnoreCase(method)) {
+            handleGetAllClasses(ex);
+            return;
+        }
+
+        if ("POST".equalsIgnoreCase(method)) {
+            handleCreateClass(ex);
+            return;
+        }
+
+        throw new ApiException(405, NOT_ALLOWED);
     }
 
     private void handleGetAllClasses(HttpExchange ex) throws IOException {
@@ -107,7 +104,7 @@ public class AdminClassesHandler implements HttpHandler {
         try {
             body = om.readValue(ex.getRequestBody(), new TypeReference<>() {});
         } catch (Exception parseErr) {
-            HttpUtil.json(ex, 400, Map.of("error", "Invalid JSON"));
+            HttpUtil.json(ex, 400, Map.of(ERROR, "Invalid JSON"));
             return;
         }
 
@@ -119,12 +116,12 @@ public class AdminClassesHandler implements HttpHandler {
         Integer maxCapacity = optInt(body.get("maxCapacity"));
 
         if (isBlank(classCode) || isBlank(name) || isBlank(teacherEmail)) {
-            throw new IllegalArgumentException("classCode, name, and teacherEmail are required");
+            throw new ApiException(400, "classCode, name, and teacherEmail are required");
         }
 
         Long teacherId = classSQL.findTeacherIdByEmail(teacherEmail);
         if (teacherId == null) {
-            throw new IllegalArgumentException("Teacher not found (or not TEACHER): " + teacherEmail);
+            throw new ApiException(400, "Teacher not found: " + teacherEmail);
         }
 
         long newId = classSQL.createClass(classCode, name, teacherId, semester, academicYear, maxCapacity);
@@ -138,8 +135,7 @@ public class AdminClassesHandler implements HttpHandler {
     private void handleAvailableStudents(HttpExchange ex, String path) throws IOException {
         String classCode = extractClassCode(path, "/available-students");
         if (isBlank(classCode)) {
-            HttpUtil.json(ex, 400, Map.of("error", "Missing class code"));
-            return;
+            throw new ApiException(400, "Missing class code");
         }
 
         List<Map<String, Object>> students = classSQL.listStudentsNotEnrolledInClass(classCode);
@@ -149,15 +145,14 @@ public class AdminClassesHandler implements HttpHandler {
     private void handleEnrollStudents(HttpExchange ex, String path) throws IOException {
         String classCode = extractClassCode(path, "/enroll");
         if (isBlank(classCode)) {
-            HttpUtil.json(ex, 400, Map.of("error", "Missing class code"));
-            return;
+            throw new ApiException(400, "Missing class code");
         }
 
         List<String> studentEmails;
         try {
             studentEmails = om.readValue(ex.getRequestBody(), new TypeReference<List<String>>() {});
         } catch (Exception parseErr) {
-            HttpUtil.json(ex, 400, Map.of("error", "Invalid JSON body, expected array of student emails"));
+            HttpUtil.json(ex, 400, Map.of(ERROR, "Invalid JSON body, expected array of student emails"));
             return;
         }
 
@@ -170,10 +165,9 @@ public class AdminClassesHandler implements HttpHandler {
     }
 
     private String extractClassCode(String path, String suffix) {
-        String prefix = "/api/admin/classes/";
-        if (!path.startsWith(prefix) || !path.endsWith(suffix)) return null;
+        if (!path.startsWith(PATH_PREFIX) || !path.endsWith(suffix)) return null;
 
-        String middle = path.substring(prefix.length(), path.length() - suffix.length());
+        String middle = path.substring(PATH_PREFIX.length(), path.length() - suffix.length());
         if (middle.endsWith("/")) {
             middle = middle.substring(0, middle.length() - 1);
         }

@@ -11,6 +11,7 @@ import java.nio.charset.StandardCharsets;
 
 public class HttpUtil {
 
+    private HttpUtil () {} // prevent instantiation
     private static final ObjectMapper om = new ObjectMapper()
             .registerModule(new JavaTimeModule())
             .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);

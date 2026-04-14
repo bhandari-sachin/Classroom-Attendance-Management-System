@@ -206,10 +206,10 @@ public class AttendanceSQL {
     public dto.AttendanceStats getOverallStats() {
         String sql = """
         SELECT
-          SUM(status = 'PRESENT') AS presentCount,
-          SUM(status = 'ABSENT')  AS absentCount,
-          SUM(status = 'EXCUSED') AS excusedCount,
-          COUNT(*)                AS totalRecords
+          SUM(CASE WHEN status = 'PRESENT' THEN 1 ELSE 0 END) AS presentCount,
+          SUM(CASE WHEN status = 'ABSENT'  THEN 1 ELSE 0 END) AS absentCount,
+          SUM(CASE WHEN status = 'EXCUSED' THEN 1 ELSE 0 END) AS excusedCount,
+          COUNT(*) AS totalCount
         FROM attendance
     """;
 
@@ -221,11 +221,11 @@ public class AttendanceSQL {
                 int present = rs.getInt("presentCount");
                 int absent = rs.getInt("absentCount");
                 int excused = rs.getInt("excusedCount");
-                int total = rs.getInt("totalRecords");
+                int total = rs.getInt("totalCount");
                 return new dto.AttendanceStats(present, absent, excused, total);
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            throw new RuntimeException("getOverallStats failed: " + e.getMessage(), e);
         }
         return new dto.AttendanceStats(0,0,0,0);
     }
@@ -400,7 +400,6 @@ public class AttendanceSQL {
 
             try (PreparedStatement ps = conn.prepareStatement(statsSql)) {
                 ps.setLong(1, sessionId);
-                ps.setString(2, languageCode);
                 try (ResultSet rs = ps.executeQuery()) {
                     if (rs.next()) {
                         present = rs.getInt("presentCount");
@@ -413,6 +412,7 @@ public class AttendanceSQL {
 
             try (PreparedStatement ps = conn.prepareStatement(rowsSql)) {
                 ps.setLong(1, sessionId);
+                ps.setString(2, languageCode);
                 try (ResultSet rs = ps.executeQuery()) {
                     while (rs.next()) {
                         rows.add(java.util.Map.of(
@@ -607,15 +607,22 @@ public class AttendanceSQL {
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql.toString())) {
 
+            List<Object> params = new ArrayList<>();
+
+            params.add(classId);
+            params.add(languageCode);
+
             String safeSearch = searchTerm == null ? "" : searchTerm.trim().toLowerCase();
             String likeText = "%" + safeSearch + "%";
 
-            stmt.setLong(1, classId);
-            stmt.setString(2, languageCode);
-            stmt.setString(3, "%" + safeSearch + "%");
-            stmt.setString(4, likeText);
-            stmt.setString(5, likeText);
-            stmt.setString(6, likeText);
+            params.add(likeText);
+            params.add(likeText);
+            params.add(likeText);
+            params.add(likeText);
+
+            for (int i = 0; i < params.size(); i++) {
+                stmt.setObject(i + 1, params.get(i));
+            }
 
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {

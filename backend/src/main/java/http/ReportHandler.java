@@ -21,6 +21,10 @@ public class ReportHandler implements HttpHandler {
 
     private final JwtService jwtService;
     private final AttendanceSQL attendanceSQL;
+    private static final String ERROR = "error";
+    private static final String CONTENT_TYPE = "content-type";
+    private static final String CONTENT_DISPOSITION = "content-disposition";
+    private static final String PDF_MIME = "application/pdf";
 
     public ReportHandler(JwtService jwtService, AttendanceSQL attendanceSQL) {
         this.jwtService = jwtService;
@@ -49,7 +53,7 @@ public class ReportHandler implements HttpHandler {
             if (path.endsWith("/student")) {
                 Auth.requireRole(jwt, "STUDENT");
                 if (!"pdf".equals(format)) {
-                    HttpUtil.json(ex, 400, Map.of("error", "Students may only export PDF reports."));
+                    HttpUtil.json(ex, 400, Map.of(ERROR, "Students may only export PDF reports."));
                     return;
                 }
                 exportStudentReport(ex, jwt, queryParams, lang);
@@ -73,12 +77,11 @@ public class ReportHandler implements HttpHandler {
             HttpUtil.send(ex, 404, "Not Found");
 
         } catch (SecurityException sec) {
-            HttpUtil.json(ex, 401, java.util.Map.of("error", sec.getMessage()));
+            HttpUtil.json(ex, 401, java.util.Map.of(ERROR, sec.getMessage()));
         } catch (IllegalArgumentException badReq) {
-            HttpUtil.json(ex, 400, java.util.Map.of("error", badReq.getMessage()));
+            HttpUtil.json(ex, 400, java.util.Map.of(ERROR, badReq.getMessage()));
         } catch (Exception e) {
-            e.printStackTrace();
-            HttpUtil.json(ex, 500, java.util.Map.of("error", "Server error"));
+            HttpUtil.json(ex, 500, java.util.Map.of(ERROR, "Server error"));
         }
     }
 
@@ -93,7 +96,7 @@ public class ReportHandler implements HttpHandler {
 
         PDFReportExporter.studentYearReport(file, year, rows, lang);
 
-        sendFile(ex, file, "application/pdf", "student-report.pdf");
+        sendFile(ex, file, PDF_MIME, "student-report.pdf");
     }
 
     private void exportTeacherReport(HttpExchange ex, DecodedJWT jwt, Map<String, String> queryParams, String format, String lang) throws Exception {
@@ -105,8 +108,8 @@ public class ReportHandler implements HttpHandler {
         var rows = attendanceSQL.getTeacherClassReport(teacherId, classId, year);
 
         if ("csv".equals(format)) {
-            ex.getResponseHeaders().set("Content-Type", "text/csv; charset=UTF-8");
-            ex.getResponseHeaders().set("Content-Disposition", "attachment; filename=\"teacher-report.csv\"");
+            ex.getResponseHeaders().set(CONTENT_TYPE, "text/csv; charset=UTF-8");
+            ex.getResponseHeaders().set(CONTENT_DISPOSITION, "attachment; filename=\"teacher-report.csv\"");
             ex.sendResponseHeaders(200, 0);
 
             try (var os = ex.getResponseBody()) {
@@ -118,15 +121,15 @@ public class ReportHandler implements HttpHandler {
 
         PDFReportExporter.teacherClassReport(file, year, rows, lang);
 
-        sendFile(ex, file, "application/pdf", "teacher-report.pdf");
+        sendFile(ex, file, PDF_MIME, "teacher-report.pdf");
     }
 
     private void exportAdminReport(HttpExchange ex, String format, String lang) throws Exception {
         var rows = attendanceSQL.getAllStudentsStats();
 
         if ("csv".equals(format)) {
-            ex.getResponseHeaders().set("Content-Type", "text/csv; charset=UTF-8");
-            ex.getResponseHeaders().set("Content-Disposition", "attachment; filename=\"teacher-report.csv\"");
+            ex.getResponseHeaders().set(CONTENT_TYPE, "text/csv; charset=UTF-8");
+            ex.getResponseHeaders().set(CONTENT_DISPOSITION, "attachment; filename=\"teacher-report.csv\"");
             ex.sendResponseHeaders(200, 0);
 
             try (var os = ex.getResponseBody()) {
@@ -139,7 +142,7 @@ public class ReportHandler implements HttpHandler {
 
         PDFReportExporter.adminAllStudentsReport(file, rows, lang);
 
-        sendFile(ex, file, "application/pdf", "admin-report.pdf");
+        sendFile(ex, file, PDF_MIME, "admin-report.pdf");
     }
 
     private int resolveYear(Map<String, String> queryParams) {
@@ -212,8 +215,8 @@ public class ReportHandler implements HttpHandler {
     private void sendFile(HttpExchange ex, String file, String contentType, String downloadName) throws IOException {
         File outFile = new File(file);
 
-        ex.getResponseHeaders().set("Content-Type", contentType);
-        ex.getResponseHeaders().set("Content-Disposition", "attachment; filename=\"" + downloadName + "\"");
+        ex.getResponseHeaders().set(CONTENT_TYPE, contentType);
+        ex.getResponseHeaders().set(CONTENT_DISPOSITION, "attachment; filename=\"" + downloadName + "\"");
 
         ex.sendResponseHeaders(200, outFile.length());
 

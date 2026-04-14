@@ -45,7 +45,7 @@ public class SessionSQL {
 
     public List<Map<String, Object>> listForClass(long classId) {
         String sql = """
-            SELECT id, session_date, start_time, end_time, qr_token
+            SELECT id, class_id, session_date, start_time, end_time, qr_token
             FROM sessions
             WHERE class_id = ?
             ORDER BY session_date DESC, start_time DESC
@@ -62,6 +62,7 @@ public class SessionSQL {
                 while (rs.next()) {
                     out.add(Map.of(
                             "id", rs.getLong("id"),
+                            "classId", rs.getLong("class_id"),
                             "date", rs.getDate("session_date").toLocalDate().toString(),
                             "startTime", rs.getTime("start_time").toLocalTime().toString(),
                             "endTime", rs.getTime("end_time").toLocalTime().toString(),

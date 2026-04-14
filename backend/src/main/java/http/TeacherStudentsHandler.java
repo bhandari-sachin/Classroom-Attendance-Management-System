@@ -1,63 +1,42 @@
 package http;
 
+import com.auth0.jwt.interfaces.DecodedJWT;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import config.ClassSQL;
-import security.Auth;
+import backend.exception.ApiException;
 import security.JwtService;
 
 import java.io.IOException;
-import java.net.URI;
 import java.util.Map;
 
-public class TeacherStudentsHandler implements HttpHandler {
+public class TeacherStudentsHandler extends BaseHandler implements HttpHandler {
 
-    private final JwtService jwtService;
     private final ClassSQL classSQL;
 
     public TeacherStudentsHandler(JwtService jwtService, ClassSQL classSQL) {
-        this.jwtService = jwtService;
+        super(jwtService, "GET");
         this.classSQL = classSQL;
     }
 
     @Override
-    public void handle(HttpExchange ex) throws IOException {
-        try {
-            var jwt = Auth.requireJwt(ex, jwtService);
-            Auth.requireRole(jwt, "TEACHER", "ADMIN");
-
-            if (!"GET".equalsIgnoreCase(ex.getRequestMethod())) {
-                HttpUtil.send(ex, 405, "Method Not Allowed");
-                return;
-            }
-
-            URI uri = ex.getRequestURI();
-            String qs = uri.getQuery(); // classId=123
-            Long classId = Query.getLong(qs, "classId");
-            if (classId == null) {
-                HttpUtil.json(ex, 400, Map.of("error", "classId is required"));
-                return;
-            }
-
-            long teacherId = jwt.getClaim("id").isNull()
-                    ? Long.parseLong(jwt.getSubject())
-                    : jwt.getClaim("id").asLong();
-
-            String role = jwt.getClaim("role").isNull() ? "" : jwt.getClaim("role").asString();
-            if (!"ADMIN".equalsIgnoreCase(role) && !classSQL.isClassOwnedByTeacher(classId, teacherId)) {
-                HttpUtil.json(ex, 403, Map.of("error", "Forbidden: not your class"));
-                return;
-            }
-
-            var students = classSQL.listStudentsForClass(classId);
-
-            HttpUtil.json(ex, 200, Map.of("data", students));
-
-        } catch (SecurityException se) {
-            HttpUtil.json(ex, 401, Map.of("error", se.getMessage()));
-        } catch (Exception e) {
-            e.printStackTrace();
-            HttpUtil.json(ex, 500, Map.of("error", "Server error"));
+    protected void handleRequest(HttpExchange ex, RequestContext ctx) throws IOException {
+        requireTeacherOrAdmin(ex, ctx);
+        Long classId = ctx.getLongQuery("classId");
+        if (classId == null) {
+            throw new ApiException(400, "classId is required");
         }
+
+        Long teacherId = ctx.getUserId();
+        DecodedJWT jwt = ctx.getJwt();
+
+        String role = jwt.getClaim("role").isNull() ? "" : jwt.getClaim("role").asString();
+        if (!"ADMIN".equalsIgnoreCase(role) && !classSQL.isClassOwnedByTeacher(classId, teacherId)) {
+            throw new ApiException(403, "Forbidden: not your class");
+        }
+
+        var students = classSQL.listStudentsForClass(classId);
+
+        HttpUtil.json(ex, 200, Map.of("data", students));
     }
 }

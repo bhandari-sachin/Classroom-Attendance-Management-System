@@ -11,7 +11,7 @@ import java.util.Date;
 public class JwtService {
 
     private final Algorithm algo;
-    private final String issuer = "attendance-backend";
+    private static final String ISSUER = "attendance-backend";
 
     public JwtService(String secret) {
         this.algo = Algorithm.HMAC256(secret);
@@ -19,10 +19,10 @@ public class JwtService {
 
     public String issueToken(long userId, String email, String role) {
         Instant now = Instant.now();
-        Instant exp = now.plusSeconds(60 * 60); // 1 hour
+        Instant exp = now.plusSeconds(60L * 60); // 1 hour
 
         return JWT.create()
-                .withIssuer(issuer)
+                .withIssuer(ISSUER)
                 .withSubject(String.valueOf(userId))
                 .withClaim("id", userId)
                 .withClaim("email", email)
@@ -34,7 +34,7 @@ public class JwtService {
 
     public DecodedJWT verify(String token) {
         return JWT.require(algo)
-                .withIssuer(issuer)
+                .withIssuer(ISSUER)
                 .build()
                 .verify(token);
     }
