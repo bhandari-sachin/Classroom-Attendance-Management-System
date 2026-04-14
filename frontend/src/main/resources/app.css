@@ -129,6 +129,7 @@
     -fx-border-color: -border;
     -fx-border-width: 0 1 0 0;
     -fx-effect: dropshadow(three-pass-box, -shadow, 18, 0, 2, 0);
+    -fx-padding: 0;
 }
 
 .sidebar-name {

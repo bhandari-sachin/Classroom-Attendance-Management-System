@@ -6,7 +6,7 @@ import frontend.api.TeacherApi;
 import frontend.auth.AppRouter;
 import frontend.auth.AuthState;
 import frontend.auth.JwtStore;
-import frontend.i18n.FrontendI18n;
+import frontend.ui.HelperClass;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -14,8 +14,15 @@ import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
-import javafx.scene.control.*;
-import javafx.scene.layout.*;
+import javafx.scene.control.Alert;
+import javafx.scene.control.Button;
+import javafx.scene.control.ButtonType;
+import javafx.scene.control.ComboBox;
+import javafx.scene.control.TableColumn;
+import javafx.scene.control.TableView;
+import javafx.scene.control.Label;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.VBox;
 
 import java.util.List;
 import java.util.Map;
@@ -38,137 +45,71 @@ public class TeacherEmailPage {
     }
 
     private final ObservableList<StudentRow> rows = FXCollections.observableArrayList();
+    private final HelperClass helper = new HelperClass();
 
     public Parent build(Scene scene, AppRouter router, JwtStore jwtStore, AuthState state) {
-
-        String teacherName = (state.getName() == null || state.getName().isBlank())
-                ? t("teacher.fallback.name", "Teacher")
-                : state.getName();
+        String teacherName = resolveTeacherName(state);
 
         String backendUrl = System.getenv().getOrDefault("BACKEND_URL", "http://localhost:8081");
         TeacherApi api = new TeacherApi(backendUrl);
 
-        VBox page = new VBox(14);
-        page.setPadding(new Insets(22));
-        page.getStyleClass().add("page");
+        VBox page = buildPageContainer();
 
-        Label title = new Label(t("teacher.email.title", "Student Emails"));
-        title.getStyleClass().add("title");
+        Label title = buildTitle();
+        Label subtitle = buildSubtitle();
 
-        Label info = new Label(t("teacher.email.subtitle", "Select a class to view student email addresses"));
-        info.getStyleClass().add("subtitle");
+        ComboBox<ClassItem> classBox = buildClassBox();
+        Button refreshButton = buildRefreshButton();
 
-        HBox top = new HBox(10);
-        top.setAlignment(Pos.CENTER_LEFT);
+        HBox topRow = buildTopRow(classBox, refreshButton);
+        TableView<StudentRow> table = buildStudentTable();
 
-        ComboBox<ClassItem> classBox = new ComboBox<>();
-        classBox.setPromptText(t("teacher.email.class_select.placeholder", "Select a class"));
-        classBox.setMaxWidth(360);
+        page.getChildren().addAll(title, subtitle, topRow, table);
 
-        Button refresh = new Button(t("teacher.email.button.refresh", "Refresh"));
-        refresh.getStyleClass().addAll("pill", "pill-green");
+        Runnable loadStudentsForSelectedClass = () -> loadStudentsForSelectedClass(
+                api,
+                jwtStore,
+                state,
+                classBox
+        );
 
-        top.getChildren().addAll(classBox, refresh);
-
-        TableView<StudentRow> table = new TableView<>(rows);
-        table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
-        table.setPrefHeight(340);
-
-        TableColumn<StudentRow, String> colName = new TableColumn<>(t("teacher.email.table.column.student", "Student"));
-        colName.setCellValueFactory(d -> d.getValue().studentNameProperty());
-
-        TableColumn<StudentRow, String> colEmail = new TableColumn<>(t("teacher.email.table.column.email", "Email"));
-        colEmail.setCellValueFactory(d -> d.getValue().emailProperty());
-
-        table.getColumns().addAll(colName, colEmail);
-
-        page.getChildren().addAll(title, info, top, table);
-
-        Runnable loadStudentsForSelectedClass = () -> {
-            ClassItem selected = classBox.getValue();
-            if (selected == null) {
-                rows.clear();
-                return;
-            }
-
-            rows.setAll(new StudentRow(-1L, t("teacher.email.loading.students", "Loading students..."), "-", "—"));
-
-            new Thread(() -> {
-                try {
-                    List<Map<String, Object>> students = api.getStudentsForClass(jwtStore, state, selected.id);
-
-                    Platform.runLater(() -> {
-                        rows.clear();
-
-                        for (var s : students) {
-                            long studentId = Long.parseLong(String.valueOf(s.get("id")));
-                            String fn = String.valueOf(s.get("firstName"));
-                            String ln = String.valueOf(s.get("lastName"));
-                            String email = String.valueOf(s.get("email"));
-
-                            rows.add(new StudentRow(studentId, fn + " " + ln, email, "—"));
-                        }
-                    });
-
-                } catch (Exception ex) {
-                    ex.printStackTrace();
-                    Platform.runLater(() -> {
-                        rows.clear();
-                        new Alert(
-                                Alert.AlertType.ERROR,
-                                t("teacher.email.error.students", "Failed to load students: {reason}")
-                                        .replace("{reason}", ex.getMessage()),
-                                ButtonType.OK
-                        ).showAndWait();
-                    });
-                }
-            }).start();
-        };
-
-        new Thread(() -> {
-            try {
-                List<Map<String, Object>> list = api.getMyClasses(jwtStore, state);
-
-                var items = list.stream().map(m -> {
-                    long id = Long.parseLong(String.valueOf(m.get("id")));
-                    String classCode = String.valueOf(m.get("classCode"));
-                    String name = String.valueOf(m.get("name"));
-                    return new ClassItem(id, classCode + " — " + name);
-                }).toList();
-
-                Platform.runLater(() -> classBox.getItems().setAll(items));
-
-            } catch (Exception ex) {
-                ex.printStackTrace();
-                Platform.runLater(() ->
-                        new Alert(
-                                Alert.AlertType.ERROR,
-                                t("teacher.email.error.classes", "Failed to load classes: {reason}")
-                                        .replace("{reason}", ex.getMessage()),
-                                ButtonType.OK
-                        ).showAndWait()
-                );
-            }
-        }).start();
-
+        refreshButton.setOnAction(e -> loadStudentsForSelectedClass.run());
         classBox.setOnAction(e -> loadStudentsForSelectedClass.run());
-        refresh.setOnAction(e -> loadStudentsForSelectedClass.run());
+
+        loadClasses(api, jwtStore, state, classBox);
 
         return AppLayout.wrapWithSidebar(
                 teacherName,
-                t("teacher.sidebar.title", "Teacher Panel"),
-                t("teacher.sidebar.menu.dashboard", "Dashboard"),
-                t("teacher.sidebar.menu.take_attendance", "Take Attendance"),
-                t("teacher.sidebar.menu.reports", "Reports"),
-                t("teacher.sidebar.menu.email", "Email"),
+                helper.getMessage("teacher.sidebar.title"),
+                helper.getMessage("teacher.sidebar.menu.dashboard"),
+                helper.getMessage("teacher.sidebar.menu.take_attendance"),
+                helper.getMessage("teacher.sidebar.menu.reports"),
+                helper.getMessage("teacher.sidebar.menu.email"),
                 page,
                 "fourth",
                 new AppLayout.Navigator() {
-                    @Override public void goDashboard() { router.go("teacher-dashboard"); }
-                    @Override public void goTakeAttendance() { router.go("teacher-take"); }
-                    @Override public void goReports() { router.go("teacher-reports"); }
-                    @Override public void goEmail() { router.go("teacher-email"); }
-                    @Override public void logout() {
+                    @Override
+                    public void goDashboard() {
+                        router.go("teacher-dashboard");
+                    }
+
+                    @Override
+                    public void goTakeAttendance() {
+                        router.go("teacher-take");
+                    }
+
+                    @Override
+                    public void goReports() {
+                        router.go("teacher-reports");
+                    }
+
+                    @Override
+                    public void goEmail() {
+                        router.go("teacher-email");
+                    }
+
+                    @Override
+                    public void logout() {
                         jwtStore.clear();
                         router.go("login");
                     }
@@ -176,8 +117,139 @@ public class TeacherEmailPage {
         );
     }
 
-    private static String t(String key, String fallback) {
-        String value = FrontendI18n.t(key);
-        return key.equals(value) ? fallback : value;
+    private String resolveTeacherName(AuthState state) {
+        return (state.getName() == null || state.getName().isBlank())
+                ? helper.getMessage("teacher.fallback.name")
+                : state.getName();
+    }
+
+    private VBox buildPageContainer() {
+        VBox page = new VBox(14);
+        page.setPadding(new Insets(22));
+        page.getStyleClass().add("page");
+        return page;
+    }
+
+    private Label buildTitle() {
+        Label title = new Label(helper.getMessage("teacher.email.title"));
+        title.getStyleClass().add("title");
+        return title;
+    }
+
+    private Label buildSubtitle() {
+        Label subtitle = new Label(helper.getMessage("teacher.email.subtitle"));
+        subtitle.getStyleClass().add("subtitle");
+        return subtitle;
+    }
+
+    private ComboBox<ClassItem> buildClassBox() {
+        ComboBox<ClassItem> classBox = new ComboBox<>();
+        classBox.setPromptText(helper.getMessage("teacher.email.class_select.placeholder"));
+        classBox.setMaxWidth(360);
+        return classBox;
+    }
+
+    private Button buildRefreshButton() {
+        Button refresh = new Button(helper.getMessage("teacher.email.button.refresh"));
+        refresh.getStyleClass().addAll("pill", "pill-green");
+        return refresh;
+    }
+
+    private HBox buildTopRow(ComboBox<ClassItem> classBox, Button refreshButton) {
+        HBox top = new HBox(10);
+        top.setAlignment(Pos.CENTER_LEFT);
+        top.getChildren().addAll(classBox, refreshButton);
+        return top;
+    }
+
+    private TableView<StudentRow> buildStudentTable() {
+        TableView<StudentRow> table = new TableView<>(rows);
+        table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+        table.setPrefHeight(340);
+
+        TableColumn<StudentRow, String> nameColumn =
+                new TableColumn<>(helper.getMessage("teacher.email.table.column.student"));
+        nameColumn.setCellValueFactory(data -> data.getValue().studentNameProperty());
+
+        TableColumn<StudentRow, String> emailColumn =
+                new TableColumn<>(helper.getMessage("teacher.email.table.column.email"));
+        emailColumn.setCellValueFactory(data -> data.getValue().emailProperty());
+
+        table.getColumns().addAll(nameColumn, emailColumn);
+        return table;
+    }
+
+    private void loadClasses(
+            TeacherApi api,
+            JwtStore jwtStore,
+            AuthState state,
+            ComboBox<ClassItem> classBox
+    ) {
+        new Thread(() -> {
+            try {
+                List<Map<String, Object>> classList = api.getMyClasses(jwtStore, state);
+                List<ClassItem> items = classList.stream()
+                        .map(this::mapClassItem)
+                        .toList();
+
+                Platform.runLater(() -> classBox.getItems().setAll(items));
+            } catch (Exception ex) {
+                ex.printStackTrace();
+                Platform.runLater(() ->
+                        showError(helper.getMessage("teacher.email.error.classes").replace("{reason}", ex.getMessage()))
+                );
+            }
+        }).start();
+    }
+
+    private void loadStudentsForSelectedClass(
+            TeacherApi api,
+            JwtStore jwtStore,
+            AuthState state,
+            ComboBox<ClassItem> classBox
+    ) {
+        ClassItem selectedClass = classBox.getValue();
+        if (selectedClass == null) {
+            rows.clear();
+            return;
+        }
+
+        rows.setAll(new StudentRow(-1L, helper.getMessage("teacher.email.loading.students"), "-", "—"));
+
+        new Thread(() -> {
+            try {
+                List<Map<String, Object>> students = api.getStudentsForClass(jwtStore, state, selectedClass.id);
+                List<StudentRow> mappedRows = students.stream()
+                        .map(this::mapStudentRow)
+                        .toList();
+
+                Platform.runLater(() -> rows.setAll(mappedRows));
+            } catch (Exception ex) {
+                ex.printStackTrace();
+                Platform.runLater(() -> {
+                    rows.clear();
+                    showError(helper.getMessage("teacher.email.error.students").replace("{reason}", ex.getMessage()));
+                });
+            }
+        }).start();
+    }
+
+    private ClassItem mapClassItem(Map<String, Object> classData) {
+        long id = Long.parseLong(String.valueOf(classData.get("id")));
+        String classCode = String.valueOf(classData.get("classCode"));
+        String name = String.valueOf(classData.get("name"));
+        return new ClassItem(id, classCode + " — " + name);
+    }
+
+    private StudentRow mapStudentRow(Map<String, Object> studentData) {
+        long studentId = Long.parseLong(String.valueOf(studentData.get("id")));
+        String firstName = String.valueOf(studentData.get("firstName"));
+        String lastName = String.valueOf(studentData.get("lastName"));
+        String email = String.valueOf(studentData.get("email"));
+        return new StudentRow(studentId, firstName + " " + lastName, email, "—");
+    }
+
+    private void showError(String message) {
+        new Alert(Alert.AlertType.ERROR, message, ButtonType.OK).showAndWait();
     }
 }

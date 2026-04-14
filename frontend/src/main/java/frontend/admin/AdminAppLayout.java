@@ -1,10 +1,7 @@
 package frontend.admin;
 
-import frontend.api.LanguageApi;
-import frontend.api.TranslationApi;
-import frontend.i18n.FrontendI18n;
+import frontend.ui.HelperClass;
 import frontend.ui.UiPreferences;
-import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.NodeOrientation;
 import javafx.geometry.Pos;
@@ -20,10 +17,16 @@ import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
 
-import java.util.List;
-import java.util.Map;
+public final class AdminAppLayout {
 
-public class AdminAppLayout {
+    private static final String KEY_DASHBOARD = "dashboard";
+    private static final String KEY_SECOND = "second";
+    private static final String KEY_THIRD = "third";
+    private static final String KEY_FOURTH = "fourth";
+
+    private AdminAppLayout() {
+        // Utility class
+    }
 
     public interface Navigator {
         void goDashboard();
@@ -31,14 +34,6 @@ public class AdminAppLayout {
         void goReports();
         void goEmail();
         void logout();
-    }
-
-    private static final String BACKEND_URL =
-            System.getenv().getOrDefault("BACKEND_URL", "http://localhost:8081");
-
-    private static boolean isRtl() {
-        String lang = UiPreferences.getLanguage();
-        return lang != null && lang.toLowerCase().startsWith("ar");
     }
 
     public static Parent wrapWithSidebar(
@@ -52,203 +47,221 @@ public class AdminAppLayout {
             String activeKey,
             Navigator nav
     ) {
-        boolean isArabic = isRtl();
+        HelperClass helper = new HelperClass();
+        boolean rtl = isRtl();
 
         BorderPane root = new BorderPane();
         root.getStyleClass().add("app-root");
 
-        // ===== LANGUAGE =====
-        MenuButton globe = new MenuButton("🌐");
-        globe.getStyleClass().add("utility-menu");
-        loadLanguageMenu(globe, nav, activeKey);
-
-        // ===== SETTINGS =====
-        MenuButton settings = new MenuButton("⚙");
-        settings.getStyleClass().add("utility-menu");
-
-        MenuItem light = new MenuItem(t("settings.theme.light", "Light"));
-        MenuItem dark = new MenuItem(t("settings.theme.dark", "Dark"));
-
-        light.setOnAction(e -> {
-            UiPreferences.setTheme(UiPreferences.Theme.LIGHT);
-            if (root.getScene() != null) {
-                UiPreferences.applyTheme(root.getScene());
-            }
-        });
-
-        dark.setOnAction(e -> {
-            UiPreferences.setTheme(UiPreferences.Theme.DARK);
-            if (root.getScene() != null) {
-                UiPreferences.applyTheme(root.getScene());
-            }
-        });
-
-        settings.getItems().addAll(light, dark);
-
-        Region spacer = new Region();
-        HBox.setHgrow(spacer, Priority.ALWAYS);
-
-        HBox topBar = isArabic
-                ? new HBox(10, globe, settings, spacer)
-                : new HBox(10, spacer, globe, settings);
-
-        topBar.setAlignment(isArabic ? Pos.CENTER_LEFT : Pos.CENTER_RIGHT);
-        topBar.setPadding(new Insets(10));
-        topBar.getStyleClass().add("top-utility-bar");
-        topBar.setNodeOrientation(isArabic ? NodeOrientation.RIGHT_TO_LEFT : NodeOrientation.LEFT_TO_RIGHT);
-
-        // ===== SIDEBAR =====
-        VBox sidebar = new VBox(14);
-        sidebar.getStyleClass().add("sidebar");
-        sidebar.setPadding(new Insets(18));
-        sidebar.setPrefWidth(260);
-        sidebar.setNodeOrientation(isArabic ? NodeOrientation.RIGHT_TO_LEFT : NodeOrientation.LEFT_TO_RIGHT);
-
-        Label nameLbl = new Label(name);
-        nameLbl.getStyleClass().add("sidebar-name");
-        nameLbl.setMaxWidth(Double.MAX_VALUE);
-        nameLbl.setAlignment(isArabic ? Pos.CENTER_RIGHT : Pos.CENTER_LEFT);
-
-        Label role = new Label(roleLabel);
-        role.getStyleClass().add("sidebar-role");
-        role.setMaxWidth(Double.MAX_VALUE);
-        role.setAlignment(isArabic ? Pos.CENTER_RIGHT : Pos.CENTER_LEFT);
-
-        Separator sep = new Separator();
-
-        VBox navBox = new VBox(10);
-        navBox.getStyleClass().add("sidebar-nav");
-        navBox.setNodeOrientation(isArabic ? NodeOrientation.RIGHT_TO_LEFT : NodeOrientation.LEFT_TO_RIGHT);
-
-        Label dash = navLabel(dashboardLabel, "dashboard", activeKey, nav::goDashboard, isArabic);
-        Label second = navLabel(secondLabel, "second", activeKey, nav::goTakeAttendance, isArabic);
-        Label third = navLabel(thirdLabel, "third", activeKey, nav::goReports, isArabic);
-        Label fourth = navLabel(fourthLabel, "fourth", activeKey, nav::goEmail, isArabic);
-
-        navBox.getChildren().addAll(dash, second, third, fourth);
-
-        Region push = new Region();
-        VBox.setVgrow(push, Priority.ALWAYS);
-
-        Label logout = new Label(t("common.button.logout", "Logout"));
-        logout.getStyleClass().add("logout-link");
-        logout.setMaxWidth(Double.MAX_VALUE);
-        logout.setAlignment(isArabic ? Pos.CENTER_RIGHT : Pos.CENTER_LEFT);
-        logout.setOnMouseClicked(e -> nav.logout());
-
-        sidebar.getChildren().addAll(nameLbl, role, sep, navBox, push, logout);
-
-        VBox center = new VBox(topBar, content);
-        center.getStyleClass().add("content-wrap");
-        center.setNodeOrientation(isArabic ? NodeOrientation.RIGHT_TO_LEFT : NodeOrientation.LEFT_TO_RIGHT);
-
-        if (content instanceof Region r) {
-            r.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE);
-            VBox.setVgrow(r, Priority.ALWAYS);
-        }
+        HBox topBar = buildTopBar(helper, rtl, root, activeKey, nav);
+        VBox sidebar = buildSidebar(
+                helper,
+                rtl,
+                name,
+                roleLabel,
+                dashboardLabel,
+                secondLabel,
+                thirdLabel,
+                fourthLabel,
+                activeKey,
+                nav
+        );
+        VBox center = buildCenter(content, topBar, rtl);
 
         root.setLeft(null);
         root.setRight(null);
 
-        if (isArabic) {
+        if (rtl) {
             root.setRight(sidebar);
         } else {
             root.setLeft(sidebar);
         }
 
         root.setCenter(center);
-
         return root;
     }
 
-    private static void loadLanguageMenu(MenuButton globe, Navigator nav, String activeKey) {
-        new Thread(() -> {
-            try {
-                LanguageApi languageApi = new LanguageApi(BACKEND_URL);
-                List<LanguageApi.LanguageItem> languages = languageApi.getActiveLanguages();
-
-                Platform.runLater(() -> {
-                    globe.getItems().clear();
-
-                    for (LanguageApi.LanguageItem lang : languages) {
-                        MenuItem item = new MenuItem(lang.name());
-                        item.setOnAction(e -> loadLanguageAndRefresh(lang.code(), nav, activeKey));
-                        globe.getItems().add(item);
-                    }
-                });
-
-            } catch (Exception ex) {
-                ex.printStackTrace();
-
-                Platform.runLater(() -> {
-                    globe.getItems().clear();
-
-                    MenuItem en = new MenuItem("English");
-                    MenuItem fi = new MenuItem("Finnish");
-                    MenuItem ar = new MenuItem("Arabic");
-                    MenuItem am = new MenuItem("Amharic");
-                    MenuItem ne = new MenuItem("Nepali");
-
-                    en.setOnAction(e -> loadLanguageAndRefresh("en", nav, activeKey));
-                    fi.setOnAction(e -> loadLanguageAndRefresh("fi", nav, activeKey));
-                    ar.setOnAction(e -> loadLanguageAndRefresh("ar", nav, activeKey));
-                    am.setOnAction(e -> loadLanguageAndRefresh("am", nav, activeKey));
-                    ne.setOnAction(e -> loadLanguageAndRefresh("ne", nav, activeKey));
-
-                    globe.getItems().addAll(en, fi, ar, am, ne);
-                });
-            }
-        }).start();
+    private static boolean isRtl() {
+        String lang = UiPreferences.getLanguage();
+        return lang != null && lang.toLowerCase().startsWith("ar");
     }
 
-    private static void loadLanguageAndRefresh(String languageCode, Navigator nav, String activeKey) {
-        UiPreferences.setLanguage(languageCode);
+    private static HBox buildTopBar(
+            HelperClass helper,
+            boolean rtl,
+            BorderPane root,
+            String activeKey,
+            Navigator nav
+    ) {
+        MenuButton languageMenu = buildLanguageMenu(helper, activeKey, nav);
+        MenuButton settingsMenu = buildSettingsMenu(helper, root);
 
-        new Thread(() -> {
-            try {
-                TranslationApi translationApi = new TranslationApi(BACKEND_URL);
-                Map<String, String> translations = translationApi.getUiTranslations(languageCode);
+        Region spacer = growRegion();
 
-                Platform.runLater(() -> {
-                    FrontendI18n.setLanguage(languageCode);
-                    FrontendI18n.setTranslations(translations);
-                    refreshCurrentPage(nav, activeKey);
-                });
+        HBox topBar = rtl
+                ? new HBox(10, languageMenu, settingsMenu, spacer)
+                : new HBox(10, spacer, languageMenu, settingsMenu);
 
-            } catch (Exception ex) {
-                ex.printStackTrace();
-                Platform.runLater(() -> refreshCurrentPage(nav, activeKey));
-            }
-        }).start();
+        topBar.setAlignment(rtl ? Pos.CENTER_LEFT : Pos.CENTER_RIGHT);
+        topBar.setPadding(new Insets(10));
+        topBar.getStyleClass().add("top-utility-bar");
+        topBar.setNodeOrientation(toOrientation(rtl));
+        return topBar;
+    }
+
+    private static MenuButton buildLanguageMenu(HelperClass helper, String activeKey, Navigator nav) {
+        MenuButton menu = new MenuButton("🌐");
+        menu.getStyleClass().add("utility-menu");
+
+        menu.getItems().addAll(
+                languageItem(helper.getMessage("language.english"), "en", activeKey, nav),
+                languageItem(helper.getMessage("language.finnish"), "fi", activeKey, nav),
+                languageItem(helper.getMessage("language.arabic"), "ar", activeKey, nav),
+                languageItem(helper.getMessage("language.amharic"), "am", activeKey, nav),
+                languageItem(helper.getMessage("language.nepali"), "ne", activeKey, nav)
+        );
+
+        return menu;
+    }
+
+    private static MenuItem languageItem(String label, String languageCode, String activeKey, Navigator nav) {
+        MenuItem item = new MenuItem(label);
+        item.setOnAction(e -> {
+            UiPreferences.setLanguage(languageCode);
+            refreshCurrentPage(nav, activeKey);
+        });
+        return item;
+    }
+
+    private static MenuButton buildSettingsMenu(HelperClass helper, BorderPane root) {
+        MenuButton menu = new MenuButton("⚙");
+        menu.getStyleClass().add("utility-menu");
+
+        MenuItem light = new MenuItem(helper.getMessage("settingsThemeLight"));
+        light.setOnAction(e -> applyTheme(root, UiPreferences.Theme.LIGHT));
+
+        MenuItem dark = new MenuItem(helper.getMessage("settingsThemeDark"));
+        dark.setOnAction(e -> applyTheme(root, UiPreferences.Theme.DARK));
+
+        menu.getItems().addAll(light, dark);
+        return menu;
+    }
+
+    private static void applyTheme(BorderPane root, UiPreferences.Theme theme) {
+        UiPreferences.setTheme(theme);
+        if (root.getScene() != null) {
+            UiPreferences.applyTheme(root.getScene());
+        }
+    }
+
+    private static VBox buildSidebar(
+            HelperClass helper,
+            boolean rtl,
+            String name,
+            String roleLabel,
+            String dashboardLabel,
+            String secondLabel,
+            String thirdLabel,
+            String fourthLabel,
+            String activeKey,
+            Navigator nav
+    ) {
+        VBox sidebar = new VBox(14);
+        sidebar.getStyleClass().add("sidebar");
+        sidebar.setPadding(new Insets(18));
+        sidebar.setPrefWidth(260);
+        sidebar.setNodeOrientation(toOrientation(rtl));
+
+        Label nameLabel = sidebarText(name, "sidebar-name", rtl);
+        Label role = sidebarText(roleLabel, "sidebar-role", rtl);
+
+        VBox navBox = new VBox(10);
+        navBox.getStyleClass().add("sidebar-nav");
+        navBox.setNodeOrientation(toOrientation(rtl));
+        navBox.getChildren().addAll(
+                navLabel(dashboardLabel, KEY_DASHBOARD, activeKey, nav::goDashboard, rtl),
+                navLabel(secondLabel, KEY_SECOND, activeKey, nav::goTakeAttendance, rtl),
+                navLabel(thirdLabel, KEY_THIRD, activeKey, nav::goReports, rtl),
+                navLabel(fourthLabel, KEY_FOURTH, activeKey, nav::goEmail, rtl)
+        );
+
+        Label logout = sidebarText(helper.getMessage("teacher.sidebar.logout"), "logout-link", rtl);
+        logout.setOnMouseClicked(e -> nav.logout());
+
+        Region push = new Region();
+        VBox.setVgrow(push, Priority.ALWAYS);
+
+        sidebar.getChildren().addAll(
+                nameLabel,
+                role,
+                new Separator(),
+                navBox,
+                push,
+                logout
+        );
+
+        return sidebar;
+    }
+
+    private static VBox buildCenter(Node content, HBox topBar, boolean rtl) {
+        VBox center = new VBox(topBar, content);
+        center.getStyleClass().add("content-wrap");
+        center.setNodeOrientation(toOrientation(rtl));
+
+        if (content instanceof Region region) {
+            region.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE);
+            VBox.setVgrow(region, Priority.ALWAYS);
+        }
+
+        return center;
+    }
+
+    private static Label sidebarText(String text, String styleClass, boolean rtl) {
+        Label label = new Label(text);
+        label.getStyleClass().add(styleClass);
+        label.setMaxWidth(Double.MAX_VALUE);
+        label.setAlignment(rtl ? Pos.CENTER_RIGHT : Pos.CENTER_LEFT);
+        return label;
+    }
+
+    private static Label navLabel(
+            String text,
+            String key,
+            String activeKey,
+            Runnable action,
+            boolean rtl
+    ) {
+        Label label = new Label(text);
+        label.getStyleClass().add("nav-item");
+
+        if (key.equals(activeKey)) {
+            label.getStyleClass().add("nav-item-active");
+        }
+
+        label.setOnMouseClicked(e -> action.run());
+        label.setMaxWidth(Double.MAX_VALUE);
+        label.setAlignment(rtl ? Pos.CENTER_RIGHT : Pos.CENTER_LEFT);
+        label.setNodeOrientation(toOrientation(rtl));
+        return label;
     }
 
     private static void refreshCurrentPage(Navigator nav, String activeKey) {
         switch (activeKey) {
-            case "dashboard" -> nav.goDashboard();
-            case "second" -> nav.goTakeAttendance();
-            case "third" -> nav.goReports();
-            case "fourth" -> nav.goEmail();
+            case KEY_DASHBOARD -> nav.goDashboard();
+            case KEY_SECOND -> nav.goTakeAttendance();
+            case KEY_THIRD -> nav.goReports();
+            case KEY_FOURTH -> nav.goEmail();
+            default -> nav.goDashboard();
         }
     }
 
-    private static Label navLabel(String text, String key, String activeKey, Runnable action, boolean isArabic) {
-        Label l = new Label(text);
-        l.getStyleClass().add("nav-item");
-
-        if (key.equals(activeKey)) {
-            l.getStyleClass().add("nav-item-active");
-        }
-
-        l.setOnMouseClicked(e -> action.run());
-        l.setMaxWidth(Double.MAX_VALUE);
-        l.setAlignment(isArabic ? Pos.CENTER_RIGHT : Pos.CENTER_LEFT);
-        l.setNodeOrientation(isArabic ? NodeOrientation.RIGHT_TO_LEFT : NodeOrientation.LEFT_TO_RIGHT);
-
-        return l;
+    private static NodeOrientation toOrientation(boolean rtl) {
+        return rtl ? NodeOrientation.RIGHT_TO_LEFT : NodeOrientation.LEFT_TO_RIGHT;
     }
 
-    private static String t(String key, String fallback) {
-        String value = FrontendI18n.t(key);
-        return key.equals(value) ? fallback : value;
+    private static Region growRegion() {
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+        return spacer;
     }
 }

@@ -4,6 +4,7 @@ import javafx.beans.property.SimpleStringProperty;
 import javafx.beans.property.StringProperty;
 
 public class ClassRow {
+
     private final StringProperty className = new SimpleStringProperty();
     private final StringProperty code = new SimpleStringProperty();
     private final StringProperty teacher = new SimpleStringProperty();
@@ -18,10 +19,43 @@ public class ClassRow {
         this.students.set(students);
     }
 
-    public String getClassName() { return className.get(); }
-    public StringProperty classNameProperty() { return className; }
-    public StringProperty codeProperty() { return code; }
-    public StringProperty teacherProperty() { return teacher; }
-    public StringProperty scheduleProperty() { return schedule; }
-    public StringProperty studentsProperty() { return students; }
+    public String getClassName() {
+        return className.get();
+    }
+
+    public String getCode() {
+        return code.get();
+    }
+
+    public String getTeacher() {
+        return teacher.get();
+    }
+
+    public String getSchedule() {
+        return schedule.get();
+    }
+
+    public String getStudents() {
+        return students.get();
+    }
+
+    public StringProperty classNameProperty() {
+        return className;
+    }
+
+    public StringProperty codeProperty() {
+        return code;
+    }
+
+    public StringProperty teacherProperty() {
+        return teacher;
+    }
+
+    public StringProperty scheduleProperty() {
+        return schedule;
+    }
+
+    public StringProperty studentsProperty() {
+        return students;
+    }
 }

@@ -13,7 +13,10 @@ import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextArea;
-import javafx.scene.layout.*;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
+import javafx.scene.layout.Region;
+import javafx.scene.layout.VBox;
 
 public class TeacherExcuseReasonPage {
 
@@ -27,54 +30,20 @@ public class TeacherExcuseReasonPage {
             StudentRow student,
             Runnable onDoneBack
     ) {
+        String teacherName = resolveTeacherName(state);
 
-        String teacherName = (state.getName() == null || state.getName().isBlank())
-                ? helper.getMessage("teacher.fallback.name")
-                : state.getName();
+        VBox page = buildPageContainer();
 
-        VBox page = new VBox(12);
-        page.setPadding(new Insets(22));
-        page.getStyleClass().add("page");
+        Label title = buildTitle();
+        Label studentInfo = buildStudentInfo(student);
+        Label hint = buildHint();
+        TextArea reasonArea = buildReasonArea(student);
 
-        Label title = new Label(helper.getMessage("teacher.excuse.title"));
-        title.getStyleClass().add("title");
+        Button saveButton = buildSaveButton(student, reasonArea, onDoneBack);
+        Button cancelButton = buildCancelButton(onDoneBack);
+        HBox actions = buildActionsRow(cancelButton, saveButton);
 
-        Label who = new Label(
-                helper.getMessage("teacher.excuse.student")
-                        .replace("{name}", student.getStudentName())
-                        .replace("{email}", student.getEmail())
-        );
-        who.getStyleClass().add("subtitle");
-
-        Label hint = new Label(helper.getMessage("teacher.excuse.hint"));
-        hint.getStyleClass().add("section-title");
-
-        TextArea reason = new TextArea();
-        reason.setWrapText(true);
-        reason.setPrefRowCount(6);
-        reason.setText(student.getExcuseReason());
-
-        Button save = new Button(helper.getMessage("teacher.excuse.save"));
-        Button cancel = new Button(helper.getMessage("teacher.excuse.cancel"));
-
-        save.getStyleClass().addAll("pill", "pill-green");
-        cancel.getStyleClass().addAll("pill");
-
-        Region spacer = new Region();
-        HBox.setHgrow(spacer, Priority.ALWAYS);
-
-        HBox actions = new HBox(10, spacer, cancel, save);
-        actions.setAlignment(Pos.CENTER_RIGHT);
-
-        cancel.setOnAction(e -> onDoneBack.run());
-
-        save.setOnAction(e -> {
-            student.setStatus("Excused");
-            student.setExcuseReason(reason.getText());
-            onDoneBack.run();
-        });
-
-        page.getChildren().addAll(title, who, hint, reason, actions);
+        page.getChildren().addAll(title, studentInfo, hint, reasonArea, actions);
 
         return AppLayout.wrapWithSidebar(
                 teacherName,
@@ -86,15 +55,104 @@ public class TeacherExcuseReasonPage {
                 page,
                 "second",
                 new AppLayout.Navigator() {
-                    @Override public void goDashboard() { router.go("teacher-dashboard"); }
-                    @Override public void goTakeAttendance() { onDoneBack.run(); }
-                    @Override public void goReports() { router.go("teacher-reports"); }
-                    @Override public void goEmail() { router.go("teacher-email"); }
-                    @Override public void logout() {
+                    @Override
+                    public void goDashboard() {
+                        router.go("teacher-dashboard");
+                    }
+
+                    @Override
+                    public void goTakeAttendance() {
+                        onDoneBack.run();
+                    }
+
+                    @Override
+                    public void goReports() {
+                        router.go("teacher-reports");
+                    }
+
+                    @Override
+                    public void goEmail() {
+                        router.go("teacher-email");
+                    }
+
+                    @Override
+                    public void logout() {
                         jwtStore.clear();
                         router.go("login");
                     }
                 }
         );
+    }
+
+    private String resolveTeacherName(AuthState state) {
+        return (state.getName() == null || state.getName().isBlank())
+                ? helper.getMessage("teacher.fallback.name")
+                : state.getName();
+    }
+
+    private VBox buildPageContainer() {
+        VBox page = new VBox(12);
+        page.setPadding(new Insets(22));
+        page.getStyleClass().add("page");
+        return page;
+    }
+
+    private Label buildTitle() {
+        Label title = new Label(helper.getMessage("teacher.excuse.title"));
+        title.getStyleClass().add("title");
+        return title;
+    }
+
+    private Label buildStudentInfo(StudentRow student) {
+        Label studentInfo = new Label(
+                helper.getMessage("teacher.excuse.student")
+                        .replace("{name}", student.getStudentName())
+                        .replace("{email}", student.getEmail())
+        );
+        studentInfo.getStyleClass().add("subtitle");
+        return studentInfo;
+    }
+
+    private Label buildHint() {
+        Label hint = new Label(helper.getMessage("teacher.excuse.hint"));
+        hint.getStyleClass().add("section-title");
+        return hint;
+    }
+
+    private TextArea buildReasonArea(StudentRow student) {
+        TextArea reasonArea = new TextArea();
+        reasonArea.setWrapText(true);
+        reasonArea.setPrefRowCount(6);
+        reasonArea.setText(student.getExcuseReason());
+        return reasonArea;
+    }
+
+    private Button buildSaveButton(StudentRow student, TextArea reasonArea, Runnable onDoneBack) {
+        Button save = new Button(helper.getMessage("teacher.excuse.save"));
+        save.getStyleClass().addAll("pill", "pill-green");
+
+        save.setOnAction(e -> {
+            student.setStatus("Excused");
+            student.setExcuseReason(reasonArea.getText());
+            onDoneBack.run();
+        });
+
+        return save;
+    }
+
+    private Button buildCancelButton(Runnable onDoneBack) {
+        Button cancel = new Button(helper.getMessage("teacher.excuse.cancel"));
+        cancel.getStyleClass().add("pill");
+        cancel.setOnAction(e -> onDoneBack.run());
+        return cancel;
+    }
+
+    private HBox buildActionsRow(Button cancelButton, Button saveButton) {
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+
+        HBox actions = new HBox(10, spacer, cancelButton, saveButton);
+        actions.setAlignment(Pos.CENTER_RIGHT);
+        return actions;
     }
 }
