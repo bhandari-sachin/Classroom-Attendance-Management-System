@@ -1,25 +1,27 @@
 package http;
 
 import com.sun.net.httpserver.HttpExchange;
-import config.ClassSQL;
+import dto.AttendanceView;
 import org.junit.jupiter.api.Test;
 import security.JwtService;
+import service.AttendanceService;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.net.URI;
 import java.util.List;
-import java.util.Map;
 
 import static org.mockito.Mockito.*;
 
-class TeacherClassesHandlerTest {
+class StudentAttendanceRecordsHandlerTest {
 
     private HttpExchange mockExchange() throws Exception {
         HttpExchange ex = mock(HttpExchange.class);
 
         when(ex.getRequestMethod()).thenReturn("GET");
-        when(ex.getRequestURI()).thenReturn(URI.create("/teacher/classes"));
+        when(ex.getRequestURI()).thenReturn(
+                URI.create("/student/attendance?classId=1&period=2024&lang=en")
+        );
 
         when(ex.getRequestBody())
                 .thenReturn(new ByteArrayInputStream(new byte[0]));
@@ -37,25 +39,26 @@ class TeacherClassesHandlerTest {
     }
 
     @Test
-    void success_returns200() throws Exception {
+    void success_returnsAttendanceRecords() throws Exception {
 
         JwtService jwt = mock(JwtService.class);
-        ClassSQL classSQL = mock(ClassSQL.class);
+        AttendanceService service = mock(AttendanceService.class);
 
-        TeacherClassesHandler handler = new TeacherClassesHandler(jwt, classSQL);
+        StudentAttendanceRecordsHandler handler =
+                new StudentAttendanceRecordsHandler(jwt, service);
 
         HttpExchange ex = mockExchange();
 
-        // ✅ SAFE TYPE: Map-based response (NO GENERICS ISSUES)
-        when(classSQL.listForTeacher(anyLong()))
-                .thenReturn(List.of(
-                        Map.of("id", 1, "name", "Math"),
-                        Map.of("id", 2, "name", "Science")
-                ));
+        when(service.getStudentAttendanceViews(
+                anyLong(), anyLong(), any(), anyString()
+        )).thenReturn(List.of(mock(AttendanceView.class)));
 
         handler.handle(ex);
 
-        verify(classSQL).listForTeacher(anyLong());
+        verify(service).getStudentAttendanceViews(
+                anyLong(), anyLong(), any(), anyString()
+        );
+
         verify(ex).sendResponseHeaders(eq(200), anyLong());
     }
 }

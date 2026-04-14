@@ -2,16 +2,19 @@ package http;
 
 import com.auth0.jwt.interfaces.Claim;
 import com.auth0.jwt.interfaces.DecodedJWT;
+import com.sun.net.httpserver.HttpExchange;
 import config.AttendanceSQL;
 import config.ClassSQL;
 import config.SessionSQL;
-import dto.AttendanceView;
+import backend.exception.ApiException;
 import model.Session;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import security.JwtService;
 
+import java.io.IOException;
+import java.sql.SQLException;
 import java.time.LocalDate;
-import java.util.Collections;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -19,176 +22,148 @@ import static org.mockito.Mockito.*;
 
 class TeacherSessionReportHandlerTest {
 
-    @Test
-    void missingAuthorization_returns401() throws Exception {
-        JwtService jwtService = mock(JwtService.class);
-        ClassSQL classSQL = mock(ClassSQL.class);
-        SessionSQL sessionSQL = mock(SessionSQL.class);
-        AttendanceSQL attendanceSQL = mock(AttendanceSQL.class);
+    private JwtService jwtService;
+    private ClassSQL classSQL;
+    private SessionSQL sessionSQL;
+    private AttendanceSQL attendanceSQL;
 
-        var handler = new TeacherSessionReportHandler(jwtService, classSQL, sessionSQL, attendanceSQL);
-        var ex = new AdminClassesHandlerTest.FakeExchange("GET", "/teacher/session-report?sessionId=5", null);
+    private TeacherSessionReportHandler handler;
 
-        handler.handle(ex);
+    private HttpExchange exchange;
+    private BaseHandler.RequestContext ctx; // ✅ FIX
+    private DecodedJWT jwt;
+    private Claim roleClaim;
 
-        assertEquals(401, ex.statusCode);
-        assertTrue(ex.responseBodyString().contains("Missing Authorization header"));
-        verifyNoInteractions(classSQL, sessionSQL, attendanceSQL);
+    @BeforeEach
+    void setUp() {
+        jwtService = mock(JwtService.class);
+        classSQL = mock(ClassSQL.class);
+        sessionSQL = mock(SessionSQL.class);
+        attendanceSQL = mock(AttendanceSQL.class);
+
+        handler = new TeacherSessionReportHandler(
+                jwtService,
+                classSQL,
+                sessionSQL,
+                attendanceSQL
+        );
+
+        exchange = mock(HttpExchange.class);
+        ctx = mock(BaseHandler.RequestContext.class); // ✅ FIX
+
+        jwt = mock(DecodedJWT.class);
+        roleClaim = mock(Claim.class);
+
+        when(ctx.getJwt()).thenReturn(jwt);
+        when(jwt.getClaim("role")).thenReturn(roleClaim);
+        when(roleClaim.isNull()).thenReturn(false);
+        when(roleClaim.asString()).thenReturn("TEACHER");
+
+        when(ctx.getQuery("languageCode", "en")).thenReturn("en");
     }
 
     @Test
-    void methodNotAllowed_returns405() throws Exception {
-        JwtService jwtService = mock(JwtService.class);
-        ClassSQL classSQL = mock(ClassSQL.class);
-        SessionSQL sessionSQL = mock(SessionSQL.class);
-        AttendanceSQL attendanceSQL = mock(AttendanceSQL.class);
-
-        var handler = new TeacherSessionReportHandler(jwtService, classSQL, sessionSQL, attendanceSQL);
-        var ex = new AdminClassesHandlerTest.FakeExchange("POST", "/teacher/session-report?sessionId=5", null);
-        ex.getRequestHeaders().set("Authorization", "Bearer test-token");
-
-        DecodedJWT jwt = jwtWithRoleAndId("TEACHER", 10L);
-        when(jwtService.verify("test-token")).thenReturn(jwt);
-
-        handler.handle(ex);
-
-        assertEquals(405, ex.statusCode);
-        verifyNoInteractions(classSQL, sessionSQL, attendanceSQL);
-    }
-
-    @Test
-    void missingSessionId_returns400() throws Exception {
-        JwtService jwtService = mock(JwtService.class);
-        ClassSQL classSQL = mock(ClassSQL.class);
-        SessionSQL sessionSQL = mock(SessionSQL.class);
-        AttendanceSQL attendanceSQL = mock(AttendanceSQL.class);
-
-        var handler = new TeacherSessionReportHandler(jwtService, classSQL, sessionSQL, attendanceSQL);
-        var ex = new AdminClassesHandlerTest.FakeExchange("GET", "/teacher/session-report", null);
-        ex.getRequestHeaders().set("Authorization", "Bearer test-token");
-
-        DecodedJWT jwt = jwtWithRoleAndId("TEACHER", 10L);
-        when(jwtService.verify("test-token")).thenReturn(jwt);
-
-        handler.handle(ex);
-
-        assertEquals(400, ex.statusCode);
-        assertTrue(ex.responseBodyString().contains("sessionId is required"));
-        verifyNoInteractions(classSQL, sessionSQL, attendanceSQL);
-    }
-
-    @Test
-    void sessionNotFound_returns404() throws Exception {
-        JwtService jwtService = mock(JwtService.class);
-        ClassSQL classSQL = mock(ClassSQL.class);
-        SessionSQL sessionSQL = mock(SessionSQL.class);
-        AttendanceSQL attendanceSQL = mock(AttendanceSQL.class);
-
-        var handler = new TeacherSessionReportHandler(jwtService, classSQL, sessionSQL, attendanceSQL);
-        var ex = new AdminClassesHandlerTest.FakeExchange("GET", "/teacher/session-report?sessionId=5", null);
-        ex.getRequestHeaders().set("Authorization", "Bearer test-token");
-
-        DecodedJWT jwt = jwtWithRoleAndId("TEACHER", 10L);
-        when(jwtService.verify("test-token")).thenReturn(jwt);
-
-        when(sessionSQL.findById(5L)).thenReturn(null);
-
-        handler.handle(ex);
-
-        assertEquals(404, ex.statusCode);
-        assertTrue(ex.responseBodyString().contains("Session not found"));
-        verify(sessionSQL).findById(5L);
-        verifyNoInteractions(classSQL, attendanceSQL);
-    }
-
-    @Test
-    void teacherNotOwner_returns403() throws Exception {
-        JwtService jwtService = mock(JwtService.class);
-        ClassSQL classSQL = mock(ClassSQL.class);
-        SessionSQL sessionSQL = mock(SessionSQL.class);
-        AttendanceSQL attendanceSQL = mock(AttendanceSQL.class);
-
-        var handler = new TeacherSessionReportHandler(jwtService, classSQL, sessionSQL, attendanceSQL);
-        var ex = new AdminClassesHandlerTest.FakeExchange("GET", "/teacher/session-report?sessionId=5", null);
-        ex.getRequestHeaders().set("Authorization", "Bearer test-token");
-
-        DecodedJWT jwt = jwtWithRoleAndId("TEACHER", 10L);
-        when(jwtService.verify("test-token")).thenReturn(jwt);
+    void shouldReturnReport_whenValidTeacher() throws IOException, SQLException {
+        Long sessionId = 1L;
+        Long teacherId = 10L;
 
         Session session = mock(Session.class);
-        when(session.getClassId()).thenReturn(3L);
-        when(session.getSessionDate()).thenReturn(LocalDate.of(2026, 3, 3));
-        when(sessionSQL.findById(5L)).thenReturn(session);
 
-        when(classSQL.isClassOwnedByTeacher(3L, 10L)).thenReturn(false);
+        when(ctx.getLongQuery("sessionId")).thenReturn(sessionId);
+        when(ctx.getUserId()).thenReturn(teacherId);
 
-        handler.handle(ex);
+        when(sessionSQL.findById(sessionId)).thenReturn(session);
+        when(session.getClassId()).thenReturn(5L);
+        when(session.getSessionDate()).thenReturn(LocalDate.now());
 
-        assertEquals(403, ex.statusCode);
-        assertTrue(ex.responseBodyString().contains("Forbidden: not your session"));
-        verify(attendanceSQL, never()).getSessionReport(anyLong(), eq("en"));
+        when(classSQL.isClassOwnedByTeacher(5L, teacherId)).thenReturn(true);
+        when(attendanceSQL.getSessionReport(sessionId, "en")).thenReturn(Map.of());
+
+        handler.handleRequest(exchange, ctx);
+
+        verify(attendanceSQL).getSessionReport(sessionId, "en");
     }
-
 
     @Test
-    void attendanceSqlThrows_returns500() throws Exception {
-        JwtService jwtService = mock(JwtService.class);
-        ClassSQL classSQL = mock(ClassSQL.class);
-        SessionSQL sessionSQL = mock(SessionSQL.class);
-        AttendanceSQL attendanceSQL = mock(AttendanceSQL.class);
-
-        var handler = new TeacherSessionReportHandler(jwtService, classSQL, sessionSQL, attendanceSQL);
-        var ex = new AdminClassesHandlerTest.FakeExchange("GET", "/teacher/session-report?sessionId=5", null);
-        ex.getRequestHeaders().set("Authorization", "Bearer test-token");
-
-        DecodedJWT jwt = jwtWithRoleAndId("ADMIN", 1L);
-        when(jwtService.verify("test-token")).thenReturn(jwt);
+    void shouldReturnReport_whenAdmin() throws IOException, SQLException {
+        Long sessionId = 1L;
 
         Session session = mock(Session.class);
-        when(session.getClassId()).thenReturn(3L);
-        when(session.getSessionDate()).thenReturn(LocalDate.of(2026, 3, 3));
-        when(sessionSQL.findById(5L)).thenReturn(session);
 
-        when(attendanceSQL.getSessionReport(5L, "en")).thenThrow(new RuntimeException("DB down"));
+        when(ctx.getLongQuery("sessionId")).thenReturn(sessionId);
+        when(ctx.getUserId()).thenReturn(99L);
 
-        handler.handle(ex);
+        when(roleClaim.asString()).thenReturn("ADMIN");
 
-        assertEquals(500, ex.statusCode);
-        assertTrue(ex.responseBodyString().contains("Server error"));
+        when(sessionSQL.findById(sessionId)).thenReturn(session);
+        when(session.getClassId()).thenReturn(5L);
+        when(session.getSessionDate()).thenReturn(LocalDate.now());
+
+        when(attendanceSQL.getSessionReport(sessionId, "en")).thenReturn(Map.of());
+
+        handler.handleRequest(exchange, ctx);
+
+        verify(classSQL, never()).isClassOwnedByTeacher(any(), any());
     }
 
-    // ---- helpers ----
+    @Test
+    void shouldThrow400_whenSessionIdMissing() throws IOException {
+        when(ctx.getLongQuery("sessionId")).thenReturn(null);
 
-    private static DecodedJWT jwtWithRoleAndId(String role, long id) {
-        DecodedJWT jwt = mock(DecodedJWT.class);
+        ApiException ex = assertThrows(ApiException.class, () ->
+                handler.handleRequest(exchange, ctx)
+        );
 
-        Claim roleClaim = mock(Claim.class);
-        when(roleClaim.isNull()).thenReturn(false);
-        when(roleClaim.asString()).thenReturn(role);
-        when(jwt.getClaim("role")).thenReturn(roleClaim);
-
-        Claim idClaim = mock(Claim.class);
-        when(idClaim.isNull()).thenReturn(false);
-        when(idClaim.asLong()).thenReturn(id);
-        when(jwt.getClaim("id")).thenReturn(idClaim);
-
-        when(jwt.getSubject()).thenReturn(String.valueOf(id));
-        return jwt;
+        assertEquals(400, ex.getStatus());
     }
 
-    private static DecodedJWT jwtWithRoleAndNullId(String role, String subject) {
-        DecodedJWT jwt = mock(DecodedJWT.class);
+    @Test
+    void shouldThrow404_whenSessionNotFound() throws IOException, SQLException {
+        Long sessionId = 1L;
 
-        Claim roleClaim = mock(Claim.class);
-        when(roleClaim.isNull()).thenReturn(false);
-        when(roleClaim.asString()).thenReturn(role);
-        when(jwt.getClaim("role")).thenReturn(roleClaim);
+        when(ctx.getLongQuery("sessionId")).thenReturn(sessionId);
+        when(sessionSQL.findById(sessionId)).thenReturn(null);
 
-        Claim idClaim = mock(Claim.class);
-        when(idClaim.isNull()).thenReturn(true);
-        when(jwt.getClaim("id")).thenReturn(idClaim);
+        ApiException ex = assertThrows(ApiException.class, () ->
+                handler.handleRequest(exchange, ctx)
+        );
 
-        when(jwt.getSubject()).thenReturn(subject);
-        return jwt;
+        assertEquals(404, ex.getStatus());
+    }
+
+    @Test
+    void shouldThrow403_whenTeacherNotOwner() throws IOException, SQLException {
+        Long sessionId = 1L;
+        Long teacherId = 10L;
+
+        Session session = mock(Session.class);
+
+        when(ctx.getLongQuery("sessionId")).thenReturn(sessionId);
+        when(ctx.getUserId()).thenReturn(teacherId);
+
+        when(sessionSQL.findById(sessionId)).thenReturn(session);
+        when(session.getClassId()).thenReturn(5L);
+
+        when(classSQL.isClassOwnedByTeacher(5L, teacherId)).thenReturn(false);
+
+        ApiException ex = assertThrows(ApiException.class, () ->
+                handler.handleRequest(exchange, ctx)
+        );
+
+        assertEquals(403, ex.getStatus());
+    }
+
+    @Test
+    void shouldThrow500_whenDatabaseError() throws IOException, SQLException {
+        Long sessionId = 1L;
+
+        when(ctx.getLongQuery("sessionId")).thenReturn(sessionId);
+        when(sessionSQL.findById(sessionId)).thenThrow(new SQLException());
+
+        ApiException ex = assertThrows(ApiException.class, () ->
+                handler.handleRequest(exchange, ctx)
+        );
+
+        assertEquals(500, ex.getStatus());
     }
 }

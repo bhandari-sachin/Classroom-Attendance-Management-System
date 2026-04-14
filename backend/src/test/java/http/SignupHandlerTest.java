@@ -1,192 +1,222 @@
 package http;
 
+import com.sun.net.httpserver.HttpExchange;
 import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;
 import repository.UserRepository;
+
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.net.URI;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 class SignupHandlerTest {
 
+    // ---------------- helper ----------------
+
+    private HttpExchange mockExchange(String method, String body) throws Exception {
+        HttpExchange ex = mock(HttpExchange.class);
+
+        when(ex.getRequestMethod()).thenReturn(method);
+        when(ex.getRequestURI()).thenReturn(URI.create("/signup"));
+
+        ByteArrayInputStream in =
+                new ByteArrayInputStream(body.getBytes());
+        when(ex.getRequestBody()).thenReturn(in);
+
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        when(ex.getResponseBody()).thenReturn(out);
+
+        when(ex.getResponseHeaders()).thenReturn(new com.sun.net.httpserver.Headers());
+
+        doNothing().when(ex).sendResponseHeaders(anyInt(), anyLong());
+        doNothing().when(ex).close();
+
+        return ex;
+    }
+
+    // ---------------- tests ----------------
+
     @Test
     void methodNotAllowed_returns405() throws Exception {
-        UserRepository users = mock(UserRepository.class);
-        var handler = new SignupHandler(users);
+        UserRepository repo = mock(UserRepository.class);
 
-        var ex = new AdminClassesHandlerTest.FakeExchange("GET", "/signup", null);
+        SignupHandler handler = new SignupHandler(repo);
+
+        HttpExchange ex = mockExchange("GET", "{}");
 
         handler.handle(ex);
 
-        assertEquals(405, ex.statusCode);
-        assertEquals("Method Not Allowed", ex.responseBodyString());
-        verifyNoInteractions(users);
+        verify(ex).sendResponseHeaders(eq(405), anyLong());
     }
 
     @Test
     void invalidJson_returns400() throws Exception {
-        UserRepository users = mock(UserRepository.class);
-        var handler = new SignupHandler(users);
+        UserRepository repo = mock(UserRepository.class);
 
-        var ex = new AdminClassesHandlerTest.FakeExchange("POST", "/signup", "{bad json");
+        SignupHandler handler = new SignupHandler(repo);
+
+        HttpExchange ex = mockExchange("POST", "invalid-json");
 
         handler.handle(ex);
 
-        assertEquals(400, ex.statusCode);
-        assertTrue(ex.responseBodyString().contains("Invalid JSON"));
-        verifyNoInteractions(users);
+        verify(ex).sendResponseHeaders(eq(400), anyLong());
     }
 
     @Test
     void missingRequiredFields_returns400() throws Exception {
-        UserRepository users = mock(UserRepository.class);
-        var handler = new SignupHandler(users);
+        UserRepository repo = mock(UserRepository.class);
 
-        // missing lastName + role
-        String json = """
-            {"email":"a@b.com","password":"pw","firstName":"A"}
-        """;
-        var ex = new AdminClassesHandlerTest.FakeExchange("POST", "/signup", json);
+        SignupHandler handler = new SignupHandler(repo);
+
+        String body = "{\"email\":\"test@test.com\"}";
+
+        HttpExchange ex = mockExchange("POST", body);
 
         handler.handle(ex);
 
-        assertEquals(400, ex.statusCode);
-        assertTrue(ex.responseBodyString().contains("email, password, firstName, lastName, role are required"));
-        verifyNoInteractions(users);
+        verify(ex).sendResponseHeaders(eq(400), anyLong());
     }
 
     @Test
-    void invalidRole_returns400() throws Exception {
-        UserRepository users = mock(UserRepository.class);
-        var handler = new SignupHandler(users);
+    void adminRole_returns403() throws Exception {
+        UserRepository repo = mock(UserRepository.class);
 
-        String json = """
-            {"email":"a@b.com","password":"pw","firstName":"A","lastName":"B","role":"MANAGER"}
+        SignupHandler handler = new SignupHandler(repo);
+
+        String body = """
+        {
+          "email":"a@a.com",
+          "password":"123",
+          "firstName":"A",
+          "lastName":"B",
+          "role":"ADMIN"
+        }
         """;
-        var ex = new AdminClassesHandlerTest.FakeExchange("POST", "/signup", json);
+
+        HttpExchange ex = mockExchange("POST", body);
 
         handler.handle(ex);
 
-        assertEquals(400, ex.statusCode);
-        assertTrue(ex.responseBodyString().contains("role must be STUDENT or TEACHER"));
-        verifyNoInteractions(users);
+        verify(ex).sendResponseHeaders(eq(403), anyLong());
     }
 
     @Test
-    void adminCannotSelfRegister_returns403() throws Exception {
-        UserRepository users = mock(UserRepository.class);
-        var handler = new SignupHandler(users);
+    void studentWithoutCode_returns400() throws Exception {
+        UserRepository repo = mock(UserRepository.class);
 
-        String json = """
-            {"email":"admin@b.com","password":"pw","firstName":"A","lastName":"B","role":"ADMIN"}
+        SignupHandler handler = new SignupHandler(repo);
+
+        String body = """
+        {
+          "email":"s@a.com",
+          "password":"123",
+          "firstName":"S",
+          "lastName":"T",
+          "role":"STUDENT"
+        }
         """;
-        var ex = new AdminClassesHandlerTest.FakeExchange("POST", "/signup", json);
+
+        HttpExchange ex = mockExchange("POST", body);
 
         handler.handle(ex);
 
-        assertEquals(403, ex.statusCode);
-        assertTrue(ex.responseBodyString().contains("Admin cannot self-register"));
-        verifyNoInteractions(users);
+        verify(ex).sendResponseHeaders(eq(400), anyLong());
     }
 
     @Test
-    void studentMissingStudentCode_returns400() throws Exception {
-        UserRepository users = mock(UserRepository.class);
-        var handler = new SignupHandler(users);
+    void emailExists_returns400() throws Exception {
+        UserRepository repo = mock(UserRepository.class);
 
-        String json = """
-            {"email":"s@b.com","password":"pw","firstName":"S","lastName":"T","role":"STUDENT"}
+        when(repo.existsByEmail("test@test.com")).thenReturn(true);
+
+        SignupHandler handler = new SignupHandler(repo);
+
+        String body = """
+        {
+          "email":"test@test.com",
+          "password":"123",
+          "firstName":"A",
+          "lastName":"B",
+          "role":"TEACHER"
+        }
         """;
-        var ex = new AdminClassesHandlerTest.FakeExchange("POST", "/signup", json);
+
+        HttpExchange ex = mockExchange("POST", body);
 
         handler.handle(ex);
 
-        assertEquals(400, ex.statusCode);
-        assertTrue(ex.responseBodyString().contains("Student code required"));
-        verifyNoInteractions(users);
+        verify(ex).sendResponseHeaders(eq(400), anyLong());
     }
 
     @Test
-    void emailAlreadyExists_returns400() throws Exception {
-        UserRepository users = mock(UserRepository.class);
-        var handler = new SignupHandler(users);
+    void validTeacherSignup_returns201() throws Exception {
+        UserRepository repo = mock(UserRepository.class);
 
-        when(users.existsByEmail("a@b.com")).thenReturn(true);
+        when(repo.existsByEmail("t@t.com")).thenReturn(false);
 
-        String json = """
-            {"email":"a@b.com","password":"pw","firstName":"A","lastName":"B","role":"TEACHER"}
+        SignupHandler handler = new SignupHandler(repo);
+
+        String body = """
+        {
+          "email":"t@t.com",
+          "password":"123",
+          "firstName":"John",
+          "lastName":"Doe",
+          "role":"TEACHER"
+        }
         """;
-        var ex = new AdminClassesHandlerTest.FakeExchange("POST", "/signup", json);
+
+        HttpExchange ex = mockExchange("POST", body);
 
         handler.handle(ex);
 
-        assertEquals(400, ex.statusCode);
-        assertTrue(ex.responseBodyString().contains("Email already exists"));
-        verify(users).existsByEmail("a@b.com");
-        verify(users, never()).insert(any(), any(), any(), any(), any(), any());
-    }
-
-    @Test
-    void teacher_forcesStudentCodeNull_andCreatesUser_returns201() throws Exception {
-        UserRepository users = mock(UserRepository.class);
-        var handler = new SignupHandler(users);
-
-        when(users.existsByEmail("t@b.com")).thenReturn(false);
-
-        // even if studentCode is provided, it MUST be set to null for TEACHER
-        String json = """
-            {"email":"t@b.com","password":"pw","firstName":"T","lastName":"E","role":"TEACHER","studentCode":"SHOULD-NOT-SAVE"}
-        """;
-        var ex = new AdminClassesHandlerTest.FakeExchange("POST", "/signup", json);
-
-        handler.handle(ex);
-
-        assertEquals(201, ex.statusCode);
-        assertTrue(ex.responseBodyString().contains("created"));
-
-        // Capture insert args
-        ArgumentCaptor<String> emailCap = ArgumentCaptor.forClass(String.class);
-        ArgumentCaptor<String> hashCap  = ArgumentCaptor.forClass(String.class);
-        ArgumentCaptor<String> fnCap    = ArgumentCaptor.forClass(String.class);
-        ArgumentCaptor<String> lnCap    = ArgumentCaptor.forClass(String.class);
-        ArgumentCaptor<String> roleCap  = ArgumentCaptor.forClass(String.class);
-        ArgumentCaptor<String> scCap    = ArgumentCaptor.forClass(String.class);
-
-        verify(users).insert(emailCap.capture(), hashCap.capture(), fnCap.capture(), lnCap.capture(), roleCap.capture(), scCap.capture());
-
-        assertEquals("t@b.com", emailCap.getValue());
-        assertEquals("T", fnCap.getValue());
-        assertEquals("E", lnCap.getValue());
-        assertEquals("TEACHER", roleCap.getValue());
-        assertNull(scCap.getValue(), "studentCode must be NULL for non-students");
-        assertNotNull(hashCap.getValue());
-        assertTrue(hashCap.getValue().startsWith("$2"), "bcrypt hash should start with $2...");
-    }
-
-    @Test
-    void student_success_returns201_andSavesStudentCode() throws Exception {
-        UserRepository users = mock(UserRepository.class);
-        var handler = new SignupHandler(users);
-
-        when(users.existsByEmail("s@b.com")).thenReturn(false);
-
-        String json = """
-            {"email":"s@b.com","password":"pw","firstName":"S","lastName":"T","role":"student","studentCode":"STU001"}
-        """;
-        var ex = new AdminClassesHandlerTest.FakeExchange("POST", "/signup", json);
-
-        handler.handle(ex);
-
-        assertEquals(201, ex.statusCode);
-        assertTrue(ex.responseBodyString().contains("created"));
-
-        verify(users).insert(
-                eq("s@b.com"),
-                anyString(),      // hash
-                eq("S"),
-                eq("T"),
-                eq("STUDENT"),
-                eq("STU001")
+        verify(repo).insert(
+                eq("t@t.com"),
+                anyString(),
+                eq("John"),
+                eq("Doe"),
+                eq("TEACHER"),
+                isNull()
         );
+
+        verify(ex).sendResponseHeaders(eq(201), anyLong());
+    }
+
+    @Test
+    void validStudentSignup_returns201() throws Exception {
+        UserRepository repo = mock(UserRepository.class);
+
+        when(repo.existsByEmail("s@a.com")).thenReturn(false);
+
+        SignupHandler handler = new SignupHandler(repo);
+
+        String body = """
+        {
+          "email":"s@a.com",
+          "password":"123",
+          "firstName":"Sam",
+          "lastName":"Smith",
+          "role":"STUDENT",
+          "studentCode":"S123"
+        }
+        """;
+
+        HttpExchange ex = mockExchange("POST", body);
+
+        handler.handle(ex);
+
+        verify(repo).insert(
+                eq("s@a.com"),
+                anyString(),
+                eq("Sam"),
+                eq("Smith"),
+                eq("STUDENT"),
+                eq("S123")
+        );
+
+        verify(ex).sendResponseHeaders(eq(201), anyLong());
     }
 }

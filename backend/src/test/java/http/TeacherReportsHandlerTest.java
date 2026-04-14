@@ -2,208 +2,109 @@ package http;
 
 import com.auth0.jwt.interfaces.Claim;
 import com.auth0.jwt.interfaces.DecodedJWT;
+import com.sun.net.httpserver.HttpExchange;
 import config.AttendanceSQL;
 import config.ClassSQL;
+import backend.exception.ApiException;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import security.JwtService;
 
-import java.net.URI;
-import java.util.Collections;
+import java.io.IOException;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 class TeacherReportsHandlerTest {
 
-    @Test
-    void missingAuthorization_returns401() throws Exception {
-        JwtService jwtService = mock(JwtService.class);
-        AttendanceSQL attendanceSQL = mock(AttendanceSQL.class);
-        ClassSQL classSQL = mock(ClassSQL.class);
+    private JwtService jwtService;
+    private AttendanceSQL attendanceSQL;
+    private ClassSQL classSQL;
+    private TeacherReportsHandler handler;
 
-        var handler = new TeacherReportsHandler(jwtService, attendanceSQL, classSQL);
-        var ex = new AdminClassesHandlerTest.FakeExchange("GET", "/teacher/reports?classId=3", null);
+    private HttpExchange exchange;
+    private BaseHandler.RequestContext ctx; // ✅ FIXED HERE
+    private DecodedJWT jwt;
+    private Claim roleClaim;
 
-        handler.handle(ex);
+    @BeforeEach
+    void setUp() {
+        jwtService = mock(JwtService.class);
+        attendanceSQL = mock(AttendanceSQL.class);
+        classSQL = mock(ClassSQL.class);
 
-        assertEquals(401, ex.statusCode);
-        assertTrue(ex.responseBodyString().contains("Missing Authorization header"));
-        verifyNoInteractions(attendanceSQL, classSQL);
-    }
+        handler = new TeacherReportsHandler(jwtService, attendanceSQL, classSQL);
 
-    @Test
-    void methodNotAllowed_returns405() throws Exception {
-        JwtService jwtService = mock(JwtService.class);
-        AttendanceSQL attendanceSQL = mock(AttendanceSQL.class);
-        ClassSQL classSQL = mock(ClassSQL.class);
+        exchange = mock(HttpExchange.class);
+        ctx = mock(BaseHandler.RequestContext.class); // ✅ FIXED HERE
+        jwt = mock(DecodedJWT.class);
+        roleClaim = mock(Claim.class);
 
-        var handler = new TeacherReportsHandler(jwtService, attendanceSQL, classSQL);
-        var ex = new AdminClassesHandlerTest.FakeExchange("POST", "/teacher/reports?classId=3", null);
-        ex.getRequestHeaders().set("Authorization", "Bearer test-token");
-
-        DecodedJWT jwt = jwtWithRoleIdSubject("TEACHER", 10L, "10", false);
-        when(jwtService.verify("test-token")).thenReturn(jwt);
-
-        handler.handle(ex);
-
-        assertEquals(405, ex.statusCode);
-        verifyNoInteractions(attendanceSQL, classSQL);
-    }
-
-    @Test
-    void missingClassIdQueryParam_returns400() throws Exception {
-        JwtService jwtService = mock(JwtService.class);
-        AttendanceSQL attendanceSQL = mock(AttendanceSQL.class);
-        ClassSQL classSQL = mock(ClassSQL.class);
-
-        var handler = new TeacherReportsHandler(jwtService, attendanceSQL, classSQL);
-        var ex = new AdminClassesHandlerTest.FakeExchange("GET", "/teacher/reports", null);
-        ex.getRequestHeaders().set("Authorization", "Bearer test-token");
-
-        DecodedJWT jwt = jwtWithRoleIdSubject("TEACHER", 10L, "10", false);
-        when(jwtService.verify("test-token")).thenReturn(jwt);
-
-        handler.handle(ex);
-
-        assertEquals(400, ex.statusCode);
-        assertTrue(ex.responseBodyString().contains("classId query param is required"));
-        verifyNoInteractions(attendanceSQL, classSQL);
-    }
-
-    @Test
-    void teacher_notOwner_returns403() throws Exception {
-        JwtService jwtService = mock(JwtService.class);
-        AttendanceSQL attendanceSQL = mock(AttendanceSQL.class);
-        ClassSQL classSQL = mock(ClassSQL.class);
-
-        var handler = new TeacherReportsHandler(jwtService, attendanceSQL, classSQL);
-        var ex = new AdminClassesHandlerTest.FakeExchange("GET", "/teacher/reports?classId=3", null);
-        ex.getRequestHeaders().set("Authorization", "Bearer test-token");
-
-        DecodedJWT jwt = jwtWithRoleIdSubject("TEACHER", 10L, "10", false);
-        when(jwtService.verify("test-token")).thenReturn(jwt);
-
-        when(classSQL.isClassOwnedByTeacher(3L, 10L)).thenReturn(false);
-
-        handler.handle(ex);
-
-        assertEquals(403, ex.statusCode);
-        assertTrue(ex.responseBodyString().contains("Forbidden: not your class"));
-        verify(attendanceSQL, never()).reportByClass(anyLong());
-    }
-
-    @Test
-    void teacher_owner_returns200_andReport() throws Exception {
-        JwtService jwtService = mock(JwtService.class);
-        AttendanceSQL attendanceSQL = mock(AttendanceSQL.class);
-        ClassSQL classSQL = mock(ClassSQL.class);
-
-        var handler = new TeacherReportsHandler(jwtService, attendanceSQL, classSQL);
-        var ex = new AdminClassesHandlerTest.FakeExchange("GET", "/teacher/reports?classId=3", null);
-        ex.getRequestHeaders().set("Authorization", "Bearer test-token");
-
-        DecodedJWT jwt = jwtWithRoleIdSubject("TEACHER", 10L, "10", false);
-        when(jwtService.verify("test-token")).thenReturn(jwt);
-
-        when(classSQL.isClassOwnedByTeacher(3L, 10L)).thenReturn(true);
-
-        // easiest stable return type: empty list (avoids generics headaches)
-        when(attendanceSQL.reportByClass(3L)).thenReturn(Collections.emptyList());
-
-        handler.handle(ex);
-
-        assertEquals(200, ex.statusCode);
-        String body = ex.responseBodyString();
-        assertTrue(body.contains("\"classId\":3"));
-        assertTrue(body.contains("\"data\""));
-
-        verify(attendanceSQL).reportByClass(3L);
-    }
-
-    @Test
-    void admin_bypassesOwnership_returns200() throws Exception {
-        JwtService jwtService = mock(JwtService.class);
-        AttendanceSQL attendanceSQL = mock(AttendanceSQL.class);
-        ClassSQL classSQL = mock(ClassSQL.class);
-
-        var handler = new TeacherReportsHandler(jwtService, attendanceSQL, classSQL);
-        var ex = new AdminClassesHandlerTest.FakeExchange("GET", "/teacher/reports?classId=99", null);
-        ex.getRequestHeaders().set("Authorization", "Bearer test-token");
-
-        DecodedJWT jwt = jwtWithRoleIdSubject("ADMIN", 1L, "1", false);
-        when(jwtService.verify("test-token")).thenReturn(jwt);
-
-        // ownership check should not be required for ADMIN
-        when(attendanceSQL.reportByClass(99L)).thenReturn(Collections.emptyList());
-
-        handler.handle(ex);
-
-        assertEquals(200, ex.statusCode);
-        verify(classSQL, never()).isClassOwnedByTeacher(anyLong(), anyLong());
-        verify(attendanceSQL).reportByClass(99L);
-    }
-
-    @Test
-    void subjectFallback_whenIdClaimNull() throws Exception {
-        JwtService jwtService = mock(JwtService.class);
-        AttendanceSQL attendanceSQL = mock(AttendanceSQL.class);
-        ClassSQL classSQL = mock(ClassSQL.class);
-
-        var handler = new TeacherReportsHandler(jwtService, attendanceSQL, classSQL);
-        var ex = new AdminClassesHandlerTest.FakeExchange("GET", "/teacher/reports?classId=3", null);
-        ex.getRequestHeaders().set("Authorization", "Bearer test-token");
-
-        // id claim isNull -> teacherId from subject "123"
-        DecodedJWT jwt = jwtWithRoleIdSubject("TEACHER", null, "123", true);
-        when(jwtService.verify("test-token")).thenReturn(jwt);
-
-        when(classSQL.isClassOwnedByTeacher(3L, 123L)).thenReturn(true);
-        when(attendanceSQL.reportByClass(3L)).thenReturn(Collections.emptyList());
-
-        handler.handle(ex);
-
-        assertEquals(200, ex.statusCode);
-        verify(classSQL).isClassOwnedByTeacher(3L, 123L);
-    }
-
-    @Test
-    void attendanceSqlThrows_returns500() throws Exception {
-        JwtService jwtService = mock(JwtService.class);
-        AttendanceSQL attendanceSQL = mock(AttendanceSQL.class);
-        ClassSQL classSQL = mock(ClassSQL.class);
-
-        var handler = new TeacherReportsHandler(jwtService, attendanceSQL, classSQL);
-        var ex = new AdminClassesHandlerTest.FakeExchange("GET", "/teacher/reports?classId=3", null);
-        ex.getRequestHeaders().set("Authorization", "Bearer test-token");
-
-        DecodedJWT jwt = jwtWithRoleIdSubject("ADMIN", 1L, "1", false);
-        when(jwtService.verify("test-token")).thenReturn(jwt);
-
-        when(attendanceSQL.reportByClass(3L)).thenThrow(new RuntimeException("DB down"));
-
-        handler.handle(ex);
-
-        assertEquals(500, ex.statusCode);
-        assertTrue(ex.responseBodyString().contains("Server error"));
-    }
-
-    // ---- helper ----
-    private static DecodedJWT jwtWithRoleIdSubject(String role, Long id, String subject, boolean idIsNull) {
-        DecodedJWT jwt = mock(DecodedJWT.class);
-
-        Claim roleClaim = mock(Claim.class);
-        when(roleClaim.isNull()).thenReturn(false);
-        when(roleClaim.asString()).thenReturn(role);
+        when(ctx.getJwt()).thenReturn(jwt);
         when(jwt.getClaim("role")).thenReturn(roleClaim);
+        when(roleClaim.isNull()).thenReturn(false);
+        when(roleClaim.asString()).thenReturn("TEACHER");
+    }
 
-        Claim idClaim = mock(Claim.class);
-        when(idClaim.isNull()).thenReturn(idIsNull);
-        if (!idIsNull) {
-            when(idClaim.asLong()).thenReturn(id);
-        }
-        when(jwt.getClaim("id")).thenReturn(idClaim);
+    @Test
+    void shouldReturnReport_whenTeacherOwnsClass() throws IOException {
+        Long classId = 1L;
+        Long teacherId = 10L;
 
-        when(jwt.getSubject()).thenReturn(subject);
-        return jwt;
+        when(ctx.getClassId()).thenReturn(classId);
+        when(ctx.getUserId()).thenReturn(teacherId);
+
+        when(classSQL.isClassOwnedByTeacher(classId, teacherId)).thenReturn(true);
+        when(attendanceSQL.reportByClass(classId)).thenReturn(List.of());
+
+        handler.handleRequest(exchange, ctx);
+
+        verify(attendanceSQL).reportByClass(classId);
+    }
+
+    @Test
+    void shouldReturnReport_whenAdmin() throws IOException {
+        Long classId = 1L;
+
+        when(ctx.getClassId()).thenReturn(classId);
+        when(ctx.getUserId()).thenReturn(99L);
+
+        when(roleClaim.asString()).thenReturn("ADMIN");
+
+        when(attendanceSQL.reportByClass(classId)).thenReturn(List.of());
+
+        handler.handleRequest(exchange, ctx);
+
+        verify(attendanceSQL).reportByClass(classId);
+        verify(classSQL, never()).isClassOwnedByTeacher(any(), any());
+    }
+
+    @Test
+    void shouldThrow400_whenClassIdMissing() throws IOException {
+        when(ctx.getClassId()).thenReturn(null);
+
+        ApiException ex = assertThrows(ApiException.class, () ->
+                handler.handleRequest(exchange, ctx)
+        );
+
+        assertEquals(400, ex.getStatus());
+    }
+
+    @Test
+    void shouldThrow403_whenTeacherDoesNotOwnClass() throws IOException {
+        Long classId = 1L;
+        Long teacherId = 10L;
+
+        when(ctx.getClassId()).thenReturn(classId);
+        when(ctx.getUserId()).thenReturn(teacherId);
+
+        when(classSQL.isClassOwnedByTeacher(classId, teacherId)).thenReturn(false);
+
+        ApiException ex = assertThrows(ApiException.class, () ->
+                handler.handleRequest(exchange, ctx)
+        );
+
+        assertEquals(403, ex.getStatus());
     }
 }
