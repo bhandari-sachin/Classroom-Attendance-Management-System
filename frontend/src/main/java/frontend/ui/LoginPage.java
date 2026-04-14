@@ -1,6 +1,7 @@
 package frontend.ui;
 
 import frontend.auth.*;
+import frontend.i18n.FrontendI18n;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -11,8 +12,6 @@ import java.util.Optional;
 
 public class LoginPage extends StackPane {
 
-    private final HelperClass helper = new HelperClass();
-
     public LoginPage(AppRouter router, AuthService authService, JwtStore jwtStore) {
 
         setPadding(new Insets(24));
@@ -22,27 +21,28 @@ public class LoginPage extends StackPane {
         card.setPadding(new Insets(22));
         card.getStyleClass().add("card");
 
-        Label title = new Label(helper.getMessage("auth.login.title"));
+        Label title = new Label(t("auth.login.title", "Login"));
         title.getStyleClass().add("title");
 
-        Label sub = new Label(helper.getMessage("auth.login.subtitle"));
+        Label sub = new Label(t("auth.login.subtitle", "Sign in to your account"));
         sub.getStyleClass().add("subtitle");
+
+        // ✅ Font test (keep if you want Ethiopic support)
         Label test = new Label("አማርኛ");
         test.setStyle("-fx-font-family: 'Noto Sans Ethiopic'; -fx-font-size: 20px;");
 
-
         TextField email = new TextField();
-        email.setPromptText(helper.getMessage("login.email.placeholder"));
+        email.setPromptText(t("login.email.placeholder", "Email"));
 
         PasswordField password = new PasswordField();
-        password.setPromptText(helper.getMessage("login.password.placeholder"));
+        password.setPromptText(t("login.password.placeholder", "Password"));
 
         Label error = new Label();
         error.getStyleClass().add("error");
         error.setManaged(false);
         error.setVisible(false);
 
-        Button loginBtn = new Button(helper.getMessage("login.button.submit"));
+        Button loginBtn = new Button(t("login.button.submit", "Login"));
         loginBtn.getStyleClass().add("primary-btn");
         loginBtn.setMaxWidth(Double.MAX_VALUE);
 
@@ -54,7 +54,7 @@ public class LoginPage extends StackPane {
             String pw = password.getText();
 
             if (em.isBlank() || pw.isBlank()) {
-                showError(error, helper.getMessage("login.error.empty_fields"));
+                showError(error, t("login.error.empty_fields", "Please fill all fields"));
                 return;
             }
 
@@ -73,7 +73,7 @@ public class LoginPage extends StackPane {
                     Platform.runLater(() -> {
                         showError(
                                 error,
-                                helper.getMessage("login.error.failed") + " " + cleanMessage(ex.getMessage())
+                                t("login.error.failed", "Login failed:") + " " + cleanMessage(ex.getMessage())
                         );
                         loginBtn.setDisable(false);
                     });
@@ -81,7 +81,7 @@ public class LoginPage extends StackPane {
             }).start();
         });
 
-        Button goSignup = new Button(helper.getMessage("login.button.signup"));
+        Button goSignup = new Button(t("login.button.signup", "Create account"));
         goSignup.getStyleClass().add("link-button");
         goSignup.setOnAction(e -> router.go("signup"));
 
@@ -108,8 +108,13 @@ public class LoginPage extends StackPane {
         error.setManaged(true);
     }
 
-    private String cleanMessage(String msg) {
-        if (msg == null || msg.isBlank()) return helper.getMessage("login.error.unknown");
+    private static String cleanMessage(String msg) {
+        if (msg == null || msg.isBlank()) return "Unknown error";
         return msg.length() > 200 ? msg.substring(0, 200) + "..." : msg;
+    }
+
+    private static String t(String key, String fallback) {
+        String value = FrontendI18n.t(key);
+        return key.equals(value) ? fallback : value;
     }
 }

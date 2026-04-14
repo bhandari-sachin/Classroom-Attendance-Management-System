@@ -37,6 +37,7 @@ public class ReportHandler implements HttpHandler {
             String method = ex.getRequestMethod();
             String path = ex.getRequestURI().getPath();
             Map<String, String> queryParams = parseQuery(ex.getRequestURI().getQuery());
+            String lang = queryParams.getOrDefault("lang", "en");
             String format = normalizeFormat(queryParams.get("format"));
 
             if (!"GET".equalsIgnoreCase(method)) {
@@ -51,21 +52,21 @@ public class ReportHandler implements HttpHandler {
                     HttpUtil.json(ex, 400, Map.of("error", "Students may only export PDF reports."));
                     return;
                 }
-                exportStudentReport(ex, jwt);
+                exportStudentReport(ex, jwt, queryParams, lang);
                 return;
             }
 
             // /api/reports/export/teacher?classId=1&format=pdf|csv
             if (path.endsWith("/teacher")) {
                 Auth.requireRole(jwt, "TEACHER");
-                exportTeacherReport(ex, jwt, queryParams, format);
+                exportTeacherReport(ex, jwt, queryParams, format, lang);
                 return;
             }
 
             // /api/reports/export/admin?format=pdf|csv
             if (path.endsWith("/admin")) {
                 Auth.requireRole(jwt, "ADMIN");
-                exportAdminReport(ex, format);
+                exportAdminReport(ex, format, lang);
                 return;
             }
 
@@ -81,56 +82,78 @@ public class ReportHandler implements HttpHandler {
         }
     }
 
-    private void exportStudentReport(HttpExchange ex, DecodedJWT jwt) throws Exception {
+    private void exportStudentReport(HttpExchange ex, DecodedJWT jwt, Map<String,String> queryParams, String lang) throws Exception {
 
         Long studentId = jwt.getClaim("id").asLong();
-        int year = java.time.Year.now().getValue();
+        int year = resolveYear(queryParams);
 
         var rows = attendanceSQL.getStudentYearlyReport(studentId, year);
 
         String file = "student-report.pdf";
 
-        PDFReportExporter.studentYearReport(file, year, rows);
+        PDFReportExporter.studentYearReport(file, year, rows, lang);
 
         sendFile(ex, file, "application/pdf", "student-report.pdf");
     }
 
-    private void exportTeacherReport(HttpExchange ex, DecodedJWT jwt, Map<String, String> queryParams, String format) throws Exception {
+    private void exportTeacherReport(HttpExchange ex, DecodedJWT jwt, Map<String, String> queryParams, String format, String lang) throws Exception {
 
         Long teacherId = jwt.getClaim("id").asLong();
         Long classId = parseRequiredLong(queryParams, "classId");
+        int year = resolveYear(queryParams);
 
-        var rows = attendanceSQL.getTeacherClassReport(teacherId, classId);
+        var rows = attendanceSQL.getTeacherClassReport(teacherId, classId, year);
 
         if ("csv".equals(format)) {
-            String file = "teacher-report.csv";
-            CSVReportExporter.teacherClassReport(file, rows);
-            sendFile(ex, "text/csv", "teacher-report.csv", file);
+            ex.getResponseHeaders().set("Content-Type", "text/csv; charset=UTF-8");
+            ex.getResponseHeaders().set("Content-Disposition", "attachment; filename=\"teacher-report.csv\"");
+            ex.sendResponseHeaders(200, 0);
+
+            try (var os = ex.getResponseBody()) {
+                CSVReportExporter.teacherClassReport(os, year, rows, lang);
+            }
             return;
         }
         String file = "teacher-report.pdf";
 
-        PDFReportExporter.teacherClassReport(file, rows);
+        PDFReportExporter.teacherClassReport(file, year, rows, lang);
 
         sendFile(ex, file, "application/pdf", "teacher-report.pdf");
     }
 
-    private void exportAdminReport(HttpExchange ex, String format) throws Exception {
-
+    private void exportAdminReport(HttpExchange ex, String format, String lang) throws Exception {
         var rows = attendanceSQL.getAllStudentsStats();
 
         if ("csv".equals(format)) {
-            String file = "admin-report.csv";
-            CSVReportExporter.adminAllStudentsReport(file, rows);
-            sendFile(ex, file, "text/csv", "admin-report.csv");
+            ex.getResponseHeaders().set("Content-Type", "text/csv; charset=UTF-8");
+            ex.getResponseHeaders().set("Content-Disposition", "attachment; filename=\"teacher-report.csv\"");
+            ex.sendResponseHeaders(200, 0);
+
+            try (var os = ex.getResponseBody()) {
+                CSVReportExporter.adminAllStudentsReport(os, rows, lang);
+            }
             return;
         }
 
         String file = "admin-report.pdf";
 
-        PDFReportExporter.adminAllStudentsReport(file, rows);
+        PDFReportExporter.adminAllStudentsReport(file, rows, lang);
 
         sendFile(ex, file, "application/pdf", "admin-report.pdf");
+    }
+
+    private int resolveYear(Map<String, String> queryParams) {
+        String y = queryParams.get("year");
+
+        if (y == null || y.isBlank()) {
+            return java.time.Year.now().getValue();
+        }
+
+        try {
+            return Integer.parseInt(y);
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException("Invalid year: " + y);
+        }
     }
 
     private Long parseRequiredLong(Map<String, String> queryParams, String key) {

@@ -1,8 +1,6 @@
 import com.sun.net.httpserver.HttpServer;
-import config.AttendanceSQL;
-import config.ClassSQL;
-import config.DatabaseInitializer;
-import config.SessionSQL;
+import config.*;
+import handler.I18nHandler;
 import http.*;
 import repository.UserRepository;
 import security.JwtService;
@@ -65,6 +63,9 @@ public class BackendMain {
         server.createContext("/api/reports/export/student", reportHandler);
         server.createContext("/api/reports/export/teacher", reportHandler);
         server.createContext("/api/reports/export/admin",   reportHandler);
+
+        server.createContext("/api/i18n/ui", new I18nHandler());
+        server.createContext("/api/i18n/languages", new I18nHandler());
 
 
         // ===== QR / ATTENDANCE CODE =====
