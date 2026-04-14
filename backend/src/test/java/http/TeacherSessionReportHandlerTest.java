@@ -2,6 +2,7 @@ package http;
 
 import com.auth0.jwt.interfaces.Claim;
 import com.auth0.jwt.interfaces.DecodedJWT;
+import com.sun.net.httpserver.Headers;
 import com.sun.net.httpserver.HttpExchange;
 import config.AttendanceSQL;
 import config.ClassSQL;
@@ -12,6 +13,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import security.JwtService;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.sql.SQLException;
 import java.time.LocalDate;
@@ -30,7 +32,7 @@ class TeacherSessionReportHandlerTest {
     private TeacherSessionReportHandler handler;
 
     private HttpExchange exchange;
-    private BaseHandler.RequestContext ctx; // ✅ FIX
+    private BaseHandler.RequestContext ctx;
     private DecodedJWT jwt;
     private Claim roleClaim;
 
@@ -49,10 +51,14 @@ class TeacherSessionReportHandlerTest {
         );
 
         exchange = mock(HttpExchange.class);
-        ctx = mock(BaseHandler.RequestContext.class); // ✅ FIX
+        ctx = mock(BaseHandler.RequestContext.class);
 
         jwt = mock(DecodedJWT.class);
         roleClaim = mock(Claim.class);
+
+        // ================= FIX: prevent NULL crashes =================
+        when(exchange.getRequestHeaders()).thenReturn(new Headers());
+        when(exchange.getResponseBody()).thenReturn(new ByteArrayOutputStream());
 
         when(ctx.getJwt()).thenReturn(jwt);
         when(jwt.getClaim("role")).thenReturn(roleClaim);
@@ -107,7 +113,7 @@ class TeacherSessionReportHandlerTest {
     }
 
     @Test
-    void shouldThrow400_whenSessionIdMissing() throws IOException {
+    void shouldThrow400_whenSessionIdMissing() {
         when(ctx.getLongQuery("sessionId")).thenReturn(null);
 
         ApiException ex = assertThrows(ApiException.class, () ->
@@ -118,7 +124,7 @@ class TeacherSessionReportHandlerTest {
     }
 
     @Test
-    void shouldThrow404_whenSessionNotFound() throws IOException, SQLException {
+    void shouldThrow404_whenSessionNotFound() throws SQLException {
         Long sessionId = 1L;
 
         when(ctx.getLongQuery("sessionId")).thenReturn(sessionId);
@@ -132,7 +138,7 @@ class TeacherSessionReportHandlerTest {
     }
 
     @Test
-    void shouldThrow403_whenTeacherNotOwner() throws IOException, SQLException {
+    void shouldThrow403_whenTeacherNotOwner() throws SQLException {
         Long sessionId = 1L;
         Long teacherId = 10L;
 
@@ -154,7 +160,7 @@ class TeacherSessionReportHandlerTest {
     }
 
     @Test
-    void shouldThrow500_whenDatabaseError() throws IOException, SQLException {
+    void shouldThrow500_whenDatabaseError() throws SQLException {
         Long sessionId = 1L;
 
         when(ctx.getLongQuery("sessionId")).thenReturn(sessionId);

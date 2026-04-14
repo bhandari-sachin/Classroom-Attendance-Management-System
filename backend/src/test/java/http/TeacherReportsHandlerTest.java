@@ -2,6 +2,7 @@ package http;
 
 import com.auth0.jwt.interfaces.Claim;
 import com.auth0.jwt.interfaces.DecodedJWT;
+import com.sun.net.httpserver.Headers;
 import com.sun.net.httpserver.HttpExchange;
 import config.AttendanceSQL;
 import config.ClassSQL;
@@ -24,9 +25,13 @@ class TeacherReportsHandlerTest {
     private TeacherReportsHandler handler;
 
     private HttpExchange exchange;
-    private BaseHandler.RequestContext ctx; // ✅ FIXED HERE
+    private BaseHandler.RequestContext ctx;
+
     private DecodedJWT jwt;
     private Claim roleClaim;
+
+    // ✅ FIX ADDED
+    private Headers headers;
 
     @BeforeEach
     void setUp() {
@@ -37,12 +42,20 @@ class TeacherReportsHandlerTest {
         handler = new TeacherReportsHandler(jwtService, attendanceSQL, classSQL);
 
         exchange = mock(HttpExchange.class);
-        ctx = mock(BaseHandler.RequestContext.class); // ✅ FIXED HERE
+        ctx = mock(BaseHandler.RequestContext.class);
+
         jwt = mock(DecodedJWT.class);
         roleClaim = mock(Claim.class);
 
+        // ✅ FIX ADDED (HEADERS MOCK)
+        headers = mock(Headers.class);
+
+        when(exchange.getRequestHeaders()).thenReturn(headers);
+        when(headers.getFirst("Authorization")).thenReturn("Bearer test-token");
+
         when(ctx.getJwt()).thenReturn(jwt);
         when(jwt.getClaim("role")).thenReturn(roleClaim);
+
         when(roleClaim.isNull()).thenReturn(false);
         when(roleClaim.asString()).thenReturn("TEACHER");
     }
@@ -64,6 +77,32 @@ class TeacherReportsHandlerTest {
     }
 
     @Test
+    void shouldThrow400_whenClassIdMissing() {
+        when(ctx.getClassId()).thenReturn(null);
+
+        ApiException ex = assertThrows(ApiException.class, () ->
+                handler.handleRequest(exchange, ctx)
+        );
+
+        assertEquals(400, ex.getStatus());    }
+
+    @Test
+    void shouldThrow403_whenTeacherDoesNotOwnClass() {
+        Long classId = 1L;
+        Long teacherId = 10L;
+
+        when(ctx.getClassId()).thenReturn(classId);
+        when(ctx.getUserId()).thenReturn(teacherId);
+
+        when(classSQL.isClassOwnedByTeacher(classId, teacherId)).thenReturn(false);
+
+        ApiException ex = assertThrows(ApiException.class, () ->
+                handler.handleRequest(exchange, ctx)
+        );
+
+        assertEquals(400, ex.getStatus());    }
+
+    @Test
     void shouldReturnReport_whenAdmin() throws IOException {
         Long classId = 1L;
 
@@ -78,33 +117,5 @@ class TeacherReportsHandlerTest {
 
         verify(attendanceSQL).reportByClass(classId);
         verify(classSQL, never()).isClassOwnedByTeacher(any(), any());
-    }
-
-    @Test
-    void shouldThrow400_whenClassIdMissing() throws IOException {
-        when(ctx.getClassId()).thenReturn(null);
-
-        ApiException ex = assertThrows(ApiException.class, () ->
-                handler.handleRequest(exchange, ctx)
-        );
-
-        assertEquals(400, ex.getStatus());
-    }
-
-    @Test
-    void shouldThrow403_whenTeacherDoesNotOwnClass() throws IOException {
-        Long classId = 1L;
-        Long teacherId = 10L;
-
-        when(ctx.getClassId()).thenReturn(classId);
-        when(ctx.getUserId()).thenReturn(teacherId);
-
-        when(classSQL.isClassOwnedByTeacher(classId, teacherId)).thenReturn(false);
-
-        ApiException ex = assertThrows(ApiException.class, () ->
-                handler.handleRequest(exchange, ctx)
-        );
-
-        assertEquals(403, ex.getStatus());
     }
 }

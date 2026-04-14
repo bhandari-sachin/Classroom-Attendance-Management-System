@@ -1,15 +1,14 @@
 package http;
 
+import com.sun.net.httpserver.Headers;
 import com.sun.net.httpserver.HttpExchange;
 import org.junit.jupiter.api.Test;
 import security.JwtService;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.OutputStream;
 import java.net.URI;
 
-import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 class BaseHandlerTest {
@@ -27,6 +26,23 @@ class BaseHandlerTest {
         }
     }
 
+    // ---------------- MOCK HELPER ----------------
+    private HttpExchange mockExchange(String method, String uri, String authHeader) {
+        HttpExchange exchange = mock(HttpExchange.class);
+
+        Headers headers = new Headers();
+        if (authHeader != null) {
+            headers.add("Authorization", authHeader);
+        }
+
+        when(exchange.getRequestHeaders()).thenReturn(headers);
+        when(exchange.getRequestMethod()).thenReturn(method);
+        when(exchange.getRequestURI()).thenReturn(URI.create(uri));
+        when(exchange.getResponseBody()).thenReturn(new ByteArrayOutputStream());
+
+        return exchange;
+    }
+
     // ---------------- TESTS ----------------
 
     @Test
@@ -34,12 +50,7 @@ class BaseHandlerTest {
         JwtService jwt = mock(JwtService.class);
         TestHandler handler = new TestHandler(jwt);
 
-        HttpExchange ex = mock(HttpExchange.class);
-        when(ex.getRequestMethod()).thenReturn("GET");
-        when(ex.getRequestURI()).thenReturn(URI.create("/test"));
-
-        ByteArrayOutputStream os = new ByteArrayOutputStream();
-        when(ex.getResponseBody()).thenReturn(os);
+        HttpExchange ex = mockExchange("GET", "/test", "Bearer dummy");
 
         handler.handle(ex);
 
@@ -51,9 +62,7 @@ class BaseHandlerTest {
         JwtService jwt = mock(JwtService.class);
         TestHandler handler = new TestHandler(jwt);
 
-        HttpExchange ex = mock(HttpExchange.class);
-        when(ex.getRequestMethod()).thenReturn("POST");
-        when(ex.getRequestURI()).thenReturn(URI.create("/test"));
+        HttpExchange ex = mockExchange("POST", "/test", "Bearer dummy");
 
         handler.handle(ex);
 
@@ -71,9 +80,7 @@ class BaseHandlerTest {
             }
         };
 
-        HttpExchange ex = mock(HttpExchange.class);
-        when(ex.getRequestMethod()).thenReturn("GET");
-        when(ex.getRequestURI()).thenReturn(URI.create("/test"));
+        HttpExchange ex = mockExchange("GET", "/test", "Bearer dummy");
 
         handler.handle(ex);
 
@@ -91,9 +98,7 @@ class BaseHandlerTest {
             }
         };
 
-        HttpExchange ex = mock(HttpExchange.class);
-        when(ex.getRequestMethod()).thenReturn("GET");
-        when(ex.getRequestURI()).thenReturn(URI.create("/test"));
+        HttpExchange ex = mockExchange("GET", "/test", "Bearer dummy");
 
         handler.handle(ex);
 
@@ -111,9 +116,7 @@ class BaseHandlerTest {
             }
         };
 
-        HttpExchange ex = mock(HttpExchange.class);
-        when(ex.getRequestMethod()).thenReturn("GET");
-        when(ex.getRequestURI()).thenReturn(URI.create("/test"));
+        HttpExchange ex = mockExchange("GET", "/test", "Bearer dummy");
 
         handler.handle(ex);
 

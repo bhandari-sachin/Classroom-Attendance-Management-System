@@ -2,6 +2,7 @@ package http;
 
 import com.auth0.jwt.interfaces.Claim;
 import com.auth0.jwt.interfaces.DecodedJWT;
+import com.sun.net.httpserver.Headers;
 import com.sun.net.httpserver.HttpExchange;
 import config.ClassSQL;
 import backend.exception.ApiException;
@@ -9,7 +10,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import security.JwtService;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.net.URI;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -22,7 +25,7 @@ class TeacherStudentsHandlerTest {
     private TeacherStudentsHandler handler;
 
     private HttpExchange exchange;
-    private BaseHandler.RequestContext ctx; // ✅ FIX
+    private BaseHandler.RequestContext ctx;
     private DecodedJWT jwt;
     private Claim roleClaim;
 
@@ -34,7 +37,19 @@ class TeacherStudentsHandlerTest {
         handler = new TeacherStudentsHandler(jwtService, classSQL);
 
         exchange = mock(HttpExchange.class);
-        ctx = mock(BaseHandler.RequestContext.class); // ✅ FIX
+
+        // =========================
+        // ✅ FIX: prevent null headers crash
+        // =========================
+        Headers headers = new Headers();
+        headers.add("Authorization", "Bearer dummy");
+
+        when(exchange.getRequestHeaders()).thenReturn(headers);
+        when(exchange.getRequestMethod()).thenReturn("GET");
+        when(exchange.getRequestURI()).thenReturn(URI.create("/test"));
+        when(exchange.getResponseBody()).thenReturn(new ByteArrayOutputStream());
+
+        ctx = mock(BaseHandler.RequestContext.class);
         jwt = mock(DecodedJWT.class);
         roleClaim = mock(Claim.class);
 
@@ -46,7 +61,7 @@ class TeacherStudentsHandlerTest {
     }
 
     // =========================
-    // ✅ SUCCESS CASE
+    // SUCCESS CASE
     // =========================
 
     @Test
@@ -66,7 +81,7 @@ class TeacherStudentsHandlerTest {
     }
 
     // =========================
-    // ❌ 400 missing classId
+    // 400 missing classId
     // =========================
 
     @Test
@@ -81,7 +96,7 @@ class TeacherStudentsHandlerTest {
     }
 
     // =========================
-    // ❌ 403 not owner
+    // 403 not owner
     // =========================
 
     @Test
@@ -102,7 +117,7 @@ class TeacherStudentsHandlerTest {
     }
 
     // =========================
-    // ✅ ADMIN bypass
+    // ADMIN bypass
     // =========================
 
     @Test

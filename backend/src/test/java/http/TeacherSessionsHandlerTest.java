@@ -2,6 +2,7 @@ package http;
 
 import com.auth0.jwt.interfaces.Claim;
 import com.auth0.jwt.interfaces.DecodedJWT;
+import com.sun.net.httpserver.Headers;
 import com.sun.net.httpserver.HttpExchange;
 import config.ClassSQL;
 import config.SessionSQL;
@@ -11,6 +12,7 @@ import org.junit.jupiter.api.Test;
 import security.JwtService;
 
 import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.time.LocalTime;
 import java.util.List;
@@ -26,7 +28,7 @@ class TeacherSessionsHandlerTest {
     private TeacherSessionsHandler handler;
 
     private HttpExchange exchange;
-    private BaseHandler.RequestContext ctx; // ✅ FIX
+    private BaseHandler.RequestContext ctx;
     private DecodedJWT jwt;
     private Claim roleClaim;
 
@@ -39,9 +41,13 @@ class TeacherSessionsHandlerTest {
         handler = new TeacherSessionsHandler(jwtService, classSQL, sessionSQL);
 
         exchange = mock(HttpExchange.class);
-        ctx = mock(BaseHandler.RequestContext.class); // ✅ FIX
+        ctx = mock(BaseHandler.RequestContext.class);
         jwt = mock(DecodedJWT.class);
         roleClaim = mock(Claim.class);
+
+        // ================= FIX: prevent NULL crashes =================
+        when(exchange.getRequestHeaders()).thenReturn(new Headers());
+        when(exchange.getResponseBody()).thenReturn(new ByteArrayOutputStream());
 
         when(ctx.getJwt()).thenReturn(jwt);
         when(jwt.getClaim("role")).thenReturn(roleClaim);
@@ -50,7 +56,7 @@ class TeacherSessionsHandlerTest {
     }
 
     // =========================
-    // ✅ GET TESTS
+    // GET TESTS
     // =========================
 
     @Test
@@ -71,7 +77,7 @@ class TeacherSessionsHandlerTest {
     }
 
     @Test
-    void shouldThrow400_whenClassIdMissing_GET() throws IOException {
+    void shouldThrow400_whenClassIdMissing_GET() {
         when(exchange.getRequestMethod()).thenReturn("GET");
         when(ctx.getLongQuery("classId")).thenReturn(null);
 
@@ -83,7 +89,7 @@ class TeacherSessionsHandlerTest {
     }
 
     @Test
-    void shouldThrow403_whenNotOwner_GET() throws IOException {
+    void shouldThrow403_whenNotOwner_GET() {
         when(exchange.getRequestMethod()).thenReturn("GET");
 
         when(ctx.getLongQuery("classId")).thenReturn(1L);
@@ -99,7 +105,7 @@ class TeacherSessionsHandlerTest {
     }
 
     // =========================
-    // ✅ POST TESTS
+    // POST TESTS
     // =========================
 
     @Test
@@ -197,7 +203,7 @@ class TeacherSessionsHandlerTest {
     }
 
     @Test
-    void shouldThrow405_whenInvalidMethod() throws IOException {
+    void shouldThrow405_whenInvalidMethod() {
         when(exchange.getRequestMethod()).thenReturn("PUT");
 
         ApiException ex = assertThrows(ApiException.class, () ->

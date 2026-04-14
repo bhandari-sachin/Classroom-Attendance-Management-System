@@ -2,6 +2,7 @@ package http;
 
 import com.auth0.jwt.interfaces.Claim;
 import com.auth0.jwt.interfaces.DecodedJWT;
+import com.sun.net.httpserver.Headers;
 import com.sun.net.httpserver.HttpExchange;
 import config.ClassSQL;
 import config.SessionSQL;
@@ -11,7 +12,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import security.JwtService;
 
-import java.io.IOException;
+import java.io.ByteArrayOutputStream;
 import java.net.URI;
 import java.sql.SQLException;
 import java.time.LocalDate;
@@ -27,7 +28,7 @@ class TeacherSessionsListHandlerTest {
     private TeacherSessionsListHandler handler;
 
     private HttpExchange exchange;
-    private BaseHandler.RequestContext ctx; // ✅ FIX
+    private BaseHandler.RequestContext ctx;
     private DecodedJWT jwt;
 
     private Claim roleClaim;
@@ -42,11 +43,15 @@ class TeacherSessionsListHandlerTest {
         handler = new TeacherSessionsListHandler(jwtService, classSQL, sessionSQL);
 
         exchange = mock(HttpExchange.class);
-        ctx = mock(BaseHandler.RequestContext.class); // ✅ FIX
+        ctx = mock(BaseHandler.RequestContext.class);
         jwt = mock(DecodedJWT.class);
 
         roleClaim = mock(Claim.class);
         idClaim = mock(Claim.class);
+
+        // ✅ FIX: prevent null headers crash
+        when(exchange.getRequestHeaders()).thenReturn(new Headers());
+        when(exchange.getResponseBody()).thenReturn(new ByteArrayOutputStream());
 
         when(ctx.getJwt()).thenReturn(jwt);
 
@@ -60,12 +65,8 @@ class TeacherSessionsListHandlerTest {
         when(idClaim.asLong()).thenReturn(10L);
     }
 
-    // =========================
-    // ✅ SUCCESS
-    // =========================
-
     @Test
-    void shouldReturnSessions_whenTeacherOwnsClass() throws IOException, SQLException {
+    void shouldReturnSessions_whenTeacherOwnsClass() throws Exception {
         Long classId = 1L;
 
         Session session = mock(Session.class);
@@ -74,7 +75,6 @@ class TeacherSessionsListHandlerTest {
                 .thenReturn(URI.create("/sessions?classId=1"));
 
         when(classSQL.isClassOwnedByTeacher(classId, 10L)).thenReturn(true);
-
         when(sessionSQL.findById(classId)).thenReturn(session);
 
         when(session.getId()).thenReturn(100L);
@@ -87,26 +87,18 @@ class TeacherSessionsListHandlerTest {
         verify(sessionSQL).findById(classId);
     }
 
-    // =========================
-    // ✅ 400 (missing classId)
-    // =========================
-
     @Test
-    void shouldReturn400_whenClassIdMissing() throws IOException, SQLException {
+    void shouldReturn400_whenClassIdMissing() throws Exception {
         when(exchange.getRequestURI())
-                .thenReturn(URI.create("/sessions")); // no query
+                .thenReturn(URI.create("/sessions"));
 
         handler.handleRequest(exchange, ctx);
 
         verify(sessionSQL, never()).findById(any());
     }
 
-    // =========================
-    // ✅ 403 (not owner)
-    // =========================
-
     @Test
-    void shouldReturn403_whenNotOwner() throws IOException, SQLException {
+    void shouldReturn403_whenNotOwner() throws Exception {
         when(exchange.getRequestURI())
                 .thenReturn(URI.create("/sessions?classId=1"));
 
@@ -117,12 +109,8 @@ class TeacherSessionsListHandlerTest {
         verify(sessionSQL, never()).findById(any());
     }
 
-    // =========================
-    // ✅ ADMIN bypass
-    // =========================
-
     @Test
-    void shouldAllowAdmin_withoutOwnershipCheck() throws IOException, SQLException {
+    void shouldAllowAdmin_withoutOwnershipCheck() throws Exception {
         Session session = mock(Session.class);
 
         when(exchange.getRequestURI())
@@ -131,6 +119,7 @@ class TeacherSessionsListHandlerTest {
         when(roleClaim.asString()).thenReturn("ADMIN");
 
         when(sessionSQL.findById(1L)).thenReturn(session);
+
         when(session.getId()).thenReturn(1L);
         when(session.getClassId()).thenReturn(1L);
         when(session.getSessionDate()).thenReturn(LocalDate.now());
@@ -141,12 +130,8 @@ class TeacherSessionsListHandlerTest {
         verify(classSQL, never()).isClassOwnedByTeacher(any(), any());
     }
 
-    // =========================
-    // ✅ DB ERROR
-    // =========================
-
     @Test
-    void shouldThrowDatabaseException_whenSqlFails() throws SQLException {
+    void shouldThrowDatabaseException_whenSqlFails() throws Exception {
         when(exchange.getRequestURI())
                 .thenReturn(URI.create("/sessions?classId=1"));
 
