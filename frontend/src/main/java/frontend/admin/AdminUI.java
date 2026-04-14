@@ -211,7 +211,7 @@ public final class AdminUI {
         return spacer;
     }
 
-    private static Button iconBtn(String text) {
+    static Button iconBtn(String text) {
         Button button = new Button(text);
         button.setMinSize(ACTION_ICON_BUTTON_SIZE, ACTION_ICON_BUTTON_SIZE);
         button.setPrefSize(ACTION_ICON_BUTTON_SIZE, ACTION_ICON_BUTTON_SIZE);

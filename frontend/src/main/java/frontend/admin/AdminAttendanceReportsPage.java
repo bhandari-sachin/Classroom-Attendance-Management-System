@@ -8,7 +8,6 @@ import frontend.auth.AuthState;
 import frontend.auth.JwtStore;
 import frontend.ui.HelperClass;
 import javafx.application.Platform;
-import javafx.geometry.Insets;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.Alert;
@@ -31,10 +30,15 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class AdminAttendanceReportsPage {
 
-    private static class ClassItem {
+    private static final Logger LOGGER =
+            Logger.getLogger(AdminAttendanceReportsPage.class.getName());
+
+    static class ClassItem {
         final Long id;
         final String label;
 
@@ -49,7 +53,7 @@ public class AdminAttendanceReportsPage {
         }
     }
 
-    private static class ReportSummary {
+    static class ReportSummary {
         final List<ReportRow> rows;
         final int present;
         final int absent;
@@ -70,9 +74,9 @@ public class AdminAttendanceReportsPage {
     public Parent build(Scene scene, AppRouter router, JwtStore jwtStore, AuthState state) {
         HelperClass helper = new HelperClass();
 
-        String adminName = resolveAdminName(state, helper);
+        String adminName = AdminPageSupport.resolveAdminName(state, helper);
 
-        VBox content = buildContentContainer();
+        VBox content = AdminPageSupport.buildContentContainer();
 
         Label title = buildTitle(helper);
         Label subtitle = buildSubtitle(helper);
@@ -126,56 +130,14 @@ public class AdminAttendanceReportsPage {
         scroll.setFitToWidth(true);
         scroll.getStyleClass().add("scroll");
 
-        return AdminAppLayout.wrapWithSidebar(
+        return AdminPageSupport.wrapWithSidebar(
                 adminName,
-                helper.getMessage("admin.sidebar.title"),
-                helper.getMessage("admin.dashboard.title"),
-                helper.getMessage("admin.classes.title"),
-                helper.getMessage("admin.reports.title"),
-                helper.getMessage("admin.users.title"),
+                helper,
                 scroll,
                 "third",
-                new AdminAppLayout.Navigator() {
-                    @Override
-                    public void goDashboard() {
-                        router.go("admin-dashboard");
-                    }
-
-                    @Override
-                    public void goTakeAttendance() {
-                        router.go("admin-classes");
-                    }
-
-                    @Override
-                    public void goReports() {
-                        router.go("admin-reports");
-                    }
-
-                    @Override
-                    public void goEmail() {
-                        router.go("admin-users");
-                    }
-
-                    @Override
-                    public void logout() {
-                        jwtStore.clear();
-                        router.go("login");
-                    }
-                }
+                router,
+                jwtStore
         );
-    }
-
-    private String resolveAdminName(AuthState state, HelperClass helper) {
-        return (state.getName() == null || state.getName().isBlank())
-                ? helper.getMessage("teacher.fallback.name")
-                : state.getName();
-    }
-
-    private VBox buildContentContainer() {
-        VBox content = new VBox(14);
-        content.getStyleClass().add("content");
-        content.setPadding(new Insets(18));
-        return content;
     }
 
     private Label buildTitle(HelperClass helper) {
@@ -362,10 +324,10 @@ public class AdminAttendanceReportsPage {
                         ).replace("{path}", destination.getAbsolutePath())
                 ));
             } catch (Exception ex) {
-                ex.printStackTrace();
+                LOGGER.log(Level.SEVERE, "Failed to export admin report.", ex);
                 Platform.runLater(() -> showError(
                         helper.getMessage("admin.reports.export.error")
-                                .replace("{error}", ex.getMessage())
+                                .replace("{error}", ex.getMessage() == null ? "Unknown error" : ex.getMessage())
                 ));
             }
         }).start();
@@ -391,7 +353,7 @@ public class AdminAttendanceReportsPage {
                     }
                 });
             } catch (Exception ex) {
-                ex.printStackTrace();
+                LOGGER.log(Level.SEVERE, "Failed to load admin classes for reports page.", ex);
                 Platform.runLater(() -> showInlineError(
                         errorLabel,
                         helper.getMessage("admin.reports.error.loadClasses")
@@ -400,7 +362,7 @@ public class AdminAttendanceReportsPage {
         }).start();
     }
 
-    private List<ClassItem> mapClassItems(List<Map<String, Object>> classes) {
+    List<ClassItem> mapClassItems(List<Map<String, Object>> classes) {
         List<ClassItem> items = new ArrayList<>();
 
         for (Map<String, Object> classData : classes) {
@@ -438,8 +400,6 @@ public class AdminAttendanceReportsPage {
 
         new Thread(() -> {
             try {
-                hideInlineError(errorLabel);
-
                 List<Map<String, Object>> rows = adminApi.getAttendanceReport(
                         selectedClass.id,
                         period,
@@ -449,11 +409,12 @@ public class AdminAttendanceReportsPage {
                 ReportSummary summary = mapReportSummary(rows);
 
                 Platform.runLater(() -> {
+                    hideInlineError(errorLabel);
                     renderStats(statsGrid, helper, summary);
                     table.getItems().setAll(summary.rows);
                 });
             } catch (Exception ex) {
-                ex.printStackTrace();
+                LOGGER.log(Level.SEVERE, "Failed to load attendance report.", ex);
                 Platform.runLater(() ->
                         showInlineError(errorLabel, helper.getMessage("admin.reports.error.loadReport"))
                 );
@@ -461,7 +422,7 @@ public class AdminAttendanceReportsPage {
         }).start();
     }
 
-    private ReportSummary mapReportSummary(List<Map<String, Object>> rawRows) {
+    ReportSummary mapReportSummary(List<Map<String, Object>> rawRows) {
         int present = 0;
         int absent = 0;
         int excused = 0;
@@ -567,11 +528,11 @@ public class AdminAttendanceReportsPage {
         new Alert(Alert.AlertType.ERROR, message, ButtonType.OK).showAndWait();
     }
 
-    private String valueOr(Object value, String fallback) {
+    String valueOr(Object value, String fallback) {
         return value == null ? fallback : String.valueOf(value);
     }
 
-    private String formatOneDecimal(double value) {
+    String formatOneDecimal(double value) {
         double rounded = Math.round(value * 10.0) / 10.0;
         long wholePart = (long) rounded;
 

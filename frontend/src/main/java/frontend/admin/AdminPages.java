@@ -6,7 +6,6 @@ import frontend.auth.AuthState;
 import frontend.auth.JwtStore;
 import frontend.ui.HelperClass;
 import javafx.application.Platform;
-import javafx.geometry.Insets;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.Label;
@@ -20,13 +19,19 @@ import javafx.scene.layout.VBox;
 
 import java.util.List;
 import java.util.Map;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class AdminPages {
+
+    private static final Logger LOGGER = Logger.getLogger(AdminPages.class.getName());
 
     public static Parent dashboardPage(Scene scene, AppRouter router, JwtStore jwtStore, AuthState state) {
         HelperClass helper = new HelperClass();
 
-        VBox content = buildContentContainer();
+        VBox content = AdminPageSupport.buildContentContainer();
+        content.setSpacing(18);
+
         Label title = buildTitle(helper);
         Label subtitle = buildSubtitle(helper);
 
@@ -93,13 +98,6 @@ public class AdminPages {
         );
 
         return scroll;
-    }
-
-    private static VBox buildContentContainer() {
-        VBox content = new VBox(18);
-        content.getStyleClass().add("content");
-        content.setPadding(new Insets(18));
-        return content;
     }
 
     private static Label buildTitle(HelperClass helper) {
@@ -238,7 +236,7 @@ public class AdminPages {
                     renderRecentClasses(helper, recentGrid, classes);
                 });
             } catch (Exception ex) {
-                ex.printStackTrace();
+                LOGGER.log(Level.SEVERE, "Failed to load admin dashboard data", ex);
                 Platform.runLater(() -> showDashboardLoadError(
                         helper,
                         totalClassesCard,
@@ -246,7 +244,7 @@ public class AdminPages {
                         teachersCard,
                         rateCard,
                         recentGrid,
-                        ex.getMessage()
+                        safeErrorMessage(ex)
                 ));
             }
         }).start();
@@ -325,7 +323,7 @@ public class AdminPages {
         }
     }
 
-    private static int toInt(Object value) {
+    static int toInt(Object value) {
         if (value == null) {
             return 0;
         }
@@ -339,7 +337,7 @@ public class AdminPages {
         }
     }
 
-    private static double toDouble(Object value) {
+    static double toDouble(Object value) {
         if (value == null) {
             return 0.0;
         }
@@ -353,7 +351,14 @@ public class AdminPages {
         }
     }
 
-    private static String valueOr(Object value, String fallback) {
+    static String valueOr(Object value, String fallback) {
         return value == null ? fallback : String.valueOf(value);
+    }
+
+    static String safeErrorMessage(Throwable throwable) {
+        if (throwable == null || throwable.getMessage() == null || throwable.getMessage().isBlank()) {
+            return "Unknown error";
+        }
+        return throwable.getMessage();
     }
 }

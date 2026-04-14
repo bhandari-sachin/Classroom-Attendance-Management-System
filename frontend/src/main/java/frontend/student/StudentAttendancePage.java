@@ -1,6 +1,5 @@
 package frontend.student;
 
-import frontend.AppLayout;
 import frontend.api.ReportApi;
 import frontend.api.StudentAttendanceApi;
 import frontend.auth.AppRouter;
@@ -32,26 +31,28 @@ import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Circle;
 import javafx.scene.shape.Line;
-import javafx.scene.shape.Rectangle;
 import javafx.scene.shape.StrokeLineCap;
-import javafx.scene.text.Font;
 import javafx.stage.FileChooser;
 
 import java.io.File;
 import java.util.List;
 import java.util.Map;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class StudentAttendancePage {
 
     private static final String BASE_URL =
             System.getenv().getOrDefault("BACKEND_URL", "http://localhost:8081");
 
+    private static final Logger LOGGER = Logger.getLogger(StudentAttendancePage.class.getName());
+
     private final HelperClass helper = new HelperClass();
 
     public Parent build(Scene scene, AppRouter router, JwtStore jwtStore, AuthState state) {
-        String studentName = resolveStudentName(state);
+        String studentName = StudentPageSupport.resolveStudentName(state, helper);
 
-        VBox page = buildPageContainer();
+        VBox page = StudentPageSupport.buildPageContainer();
 
         Label title = buildTitle();
         Label subtitle = buildSubtitle();
@@ -104,56 +105,14 @@ public class StudentAttendancePage {
                 recordsCard
         );
 
-        return AppLayout.wrapWithSidebar(
+        return StudentPageSupport.wrapWithSidebar(
                 studentName,
-                helper.getMessage("student.panel.title"),
-                helper.getMessage("student.nav.dashboard"),
-                helper.getMessage("student.nav.markAttendance"),
-                helper.getMessage("student.nav.myAttendance"),
-                helper.getMessage("student.nav.email"),
+                helper,
                 scroll,
                 "third",
-                new AppLayout.Navigator() {
-                    @Override
-                    public void goDashboard() {
-                        router.go("student-dashboard");
-                    }
-
-                    @Override
-                    public void goTakeAttendance() {
-                        router.go("student-mark");
-                    }
-
-                    @Override
-                    public void goReports() {
-                        router.go("student-attendance");
-                    }
-
-                    @Override
-                    public void goEmail() {
-                        router.go("student-email");
-                    }
-
-                    @Override
-                    public void logout() {
-                        jwtStore.clear();
-                        router.go("login");
-                    }
-                }
+                router,
+                jwtStore
         );
-    }
-
-    private String resolveStudentName(AuthState state) {
-        return (state.getName() == null || state.getName().isBlank())
-                ? helper.getMessage("student.name.placeholder")
-                : state.getName();
-    }
-
-    private VBox buildPageContainer() {
-        VBox page = new VBox(16);
-        page.setPadding(new Insets(26));
-        page.getStyleClass().add("page");
-        return page;
     }
 
     private Label buildTitle() {
@@ -222,13 +181,12 @@ public class StudentAttendancePage {
                     reportApi.exportStudentPdf(jwtStore, state, destination.getAbsolutePath());
                     Platform.runLater(() -> showInfo(
                             helper.getMessage("student.attendance.export.success")
-                                    .replace("{path}", destination.getAbsolutePath())
                     ));
                 } catch (Exception ex) {
-                    ex.printStackTrace();
+                    LOGGER.log(Level.SEVERE, "Failed to export student attendance PDF.", ex);
                     Platform.runLater(() -> showError(
                             helper.getMessage("student.attendance.export.error")
-                                    .replace("{error}", safeErrorMessage(ex))
+                                    .replace("{error}", ex.getMessage() == null ? "Unknown error" : ex.getMessage())
                     ));
                 }
             }).start();
@@ -238,9 +196,12 @@ public class StudentAttendancePage {
     }
 
     private HBox buildExportRow(Button exportPdfBtn) {
-        HBox exportRow = new HBox(exportPdfBtn);
-        exportRow.setAlignment(Pos.CENTER_RIGHT);
-        return exportRow;
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+
+        HBox row = new HBox(10, spacer, exportPdfBtn);
+        row.setAlignment(Pos.CENTER_LEFT);
+        return row;
     }
 
     private Label createRateValueLabel() {
@@ -250,7 +211,9 @@ public class StudentAttendancePage {
     }
 
     private Label createStatValueLabel() {
-        return new Label("0");
+        Label label = new Label("0");
+        label.getStyleClass().add("stat-number");
+        return label;
     }
 
     private GridPane buildStatsGrid(
@@ -263,7 +226,6 @@ public class StudentAttendancePage {
         GridPane stats = new GridPane();
         stats.setHgap(14);
         stats.setVgap(14);
-        stats.getStyleClass().add("dash-stats");
 
         ColumnConstraints c1 = new ColumnConstraints();
         c1.setHgrow(Priority.ALWAYS);
@@ -311,6 +273,82 @@ public class StudentAttendancePage {
         stats.add(totalDaysCard, 0, 2);
 
         return stats;
+    }
+
+    private VBox rateCardWithValue(String titleText, Label rateValue) {
+        VBox card = new VBox(12);
+        card.getStyleClass().add("rate-card");
+        card.setPadding(new Insets(18));
+
+        Label title = new Label(titleText);
+        title.getStyleClass().add("stat-title");
+
+        StackPane gaugeWrap = new StackPane(buildRateGraphic(), rateValue);
+        gaugeWrap.setAlignment(Pos.CENTER);
+        gaugeWrap.setMinHeight(120);
+
+        card.getChildren().addAll(title, gaugeWrap);
+        return card;
+    }
+
+    private Node buildRateGraphic() {
+        Circle track = new Circle(42);
+        track.setFill(Color.TRANSPARENT);
+        track.setStroke(Color.web("#E5E7EB"));
+        track.setStrokeWidth(8);
+
+        Line needle = new Line(0, 0, 26, -18);
+        needle.setStroke(Color.web("#3B82F6"));
+        needle.setStrokeWidth(4);
+        needle.setStrokeLineCap(StrokeLineCap.ROUND);
+
+        Circle center = new Circle(5, Color.web("#1F2937"));
+
+        return new Group(track, needle, center);
+    }
+
+    private VBox smallStatCardWithValue(
+            String titleText,
+            Label valueLabel,
+            String colorHex,
+            String iconName
+    ) {
+        VBox card = new VBox(8);
+        card.getStyleClass().add("small-stat-card");
+        card.setPadding(new Insets(18));
+
+        HBox top = new HBox(10);
+        top.setAlignment(Pos.CENTER_LEFT);
+
+        Label title = new Label(titleText);
+        title.getStyleClass().add("stat-title");
+
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+
+        StackPane badge = new StackPane();
+        badge.setMinSize(28, 28);
+        badge.setMaxSize(28, 28);
+        badge.setStyle("-fx-background-color: " + colorHex + "; -fx-background-radius: 10;");
+
+        Label icon = new Label(resolveStatIcon(iconName));
+        icon.setStyle("-fx-text-fill: white; -fx-font-size: 14px; -fx-font-weight: 900;");
+        badge.getChildren().add(icon);
+
+        top.getChildren().addAll(title, spacer, badge);
+
+        card.getChildren().addAll(top, valueLabel);
+        return card;
+    }
+
+    String resolveStatIcon(String iconName) {
+        return switch (iconName) {
+            case "check" -> "✓";
+            case "x" -> "✕";
+            case "clock" -> "⏱";
+            case "calendar" -> "📅";
+            default -> "•";
+        };
     }
 
     private Label buildRecordsTitle() {
@@ -427,6 +465,33 @@ public class StudentAttendancePage {
         }
     }
 
+    private HBox recordRow(String date, String localizedStatus, String rawStatus) {
+        HBox row = new HBox(12);
+        row.getStyleClass().add("record-row");
+        row.setAlignment(Pos.CENTER_LEFT);
+
+        Label dateLabel = new Label(date);
+        dateLabel.getStyleClass().add("record-date");
+
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+
+        Label statusLabel = new Label(localizedStatus);
+        statusLabel.getStyleClass().add("record-status");
+
+        String normalized = rawStatus == null ? "" : rawStatus.trim().toUpperCase();
+        switch (normalized) {
+            case "PRESENT" -> statusLabel.getStyleClass().add("status-present");
+            case "ABSENT" -> statusLabel.getStyleClass().add("status-absent");
+            case "EXCUSED" -> statusLabel.getStyleClass().add("status-excused");
+            default -> {
+            }
+        }
+
+        row.getChildren().addAll(dateLabel, spacer, statusLabel);
+        return row;
+    }
+
     private void showRecordsError(VBox recordsCard, Throwable exception) {
         recordsCard.getChildren().clear();
         recordsCard.setAlignment(Pos.CENTER);
@@ -439,7 +504,7 @@ public class StudentAttendancePage {
         recordsCard.getChildren().add(error);
     }
 
-    private String localizeAttendanceStatus(String status) {
+    String localizeAttendanceStatus(String status) {
         if (status == null || status.isBlank()) {
             return "—";
         }
@@ -452,7 +517,7 @@ public class StudentAttendancePage {
         };
     }
 
-    private static int num(Object value) {
+    static int num(Object value) {
         if (value == null) {
             return 0;
         }
@@ -466,7 +531,7 @@ public class StudentAttendancePage {
         }
     }
 
-    private static double dbl(Object value) {
+    static double dbl(Object value) {
         if (value == null) {
             return 0;
         }
@@ -484,185 +549,25 @@ public class StudentAttendancePage {
         VBox box = new VBox(8);
         box.setAlignment(Pos.CENTER);
 
-        Label icon = new Label("📅");
-        icon.getStyleClass().add("empty-icon");
-        icon.setFont(Font.font("Segoe UI Emoji", 18));
+        Label empty = new Label(helper.getMessage("student.attendance.records.empty"));
+        empty.getStyleClass().add("empty-subtitle");
 
-        Label title = new Label(helper.getMessage("student.attendance.records.empty.title"));
-        title.getStyleClass().add("empty-title");
-
-        Label subtitle = new Label(helper.getMessage("student.attendance.records.empty.subtitle"));
-        subtitle.getStyleClass().add("empty-subtitle");
-
-        box.getChildren().addAll(icon, title, subtitle);
+        box.getChildren().add(empty);
         return box;
     }
 
-    private HBox recordRow(String date, String status, String rawStatus) {
-        HBox row = new HBox(10);
-        row.setAlignment(Pos.CENTER_LEFT);
-        row.setPadding(new Insets(10));
-        row.getStyleClass().add("record-row");
-
-        Label dateLabel = new Label(date);
-        dateLabel.getStyleClass().add("record-date");
-
-        Region spacer = new Region();
-        HBox.setHgrow(spacer, Priority.ALWAYS);
-
-        Label chip = new Label(status);
-        chip.getStyleClass().add("record-chip");
-
-        String normalized = rawStatus == null ? "" : rawStatus.trim().toUpperCase();
-        switch (normalized) {
-            case "PRESENT" -> chip.getStyleClass().add("record-chip-present");
-            case "ABSENT" -> chip.getStyleClass().add("record-chip-absent");
-            case "EXCUSED" -> chip.getStyleClass().add("record-chip-excused");
-            default -> {
-            }
-        }
-
-        row.getChildren().addAll(dateLabel, spacer, chip);
-        return row;
-    }
-
-    private VBox rateCardWithValue(String label, Label valueLabel) {
-        VBox card = new VBox(8);
-        card.getStyleClass().add("rate-card");
-
-        HBox top = new HBox();
-        top.setAlignment(Pos.TOP_LEFT);
-
-        Label labelNode = new Label(label);
-        labelNode.getStyleClass().add("rate-label");
-
-        Region spacer = new Region();
-        HBox.setHgrow(spacer, Priority.ALWAYS);
-
-        Label trend = new Label("↗");
-        trend.getStyleClass().add("rate-trend");
-
-        top.getChildren().addAll(labelNode, spacer, trend);
-        card.getChildren().addAll(top, valueLabel);
-        return card;
-    }
-
-    private VBox smallStatCardWithValue(String label, Label valueLabel, String colorHex, String iconKey) {
-        VBox card = new VBox(6);
-        card.getStyleClass().add("mini-stat-card");
-
-        HBox topRow = new HBox(10);
-        topRow.setAlignment(Pos.CENTER_LEFT);
-
-        StackPane badge = new StackPane();
-        badge.setPrefSize(26, 26);
-        badge.setMinSize(26, 26);
-        badge.setMaxSize(26, 26);
-        badge.setStyle("-fx-background-color: " + colorHex + ";-fx-background-radius: 8;");
-
-        Node iconNode = makeBadgeIcon(iconKey);
-        badge.getChildren().add(iconNode);
-
-        Label labelNode = new Label(label);
-        labelNode.getStyleClass().add("mini-label");
-
-        topRow.getChildren().addAll(badge, labelNode);
-
-        valueLabel.getStyleClass().add("mini-value");
-
-        HBox valueRow = new HBox(valueLabel);
-        valueRow.setPadding(new Insets(0, 0, 0, 36));
-
-        card.getChildren().addAll(topRow, valueRow);
-        return card;
-    }
-
-    private Node makeBadgeIcon(String key) {
-        Color stroke = Color.WHITE;
-
-        switch (key) {
-            case "check": {
-                Line first = new Line(6, 14, 11, 18);
-                Line second = new Line(11, 18, 20, 8);
-                first.setStroke(stroke);
-                second.setStroke(stroke);
-                first.setStrokeWidth(2.6);
-                second.setStrokeWidth(2.6);
-                first.setStrokeLineCap(StrokeLineCap.ROUND);
-                second.setStrokeLineCap(StrokeLineCap.ROUND);
-                return new Group(first, second);
-            }
-            case "x": {
-                Line first = new Line(7, 7, 19, 19);
-                Line second = new Line(19, 7, 7, 19);
-                first.setStroke(stroke);
-                second.setStroke(stroke);
-                first.setStrokeWidth(2.6);
-                second.setStrokeWidth(2.6);
-                first.setStrokeLineCap(StrokeLineCap.ROUND);
-                second.setStrokeLineCap(StrokeLineCap.ROUND);
-                return new Group(first, second);
-            }
-            case "clock": {
-                Circle circle = new Circle(13, 13, 8);
-                circle.setFill(Color.TRANSPARENT);
-                circle.setStroke(stroke);
-                circle.setStrokeWidth(2.2);
-
-                Line hour = new Line(13, 13, 13, 9);
-                Line minute = new Line(13, 13, 17, 13);
-                hour.setStroke(stroke);
-                minute.setStroke(stroke);
-                hour.setStrokeWidth(2.2);
-                minute.setStrokeWidth(2.2);
-                hour.setStrokeLineCap(StrokeLineCap.ROUND);
-                minute.setStrokeLineCap(StrokeLineCap.ROUND);
-
-                return new Group(circle, hour, minute);
-            }
-            case "calendar": {
-                Rectangle body = new Rectangle(7, 8, 12, 12);
-                body.setFill(Color.TRANSPARENT);
-                body.setStroke(stroke);
-                body.setStrokeWidth(2.0);
-                body.setArcWidth(3);
-                body.setArcHeight(3);
-
-                Line top = new Line(7, 11, 19, 11);
-                top.setStroke(stroke);
-                top.setStrokeWidth(2.0);
-
-                Line ring1 = new Line(10, 6, 10, 9);
-                Line ring2 = new Line(16, 6, 16, 9);
-                ring1.setStroke(stroke);
-                ring2.setStroke(stroke);
-                ring1.setStrokeWidth(2.0);
-                ring2.setStrokeWidth(2.0);
-                ring1.setStrokeLineCap(StrokeLineCap.ROUND);
-                ring2.setStrokeLineCap(StrokeLineCap.ROUND);
-
-                return new Group(body, top, ring1, ring2);
-            }
-            default: {
-                Circle dot = new Circle(13, 13, 3);
-                dot.setFill(stroke);
-                return dot;
-            }
-        }
-    }
-
-    private String safeErrorMessage(Throwable throwable) {
+    String safeErrorMessage(Throwable throwable) {
         if (throwable == null || throwable.getMessage() == null || throwable.getMessage().isBlank()) {
             return "Unknown error";
         }
         return throwable.getMessage();
     }
 
-    private void showInfo(String message) {
-        new Alert(Alert.AlertType.INFORMATION, message, ButtonType.OK).showAndWait();
-    }
-
     private void showError(String message) {
         new Alert(Alert.AlertType.ERROR, message, ButtonType.OK).showAndWait();
+    }
+
+    private void showInfo(String message) {
+        new Alert(Alert.AlertType.INFORMATION, message, ButtonType.OK).showAndWait();
     }
 }

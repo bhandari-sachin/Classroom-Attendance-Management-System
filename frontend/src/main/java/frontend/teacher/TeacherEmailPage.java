@@ -1,6 +1,5 @@
 package frontend.teacher;
 
-import frontend.AppLayout;
 import frontend.StudentRow;
 import frontend.api.TeacherApi;
 import frontend.auth.AppRouter;
@@ -10,26 +9,29 @@ import frontend.ui.HelperClass;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
-import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
-import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
-import javafx.scene.control.ButtonType;
 import javafx.scene.control.ComboBox;
+import javafx.scene.control.Label;
+import javafx.scene.control.ScrollPane;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
-import javafx.scene.control.Label;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 
 import java.util.List;
 import java.util.Map;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class TeacherEmailPage {
 
-    private static class ClassItem {
+    private static final Logger LOGGER =
+            Logger.getLogger(TeacherEmailPage.class.getName());
+
+    static class ClassItem {
         final long id;
         final String label;
 
@@ -48,12 +50,12 @@ public class TeacherEmailPage {
     private final HelperClass helper = new HelperClass();
 
     public Parent build(Scene scene, AppRouter router, JwtStore jwtStore, AuthState state) {
-        String teacherName = resolveTeacherName(state);
+        String teacherName = TeacherPageSupport.resolveTeacherName(state, helper);
 
         String backendUrl = System.getenv().getOrDefault("BACKEND_URL", "http://localhost:8081");
         TeacherApi api = new TeacherApi(backendUrl);
 
-        VBox page = buildPageContainer();
+        VBox page = TeacherPageSupport.buildPageContainer();
 
         Label title = buildTitle();
         Label subtitle = buildSubtitle();
@@ -78,56 +80,18 @@ public class TeacherEmailPage {
 
         loadClasses(api, jwtStore, state, classBox);
 
-        return AppLayout.wrapWithSidebar(
+        ScrollPane scroll = new ScrollPane(page);
+        scroll.setFitToWidth(true);
+        scroll.getStyleClass().add("scroll");
+
+        return TeacherPageSupport.wrapWithSidebar(
                 teacherName,
-                helper.getMessage("teacher.sidebar.title"),
-                helper.getMessage("teacher.sidebar.menu.dashboard"),
-                helper.getMessage("teacher.sidebar.menu.take_attendance"),
-                helper.getMessage("teacher.sidebar.menu.reports"),
-                helper.getMessage("teacher.sidebar.menu.email"),
-                page,
+                helper,
+                scroll,
                 "fourth",
-                new AppLayout.Navigator() {
-                    @Override
-                    public void goDashboard() {
-                        router.go("teacher-dashboard");
-                    }
-
-                    @Override
-                    public void goTakeAttendance() {
-                        router.go("teacher-take");
-                    }
-
-                    @Override
-                    public void goReports() {
-                        router.go("teacher-reports");
-                    }
-
-                    @Override
-                    public void goEmail() {
-                        router.go("teacher-email");
-                    }
-
-                    @Override
-                    public void logout() {
-                        jwtStore.clear();
-                        router.go("login");
-                    }
-                }
+                router,
+                jwtStore
         );
-    }
-
-    private String resolveTeacherName(AuthState state) {
-        return (state.getName() == null || state.getName().isBlank())
-                ? helper.getMessage("teacher.fallback.name")
-                : state.getName();
-    }
-
-    private VBox buildPageContainer() {
-        VBox page = new VBox(14);
-        page.setPadding(new Insets(22));
-        page.getStyleClass().add("page");
-        return page;
     }
 
     private Label buildTitle() {
@@ -194,9 +158,10 @@ public class TeacherEmailPage {
 
                 Platform.runLater(() -> classBox.getItems().setAll(items));
             } catch (Exception ex) {
-                ex.printStackTrace();
+                LOGGER.log(Level.SEVERE, "Failed to load classes for teacher email page.", ex);
                 Platform.runLater(() ->
-                        showError(helper.getMessage("teacher.email.error.classes").replace("{reason}", ex.getMessage()))
+                        showError(helper.getMessage("teacher.email.error.classes")
+                                .replace("{reason}", ex.getMessage() == null ? "Unknown error" : ex.getMessage()))
                 );
             }
         }).start();
@@ -214,7 +179,12 @@ public class TeacherEmailPage {
             return;
         }
 
-        rows.setAll(new StudentRow(-1L, helper.getMessage("teacher.email.loading.students"), "-", "—"));
+        rows.setAll(new StudentRow(
+                -1L,
+                helper.getMessage("teacher.email.loading.students"),
+                "-",
+                "—"
+        ));
 
         new Thread(() -> {
             try {
@@ -225,31 +195,40 @@ public class TeacherEmailPage {
 
                 Platform.runLater(() -> rows.setAll(mappedRows));
             } catch (Exception ex) {
-                ex.printStackTrace();
+                LOGGER.log(Level.SEVERE, "Failed to load students for selected class on teacher email page.", ex);
                 Platform.runLater(() -> {
                     rows.clear();
-                    showError(helper.getMessage("teacher.email.error.students").replace("{reason}", ex.getMessage()));
+                    showError(helper.getMessage("teacher.email.error.students")
+                            .replace("{reason}", ex.getMessage() == null ? "Unknown error" : ex.getMessage()));
                 });
             }
         }).start();
     }
 
-    private ClassItem mapClassItem(Map<String, Object> classData) {
+    ClassItem mapClassItem(Map<String, Object> classData) {
         long id = Long.parseLong(String.valueOf(classData.get("id")));
         String classCode = String.valueOf(classData.get("classCode"));
         String name = String.valueOf(classData.get("name"));
         return new ClassItem(id, classCode + " — " + name);
     }
 
-    private StudentRow mapStudentRow(Map<String, Object> studentData) {
+    StudentRow mapStudentRow(Map<String, Object> studentData) {
         long studentId = Long.parseLong(String.valueOf(studentData.get("id")));
         String firstName = String.valueOf(studentData.get("firstName"));
         String lastName = String.valueOf(studentData.get("lastName"));
         String email = String.valueOf(studentData.get("email"));
-        return new StudentRow(studentId, firstName + " " + lastName, email, "—");
+
+        return new StudentRow(
+                studentId,
+                (firstName + " " + lastName).trim(),
+                email,
+                "—"
+        );
     }
 
     private void showError(String message) {
-        new Alert(Alert.AlertType.ERROR, message, ButtonType.OK).showAndWait();
+        javafx.scene.control.Alert alert =
+                new javafx.scene.control.Alert(javafx.scene.control.Alert.AlertType.ERROR, message);
+        alert.showAndWait();
     }
 }
