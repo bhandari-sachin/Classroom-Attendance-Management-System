@@ -72,10 +72,10 @@ public record AdminApi(
             String attendanceReportPath
     ) {
         public Paths {
-            classesPath = requirePath(classesPath, "classesPath");
-            usersPath = requirePath(usersPath, "usersPath");
-            attendanceStatsPath = requirePath(attendanceStatsPath, "attendanceStatsPath");
-            attendanceReportPath = requirePath(attendanceReportPath, "attendanceReportPath");
+            validatePath(classesPath, "classesPath");
+            validatePath(usersPath, "usersPath");
+            validatePath(attendanceStatsPath, "attendanceStatsPath");
+            validatePath(attendanceReportPath, "attendanceReportPath");
         }
 
         public static Paths defaults() {
@@ -87,11 +87,10 @@ public record AdminApi(
             );
         }
 
-        private static String requirePath(String value, String fieldName) {
+        private static void validatePath(String value, String fieldName) {
             if (value == null || value.isBlank()) {
                 throw new IllegalArgumentException(fieldName + " must not be null or blank.");
             }
-            return value;
         }
     }
 
