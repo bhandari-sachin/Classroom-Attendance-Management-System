@@ -102,12 +102,12 @@ The Classroom Attendance Management System is now:
 
 ## Time Spent During Sprint
 
-| Team Member      | Role     | Tasks Worked On                                               | Estimated Time |
-|------------------|----------|---------------------------------------------------------------|----------------|
-| Sachin Bhandari  | Backend  | Database schema localization, backend refactoring             | 13 hours       |
-| Olga Chitembo    | Backend  | Reporting system (PDF/CSV), localization, backend refactoring | 18 hours       |
-| Ahmad Sarfaraz   | Frontend | UI/UX improvements, frontend refactoring                      | 19 hours       |
-| Farah El Bajta   | Frontend | Localization, frontend refactoring                            | hours          |
-| Melkamu Yehualla | Testing  | Database schema localization, test coverage                   | hours          |
+| Team Member      | Role     | Tasks Worked On                                               | Estimated Time | In-class Tasks |
+|------------------|----------|---------------------------------------------------------------|----------------|----------------|
+| Sachin Bhandari  | Backend  | Database schema localization, backend refactoring             | 13 hours       | submitted      |
+| Olga Chitembo    | Backend  | Reporting system (PDF/CSV), localization, backend refactoring | 18 hours       | submitted      |
+| Ahmad Sarfaraz   | Frontend | UI/UX improvements, frontend refactoring                      | 19 hours       | submitted      |
+| Farah El Bajta   | Frontend | Localization, frontend refactoring                            | 20 hours       | submitted      |
+| Melkamu Yehualla | Testing  | Database schema localization, test coverage                   | 14 hours       | submitted      |
 
 ---
