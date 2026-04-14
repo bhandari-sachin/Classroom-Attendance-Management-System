@@ -9,17 +9,30 @@ import frontend.dto.AdminClassDto;
 import frontend.dto.AdminStudentDto;
 import frontend.ui.HelperClass;
 import javafx.application.Platform;
-import javafx.beans.binding.Bindings;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.collections.transformation.FilteredList;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
-import javafx.scene.Node;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
-import javafx.scene.control.*;
-import javafx.scene.layout.*;
+import javafx.scene.control.Alert;
+import javafx.scene.control.Button;
+import javafx.scene.control.ButtonBar;
+import javafx.scene.control.ButtonType;
+import javafx.scene.control.Dialog;
+import javafx.scene.control.Label;
+import javafx.scene.control.ListCell;
+import javafx.scene.control.ListView;
+import javafx.scene.control.ScrollPane;
+import javafx.scene.control.SelectionMode;
+import javafx.scene.control.TableView;
+import javafx.scene.control.TextField;
+import javafx.scene.layout.GridPane;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
+import javafx.scene.layout.Region;
+import javafx.scene.layout.VBox;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -27,201 +40,50 @@ import java.util.stream.Collectors;
 
 public class AdminManageClassesPage {
 
+    private final HelperClass helper = new HelperClass();
+
     public Parent build(Scene scene, AppRouter router, JwtStore jwtStore, AuthState state) {
-        HelperClass helper = new HelperClass();
+        String adminName = resolveAdminName(state);
 
-        String adminName = (state.getName() == null || state.getName().isBlank())
-                ? helper.getMessage("teacher.fallback.name")
-                : state.getName();
+        VBox content = buildContentContainer();
 
-        VBox content = new VBox(14);
-        content.getStyleClass().add("content");
-        content.setPadding(new Insets(18));
-
-        HBox titleRow = new HBox(12);
-        titleRow.setAlignment(Pos.CENTER_LEFT);
-
-        VBox titleCol = new VBox(4);
-        Label title = new Label(helper.getMessage("admin.classes.title"));
-        title.getStyleClass().add("title");
-
-        Label subtitle = new Label(helper.getMessage("admin.classes.subtitle"));
-        subtitle.getStyleClass().add("subtitle");
-
-        titleCol.getChildren().addAll(title, subtitle);
-
-        Region spacer = new Region();
-        HBox.setHgrow(spacer, Priority.ALWAYS);
-
-        Button enrollBtn = new Button(helper.getMessage("admin.classes.button.enroll"));
-        enrollBtn.getStyleClass().add("secondary-btn");
-
-        Button add = new Button("+   " + helper.getMessage("admin.classes.button.add"));
-        add.getStyleClass().add("primary-btn");
-
-        titleRow.getChildren().addAll(titleCol, spacer, enrollBtn, add);
-
-        TextField search = new TextField();
-        search.setPromptText(helper.getMessage("admin.classes.search.placeholder"));
-        search.getStyleClass().add("search-field");
-
-        Label section = new Label(helper.getMessage("admin.classes.section.detailed"));
-        section.getStyleClass().add("section-title");
+        HBox titleRow = buildTitleRow();
+        TextField searchField = buildSearchField();
+        Label loadError = buildLoadErrorLabel();
+        Label sectionTitle = buildSectionTitle();
 
         TableView<ClassRow> table = AdminUI.buildClassesTable();
         table.getItems().clear();
 
         ObservableList<ClassRow> rows = FXCollections.observableArrayList();
-        FilteredList<ClassRow> filtered = new FilteredList<>(rows, r -> true);
-        table.setItems(filtered);
+        FilteredList<ClassRow> filteredRows = new FilteredList<>(rows, row -> true);
+        table.setItems(filteredRows);
 
-        enrollBtn.disableProperty().bind(table.getSelectionModel().selectedItemProperty().isNull());
+        Button enrollButton = getEnrollButton(titleRow);
+        Button addButton = getAddButton(titleRow);
 
-        search.textProperty().addListener((obs, oldV, q) -> {
-            String s = q == null ? "" : q.trim().toLowerCase();
-            filtered.setPredicate(r -> {
-                if (s.isBlank()) return true;
-                return safe(r.getClassName()).contains(s)
-                        || safe(r.codeProperty().get()).contains(s)
-                        || safe(r.teacherProperty().get()).contains(s)
-                        || safe(r.scheduleProperty().get()).contains(s);
-            });
-        });
+        enrollButton.disableProperty().bind(table.getSelectionModel().selectedItemProperty().isNull());
 
-        AdminApi api = new AdminApi("http://localhost:8081", jwtStore);
+        searchField.textProperty().addListener((obs, oldValue, newValue) ->
+                applySearchFilter(filteredRows, newValue)
+        );
 
-        Label loadError = new Label();
-        loadError.getStyleClass().add("subtitle");
-        loadError.setManaged(false);
-        loadError.setVisible(false);
+        AdminApi adminApi = new AdminApi("http://localhost:8081", jwtStore);
 
-        Runnable reload = () -> {
-            loadError.setVisible(false);
-            loadError.setManaged(false);
-
-            new Thread(() -> {
-                try {
-                    List<AdminClassDto> list = api.getAdminClasses();
-
-                    Platform.runLater(() -> {
-                        rows.clear();
-                        for (AdminClassDto c : list) {
-                            String schedule = joinNonEmpty(c.semester, c.academicYear);
-                            rows.add(new ClassRow(
-                                    nullToEmpty(c.name),
-                                    nullToEmpty(c.classCode),
-                                    nullToEmpty(c.teacherEmail),
-                                    schedule,
-                                    String.valueOf(c.students)
-                            ));
-                        }
-                    });
-
-                } catch (Exception e) {
-                    e.printStackTrace();
-                    Platform.runLater(() -> {
-                        loadError.setText(helper.getMessage("admin.classes.dialog.loadStudents.failed") + " " + e.getMessage());
-                        loadError.setVisible(true);
-                        loadError.setManaged(true);
-                    });
-                }
-            }).start();
-        };
+        Runnable reload = () -> loadClasses(adminApi, rows, loadError);
 
         reload.run();
 
-        enrollBtn.setOnAction(e -> {
+        enrollButton.setOnAction(event -> {
             ClassRow selectedClass = table.getSelectionModel().getSelectedItem();
-            if (selectedClass == null) return;
-
-            openEnrollStudentsDialog(helper, api, selectedClass, reload);
+            if (selectedClass != null) {
+                openEnrollStudentsDialog(adminApi, selectedClass, reload);
+            }
         });
 
-        add.setOnAction(e -> {
-            Dialog<ButtonType> dialog = new Dialog<>();
-            dialog.setTitle(helper.getMessage("admin.classes.dialog.add.title"));
+        addButton.setOnAction(event -> openAddClassDialog(adminApi, reload));
 
-            ButtonType createBtn = new ButtonType(helper.getMessage("admin.classes.dialog.add.create"), ButtonBar.ButtonData.OK_DONE);
-            dialog.getDialogPane().getButtonTypes().addAll(createBtn, ButtonType.CANCEL);
-
-            GridPane form = new GridPane();
-            form.setHgap(10);
-            form.setVgap(10);
-            form.setPadding(new Insets(10));
-
-            TextField classCode = new TextField();
-            classCode.setPromptText("e.g. TX-09374");
-
-            TextField nameField = new TextField();
-            nameField.setPromptText("e.g. Mathematics");
-
-            TextField teacherEmail = new TextField();
-            teacherEmail.setPromptText("teacher@example.com");
-
-            TextField semester = new TextField();
-            semester.setPromptText("e.g. Spring");
-
-            TextField academicYear = new TextField();
-            academicYear.setPromptText("e.g. 2025/2026");
-
-            TextField maxCapacity = new TextField();
-            maxCapacity.setPromptText("e.g. 30");
-
-            form.addRow(0, new Label(helper.getMessage("admin.classes.dialog.add.classCode")),    classCode);
-            form.addRow(1, new Label(helper.getMessage("admin.classes.dialog.add.name")),         nameField);
-            form.addRow(2, new Label(helper.getMessage("admin.classes.dialog.add.teacherEmail")), teacherEmail);
-            form.addRow(3, new Label(helper.getMessage("admin.classes.dialog.add.semester")),     semester);
-            form.addRow(4, new Label(helper.getMessage("admin.classes.dialog.add.academicYear")), academicYear);
-            form.addRow(5, new Label(helper.getMessage("admin.classes.dialog.add.maxCapacity")),  maxCapacity);
-
-            dialog.getDialogPane().setContent(form);
-
-            Node okNode = dialog.getDialogPane().lookupButton(createBtn);
-            okNode.disableProperty().bind(
-                    Bindings.createBooleanBinding(() ->
-                                    classCode.getText().trim().isBlank()
-                                            || nameField.getText().trim().isBlank()
-                                            || teacherEmail.getText().trim().isBlank(),
-                            classCode.textProperty(), nameField.textProperty(), teacherEmail.textProperty())
-            );
-
-            dialog.showAndWait().ifPresent(bt -> {
-                if (bt != createBtn) return;
-
-                String cc = classCode.getText().trim();
-                String nm = nameField.getText().trim();
-                String te = teacherEmail.getText().trim();
-                String sem = semester.getText().trim();
-                String ay = academicYear.getText().trim();
-
-                Integer cap = null;
-                try {
-                    String capRaw = maxCapacity.getText().trim();
-                    if (!capRaw.isBlank()) cap = Integer.parseInt(capRaw);
-                } catch (Exception ignore) {
-                }
-
-                Integer finalCap = cap;
-                new Thread(() -> {
-                    try {
-                        api.createClass(cc, nm, te, sem, ay, finalCap);
-                        Platform.runLater(reload);
-                    } catch (Exception ex2) {
-                        ex2.printStackTrace();
-                        Platform.runLater(() -> {
-                            Alert a = new Alert(
-                                    Alert.AlertType.ERROR,
-                                    helper.getMessage("admin.classes.dialog.add.error") + ":\n" + ex2.getMessage(),
-                                    ButtonType.OK
-                            );
-                            a.showAndWait();
-                        });
-                    }
-                }).start();
-            });
-        });
-
-        content.getChildren().addAll(titleRow, search, loadError, section, table);
+        content.getChildren().addAll(titleRow, searchField, loadError, sectionTitle, table);
 
         ScrollPane scroll = new ScrollPane(content);
         scroll.setFitToWidth(true);
@@ -229,7 +91,7 @@ public class AdminManageClassesPage {
 
         return AdminAppLayout.wrapWithSidebar(
                 adminName,
-                helper.getMessage("teacher.sidebar.title"),
+                helper.getMessage("admin.sidebar.title"),
                 helper.getMessage("admin.dashboard.title"),
                 helper.getMessage("admin.classes.title"),
                 helper.getMessage("admin.users.title"),
@@ -237,11 +99,28 @@ public class AdminManageClassesPage {
                 scroll,
                 "second",
                 new AdminAppLayout.Navigator() {
-                    @Override public void goDashboard() { router.go("admin-dashboard"); }
-                    @Override public void goTakeAttendance() { router.go("admin-classes"); }
-                    @Override public void goReports() { router.go("admin-users"); }
-                    @Override public void goEmail() { router.go("admin-reports"); }
-                    @Override public void logout() {
+                    @Override
+                    public void goDashboard() {
+                        router.go("admin-dashboard");
+                    }
+
+                    @Override
+                    public void goTakeAttendance() {
+                        router.go("admin-classes");
+                    }
+
+                    @Override
+                    public void goReports() {
+                        router.go("admin-users");
+                    }
+
+                    @Override
+                    public void goEmail() {
+                        router.go("admin-reports");
+                    }
+
+                    @Override
+                    public void logout() {
                         jwtStore.clear();
                         router.go("login");
                     }
@@ -249,157 +128,475 @@ public class AdminManageClassesPage {
         );
     }
 
-    private void openEnrollStudentsDialog(HelperClass helper, AdminApi api, ClassRow selectedClass, Runnable reload) {
+    private String resolveAdminName(AuthState state) {
+        return (state.getName() == null || state.getName().isBlank())
+                ? helper.getMessage("teacher.fallback.name")
+                : state.getName();
+    }
+
+    private VBox buildContentContainer() {
+        VBox content = new VBox(14);
+        content.getStyleClass().add("content");
+        content.setPadding(new Insets(18));
+        return content;
+    }
+
+    private HBox buildTitleRow() {
+        HBox titleRow = new HBox(12);
+        titleRow.setAlignment(Pos.CENTER_LEFT);
+
+        VBox titleColumn = new VBox(4);
+
+        Label title = new Label(helper.getMessage("admin.classes.title"));
+        title.getStyleClass().add("title");
+
+        Label subtitle = new Label(helper.getMessage("admin.classes.subtitle"));
+        subtitle.getStyleClass().add("subtitle");
+
+        titleColumn.getChildren().addAll(title, subtitle);
+
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+
+        Button enrollButton = new Button(helper.getMessage("admin.classes.button.enroll"));
+        enrollButton.getStyleClass().add("secondary-btn");
+
+        Button addButton = new Button("+   " + helper.getMessage("admin.classes.button.add"));
+        addButton.getStyleClass().add("primary-btn");
+
+        titleRow.getChildren().addAll(titleColumn, spacer, enrollButton, addButton);
+        return titleRow;
+    }
+
+    private Button getEnrollButton(HBox titleRow) {
+        return (Button) titleRow.getChildren().get(titleRow.getChildren().size() - 2);
+    }
+
+    private Button getAddButton(HBox titleRow) {
+        return (Button) titleRow.getChildren().get(titleRow.getChildren().size() - 1);
+    }
+
+    private TextField buildSearchField() {
+        TextField search = new TextField();
+        search.setPromptText(helper.getMessage("admin.classes.search.placeholder"));
+        search.getStyleClass().add("search-field");
+        return search;
+    }
+
+    private Label buildLoadErrorLabel() {
+        Label loadError = new Label();
+        loadError.getStyleClass().add("subtitle");
+        loadError.setManaged(false);
+        loadError.setVisible(false);
+        return loadError;
+    }
+
+    private Label buildSectionTitle() {
+        Label section = new Label(helper.getMessage("admin.classes.section.detailed"));
+        section.getStyleClass().add("section-title");
+        return section;
+    }
+
+    private void applySearchFilter(FilteredList<ClassRow> filteredRows, String query) {
+        String searchValue = query == null ? "" : query.trim().toLowerCase();
+
+        filteredRows.setPredicate(row -> {
+            if (row == null) {
+                return false;
+            }
+            if (searchValue.isBlank()) {
+                return true;
+            }
+
+            return safe(row.getClassName()).contains(searchValue)
+                    || safe(row.getCode()).contains(searchValue)
+                    || safe(row.getTeacher()).contains(searchValue)
+                    || safe(row.getSchedule()).contains(searchValue);
+        });
+    }
+
+    private void loadClasses(AdminApi adminApi, ObservableList<ClassRow> rows, Label loadError) {
+        hideLabel(loadError);
+
+        new Thread(() -> {
+            try {
+                List<AdminClassDto> classes = adminApi.getAdminClasses();
+                List<ClassRow> mappedRows = classes.stream()
+                        .map(this::mapClassRow)
+                        .collect(Collectors.toList());
+
+                Platform.runLater(() -> rows.setAll(mappedRows));
+            } catch (Exception ex) {
+                ex.printStackTrace();
+                Platform.runLater(() -> showLabel(
+                        loadError,
+                        helper.getMessage("admin.classes.dialog.loadStudents.failed") + " " + ex.getMessage()
+                ));
+            }
+        }).start();
+    }
+
+    private ClassRow mapClassRow(AdminClassDto classDto) {
+        String schedule = joinNonEmpty(classDto.semester, classDto.academicYear);
+
+        return new ClassRow(
+                nullToEmpty(classDto.name),
+                nullToEmpty(classDto.classCode),
+                nullToEmpty(classDto.teacherEmail),
+                schedule,
+                String.valueOf(classDto.students)
+        );
+    }
+
+    private void openAddClassDialog(AdminApi adminApi, Runnable reload) {
+        Dialog<ButtonType> dialog = new Dialog<>();
+        dialog.setTitle(helper.getMessage("admin.classes.dialog.add.title"));
+
+        ButtonType createButtonType = new ButtonType(
+                helper.getMessage("admin.classes.dialog.add.create"),
+                ButtonBar.ButtonData.OK_DONE
+        );
+        dialog.getDialogPane().getButtonTypes().addAll(createButtonType, ButtonType.CANCEL);
+
+        GridPane form = buildAddClassForm();
+        dialog.getDialogPane().setContent(form);
+
+        TextField classCodeField = buildAddFormField("e.g. TX-09374");
+        TextField nameField = buildAddFormField("e.g. Mathematics");
+        TextField teacherEmailField = buildAddFormField("teacher@example.com");
+        TextField semesterField = buildAddFormField("e.g. Spring");
+        TextField academicYearField = buildAddFormField("e.g. 2025/2026");
+        TextField maxCapacityField = buildAddFormField("e.g. 30");
+
+        form.addRow(0, new Label(helper.getMessage("admin.classes.dialog.add.classCode")), classCodeField);
+        form.addRow(1, new Label(helper.getMessage("admin.classes.dialog.add.name")), nameField);
+        form.addRow(2, new Label(helper.getMessage("admin.classes.dialog.add.teacherEmail")), teacherEmailField);
+        form.addRow(3, new Label(helper.getMessage("admin.classes.dialog.add.semester")), semesterField);
+        form.addRow(4, new Label(helper.getMessage("admin.classes.dialog.add.academicYear")), academicYearField);
+        form.addRow(5, new Label(helper.getMessage("admin.classes.dialog.add.maxCapacity")), maxCapacityField);
+
+        Button createButton = (Button) dialog.getDialogPane().lookupButton(createButtonType);
+        updateCreateButtonState(createButton, classCodeField, nameField, teacherEmailField);
+
+        classCodeField.textProperty().addListener((obs, oldValue, newValue) ->
+                updateCreateButtonState(createButton, classCodeField, nameField, teacherEmailField));
+        nameField.textProperty().addListener((obs, oldValue, newValue) ->
+                updateCreateButtonState(createButton, classCodeField, nameField, teacherEmailField));
+        teacherEmailField.textProperty().addListener((obs, oldValue, newValue) ->
+                updateCreateButtonState(createButton, classCodeField, nameField, teacherEmailField));
+
+        dialog.showAndWait().ifPresent(buttonType -> {
+            if (buttonType != createButtonType) {
+                return;
+            }
+
+            String classCode = classCodeField.getText().trim();
+            String name = nameField.getText().trim();
+            String teacherEmail = teacherEmailField.getText().trim();
+            String semester = semesterField.getText().trim();
+            String academicYear = academicYearField.getText().trim();
+            Integer maxCapacity = parseInteger(maxCapacityField.getText().trim());
+
+            createClass(
+                    adminApi,
+                    classCode,
+                    name,
+                    teacherEmail,
+                    semester,
+                    academicYear,
+                    maxCapacity,
+                    reload
+            );
+        });
+    }
+
+    private void updateCreateButtonState(
+            Button createButton,
+            TextField classCodeField,
+            TextField nameField,
+            TextField teacherEmailField
+    ) {
+        boolean disabled =
+                classCodeField.getText().trim().isBlank()
+                        || nameField.getText().trim().isBlank()
+                        || teacherEmailField.getText().trim().isBlank();
+
+        createButton.setDisable(disabled);
+    }
+
+    private GridPane buildAddClassForm() {
+        GridPane form = new GridPane();
+        form.setHgap(10);
+        form.setVgap(10);
+        form.setPadding(new Insets(10));
+        return form;
+    }
+
+    private TextField buildAddFormField(String promptText) {
+        TextField field = new TextField();
+        field.setPromptText(promptText);
+        return field;
+    }
+
+    private void createClass(
+            AdminApi adminApi,
+            String classCode,
+            String name,
+            String teacherEmail,
+            String semester,
+            String academicYear,
+            Integer maxCapacity,
+            Runnable reload
+    ) {
+        new Thread(() -> {
+            try {
+                adminApi.createClass(classCode, name, teacherEmail, semester, academicYear, maxCapacity);
+                Platform.runLater(reload);
+            } catch (Exception ex) {
+                ex.printStackTrace();
+                Platform.runLater(() -> showError(
+                        helper.getMessage("admin.classes.dialog.add.error") + ":\n" + ex.getMessage()
+                ));
+            }
+        }).start();
+    }
+
+    private void openEnrollStudentsDialog(AdminApi adminApi, ClassRow selectedClass, Runnable reload) {
         Dialog<ButtonType> dialog = new Dialog<>();
         dialog.setTitle(helper.getMessage("admin.classes.dialog.enroll.title"));
         dialog.getDialogPane().setPrefWidth(560);
 
-        ButtonType enrollType = new ButtonType(helper.getMessage("admin.classes.button.enroll"), ButtonBar.ButtonData.OK_DONE);
-        dialog.getDialogPane().getButtonTypes().addAll(enrollType, ButtonType.CANCEL);
+        ButtonType enrollButtonType = new ButtonType(
+                helper.getMessage("admin.classes.button.enroll"),
+                ButtonBar.ButtonData.OK_DONE
+        );
+        dialog.getDialogPane().getButtonTypes().addAll(enrollButtonType, ButtonType.CANCEL);
 
         VBox root = new VBox(12);
         root.setPadding(new Insets(12));
 
         Label classInfo = new Label(
-                "Class: " + nullToEmpty(selectedClass.getClassName()) +
-                        " (" + nullToEmpty(selectedClass.codeProperty().get()) + ")"
+                "Class: " + nullToEmpty(selectedClass.getClassName())
+                        + " (" + nullToEmpty(selectedClass.getCode()) + ")"
         );
         classInfo.getStyleClass().add("section-title");
 
         TextField searchStudents = new TextField();
         searchStudents.setPromptText(helper.getMessage("admin.classes.dialog.enroll.search.placeholder"));
 
-        Label status = new Label(helper.getMessage("admin.classes.dialog.loadStudents.loading"));
-        status.getStyleClass().add("subtitle");
+        Label statusLabel = new Label(helper.getMessage("admin.classes.dialog.loadStudents.loading"));
+        statusLabel.getStyleClass().add("subtitle");
 
+        ListView<AdminStudentDto> listView = buildStudentListView();
+        Label selectedCount = buildSelectedCountLabel();
+
+        ObservableList<AdminStudentDto> studentRows = FXCollections.observableArrayList();
+        FilteredList<AdminStudentDto> filteredStudents = new FilteredList<>(studentRows, student -> true);
+        listView.setItems(filteredStudents);
+
+        listView.getSelectionModel().getSelectedItems().addListener(
+                (javafx.collections.ListChangeListener<AdminStudentDto>) change ->
+                        selectedCount.setText("Selected: " + listView.getSelectionModel().getSelectedItems().size())
+        );
+
+        searchStudents.textProperty().addListener((obs, oldValue, newValue) ->
+                applyStudentFilter(filteredStudents, newValue)
+        );
+
+        root.getChildren().addAll(classInfo, searchStudents, statusLabel, listView, selectedCount);
+        dialog.getDialogPane().setContent(root);
+
+        Button enrollButton = (Button) dialog.getDialogPane().lookupButton(enrollButtonType);
+        enrollButton.disableProperty().bind(
+                listView.getSelectionModel().selectedItemProperty().isNull()
+        );
+
+        loadAvailableStudents(adminApi, selectedClass, studentRows, statusLabel);
+
+        dialog.showAndWait().ifPresent(buttonType -> {
+            if (buttonType != enrollButtonType) {
+                return;
+            }
+
+            enrollSelectedStudents(adminApi, selectedClass, listView, statusLabel, dialog, reload);
+        });
+    }
+
+    private ListView<AdminStudentDto> buildStudentListView() {
         ListView<AdminStudentDto> listView = new ListView<>();
         listView.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
         listView.setPrefHeight(320);
 
-        listView.setCellFactory(lv -> new ListCell<>() {
+        listView.setCellFactory(list -> new ListCell<>() {
             @Override
             protected void updateItem(AdminStudentDto item, boolean empty) {
                 super.updateItem(item, empty);
+
                 if (empty || item == null) {
                     setText(null);
-                } else {
-                    String fullName = (nullToEmpty(item.firstName) + " " + nullToEmpty(item.lastName)).trim();
-                    setText(fullName + "  |  " + nullToEmpty(item.email) + "  |  " + nullToEmpty(item.studentCode));
+                    return;
                 }
+
+                String fullName = (nullToEmpty(item.firstName) + " " + nullToEmpty(item.lastName)).trim();
+                setText(fullName + "  |  " + nullToEmpty(item.email) + "  |  " + nullToEmpty(item.studentCode));
             }
         });
 
+        return listView;
+    }
+
+    private Label buildSelectedCountLabel() {
         Label selectedCount = new Label(helper.getMessage("admin.classes.dialog.enroll.selectedCount"));
         selectedCount.getStyleClass().add("subtitle");
+        return selectedCount;
+    }
 
-        ObservableList<AdminStudentDto> studentRows = FXCollections.observableArrayList();
-        FilteredList<AdminStudentDto> filteredStudents = new FilteredList<>(studentRows, s -> true);
-        listView.setItems(filteredStudents);
+    private void applyStudentFilter(FilteredList<AdminStudentDto> filteredStudents, String query) {
+        String searchValue = query == null ? "" : query.trim().toLowerCase();
 
-        listView.getSelectionModel().getSelectedItems().addListener((javafx.collections.ListChangeListener<AdminStudentDto>) c ->
-                selectedCount.setText("Selected: " + listView.getSelectionModel().getSelectedItems().size())
-        );
+        filteredStudents.setPredicate(student -> {
+            if (student == null) {
+                return false;
+            }
+            if (searchValue.isBlank()) {
+                return true;
+            }
 
-        searchStudents.textProperty().addListener((obs, oldV, q) -> {
-            String s = q == null ? "" : q.trim().toLowerCase();
-            filteredStudents.setPredicate(student -> {
-                if (student == null) return false;
-                if (s.isBlank()) return true;
+            String fullName = (nullToEmpty(student.firstName) + " " + nullToEmpty(student.lastName)).toLowerCase();
 
-                String fullName = (nullToEmpty(student.firstName) + " " + nullToEmpty(student.lastName)).toLowerCase();
-                return fullName.contains(s)
-                        || safe(student.email).contains(s)
-                        || safe(student.studentCode).contains(s);
-            });
+            return fullName.contains(searchValue)
+                    || safe(student.email).contains(searchValue)
+                    || safe(student.studentCode).contains(searchValue);
         });
+    }
 
-        root.getChildren().addAll(classInfo, searchStudents, status, listView, selectedCount);
-        dialog.getDialogPane().setContent(root);
-
-        Node enrollNode = dialog.getDialogPane().lookupButton(enrollType);
-        enrollNode.disableProperty().bind(
-                Bindings.size(listView.getSelectionModel().getSelectedItems()).isEqualTo(0)
-        );
-
+    private void loadAvailableStudents(
+            AdminApi adminApi,
+            ClassRow selectedClass,
+            ObservableList<AdminStudentDto> studentRows,
+            Label statusLabel
+    ) {
         new Thread(() -> {
             try {
-                List<AdminStudentDto> students = api.getAllStudentsNotInClass(selectedClass.codeProperty().get());
+                List<AdminStudentDto> students = adminApi.getAllStudentsNotInClass(selectedClass.getCode());
 
                 Platform.runLater(() -> {
                     studentRows.setAll(students);
-                    status.setText(students.isEmpty()
-                            ? helper.getMessage("admin.classes.dialog.loadStudents.empty")
-                            : "Select one or more students to enroll.");
+                    statusLabel.setText(
+                            students.isEmpty()
+                                    ? helper.getMessage("admin.classes.dialog.loadStudents.empty")
+                                    : "Select one or more students to enroll."
+                    );
                 });
             } catch (Exception ex) {
                 ex.printStackTrace();
-                Platform.runLater(() -> status.setText(helper.getMessage("admin.classes.dialog.loadStudents.failed") + " " + ex.getMessage()));
+                Platform.runLater(() ->
+                        statusLabel.setText(
+                                helper.getMessage("admin.classes.dialog.loadStudents.failed") + " " + ex.getMessage()
+                        )
+                );
             }
         }).start();
+    }
 
-        dialog.showAndWait().ifPresent(bt -> {
-            if (bt != enrollType) return;
+    private void enrollSelectedStudents(
+            AdminApi adminApi,
+            ClassRow selectedClass,
+            ListView<AdminStudentDto> listView,
+            Label statusLabel,
+            Dialog<ButtonType> dialog,
+            Runnable reload
+    ) {
+        List<AdminStudentDto> selectedStudents =
+                new ArrayList<>(listView.getSelectionModel().getSelectedItems());
 
-            List<AdminStudentDto> selectedStudents = new ArrayList<>(listView.getSelectionModel().getSelectedItems());
-            List<String> studentEmails = selectedStudents.stream()
-                    .map(s -> s.email)
-                    .filter(v -> v != null && !v.isBlank())
-                    .collect(Collectors.toList());
+        List<String> studentEmails = selectedStudents.stream()
+                .map(student -> student.email)
+                .filter(email -> email != null && !email.isBlank())
+                .collect(Collectors.toList());
 
-            if (studentEmails.isEmpty()) {
-                Alert a = new Alert(Alert.AlertType.WARNING, helper.getMessage("admin.classes.dialog.enroll.noneSelected"), ButtonType.OK);
-                a.showAndWait();
-                return;
+        if (studentEmails.isEmpty()) {
+            showWarning(helper.getMessage("admin.classes.dialog.enroll.noneSelected"));
+            return;
+        }
+
+        statusLabel.setText("Enrolling students...");
+
+        new Thread(() -> {
+            try {
+                adminApi.enrollStudentsToClass(selectedClass.getCode(), studentEmails);
+
+                Platform.runLater(() -> {
+                    dialog.close();
+                    showInfo(helper.getMessage("admin.classes.dialog.enroll.success"));
+                    reload.run();
+                });
+            } catch (Exception ex) {
+                ex.printStackTrace();
+                Platform.runLater(() -> {
+                    statusLabel.setText(
+                            helper.getMessage("admin.classes.dialog.enroll.failure") + " " + ex.getMessage()
+                    );
+                    showError(
+                            helper.getMessage("admin.classes.dialog.enroll.failure") + "\n" + ex.getMessage()
+                    );
+                });
             }
-
-            status.setText("Enrolling students...");
-
-            new Thread(() -> {
-                try {
-                    api.enrollStudentsToClass(selectedClass.codeProperty().get(), studentEmails);
-
-                    Platform.runLater(() -> {
-                        dialog.close();
-
-                        Alert ok = new Alert(
-                                Alert.AlertType.INFORMATION,
-                                helper.getMessage("admin.classes.dialog.enroll.success"),
-                                ButtonType.OK
-                        );
-                        ok.showAndWait();
-                        reload.run();
-                    });
-
-                } catch (Exception ex) {
-                    ex.printStackTrace();
-                    Platform.runLater(() -> {
-                        status.setText(helper.getMessage("admin.classes.dialog.enroll.failure") + " " + ex.getMessage());
-                        Alert err = new Alert(
-                                Alert.AlertType.ERROR,
-                                helper.getMessage("admin.classes.dialog.enroll.failure") + "\n" + ex.getMessage(),
-                                ButtonType.OK
-                        );
-                        err.showAndWait();
-                    });
-                }
-            }).start();
-        });
+        }).start();
     }
 
-    private static String safe(String s) {
-        return s == null ? "" : s.toLowerCase();
+    private Integer parseInteger(String value) {
+        try {
+            if (value == null || value.isBlank()) {
+                return null;
+            }
+            return Integer.valueOf(value);
+        } catch (Exception ex) {
+            return null;
+        }
     }
 
-    private static String nullToEmpty(String s) {
-        return s == null ? "" : s;
+    private void showLabel(Label label, String message) {
+        label.setText(message);
+        label.setVisible(true);
+        label.setManaged(true);
     }
 
-    private static String joinNonEmpty(String a, String b) {
-        a = nullToEmpty(a).trim();
-        b = nullToEmpty(b).trim();
-        if (a.isBlank() && b.isBlank()) return "";
-        if (a.isBlank()) return b;
-        if (b.isBlank()) return a;
-        return a + " · " + b;
+    private void hideLabel(Label label) {
+        label.setVisible(false);
+        label.setManaged(false);
+    }
+
+    private void showInfo(String message) {
+        new Alert(Alert.AlertType.INFORMATION, message, ButtonType.OK).showAndWait();
+    }
+
+    private void showWarning(String message) {
+        new Alert(Alert.AlertType.WARNING, message, ButtonType.OK).showAndWait();
+    }
+
+    private void showError(String message) {
+        new Alert(Alert.AlertType.ERROR, message, ButtonType.OK).showAndWait();
+    }
+
+    private static String safe(String value) {
+        return value == null ? "" : value.toLowerCase();
+    }
+
+    private static String nullToEmpty(String value) {
+        return value == null ? "" : value;
+    }
+
+    private static String joinNonEmpty(String first, String second) {
+        if ((first == null || first.isBlank()) && (second == null || second.isBlank())) {
+            return "";
+        }
+        if (first == null || first.isBlank()) {
+            return second;
+        }
+        if (second == null || second.isBlank()) {
+            return first;
+        }
+        return first + " " + second;
     }
 }

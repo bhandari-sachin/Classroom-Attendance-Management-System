@@ -16,9 +16,21 @@ import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
-import javafx.scene.control.*;
+import javafx.scene.control.Alert;
+import javafx.scene.control.Button;
+import javafx.scene.control.ButtonBar;
+import javafx.scene.control.ButtonType;
+import javafx.scene.control.ComboBox;
+import javafx.scene.control.Label;
+import javafx.scene.control.TableCell;
+import javafx.scene.control.TableColumn;
+import javafx.scene.control.TableView;
 import javafx.scene.image.ImageView;
-import javafx.scene.layout.*;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
+import javafx.scene.layout.Region;
+import javafx.scene.layout.StackPane;
+import javafx.scene.layout.VBox;
 import org.example.util.QRCodeImageUtil;
 
 import java.awt.image.BufferedImage;
@@ -26,9 +38,6 @@ import java.util.List;
 import java.util.Map;
 
 public class TeacherTakeAttendancePage {
-
-    private final ObservableList<StudentRow> rows = FXCollections.observableArrayList();
-    private final HelperClass helper = new HelperClass();
 
     private static class ClassItem {
         final long id;
@@ -45,43 +54,195 @@ public class TeacherTakeAttendancePage {
         }
     }
 
-    public Parent build(Scene scene, AppRouter router, JwtStore jwtStore, AuthState state) {
-        String teacherName = (state.getName() == null || state.getName().isBlank())
-                ? helper.getMessage("teacher.fallback.name")
-                : state.getName();
+    private final ObservableList<StudentRow> rows = FXCollections.observableArrayList();
+    private final HelperClass helper = new HelperClass();
 
+    public Parent build(Scene scene, AppRouter router, JwtStore jwtStore, AuthState state) {
+        String teacherName = resolveTeacherName(state);
         String backendUrl = System.getenv().getOrDefault("BACKEND_URL", "http://localhost:8081");
         TeacherApi api = new TeacherApi(backendUrl);
-        final long[] currentSessionId = { -1L };
 
+        final long[] currentSessionId = {-1L};
+
+        VBox page = buildPageContainer();
+
+        Label title = buildTitle();
+        Label subtitle = buildSubtitle();
+        Label selectClassLabel = buildSelectClassLabel();
+
+        ComboBox<ClassItem> classBox = buildClassBox();
+
+        ImageView qrImageView = buildQrImageView();
+        Label manualCode = buildManualCodeLabel();
+        Button generateButton = buildGenerateButton();
+
+        VBox qrCard = buildQrCard(qrImageView, manualCode, generateButton);
+
+        Label studentsTitle = buildStudentsTitle();
+        studentsTitle.textProperty().bind(
+                Bindings.createStringBinding(
+                        () -> helper.getMessage("teacher.attendance.students.title")
+                                .replace("{count}", String.valueOf(rows.size())),
+                        rows
+                )
+        );
+
+        Button markAllPresentButton = buildMarkAllPresentButton();
+        HBox studentsHeader = buildStudentsHeader(studentsTitle, markAllPresentButton);
+
+        TableView<StudentRow> table = buildStudentsTable(
+                api,
+                jwtStore,
+                state,
+                currentSessionId
+        );
+
+        page.getChildren().addAll(
+                title,
+                subtitle,
+                selectClassLabel,
+                classBox,
+                qrCard,
+                studentsHeader,
+                table
+        );
+
+        generateButton.setOnAction(e -> handleGenerateSession(
+                api,
+                jwtStore,
+                state,
+                classBox,
+                generateButton,
+                manualCode,
+                qrImageView,
+                currentSessionId
+        ));
+
+        markAllPresentButton.setOnAction(e -> handleMarkAllPresent(
+                api,
+                jwtStore,
+                state,
+                markAllPresentButton,
+                currentSessionId
+        ));
+
+        classBox.setOnAction(e -> handleClassSelection(
+                api,
+                jwtStore,
+                state,
+                classBox,
+                manualCode,
+                qrImageView,
+                currentSessionId
+        ));
+
+        loadClasses(api, jwtStore, state, classBox);
+
+        return AppLayout.wrapWithSidebar(
+                teacherName,
+                helper.getMessage("teacher.sidebar.title"),
+                helper.getMessage("teacher.sidebar.menu.dashboard"),
+                helper.getMessage("teacher.sidebar.menu.take_attendance"),
+                helper.getMessage("teacher.sidebar.menu.reports"),
+                helper.getMessage("teacher.sidebar.menu.email"),
+                page,
+                "second",
+                new AppLayout.Navigator() {
+                    @Override
+                    public void goDashboard() {
+                        router.go("teacher-dashboard");
+                    }
+
+                    @Override
+                    public void goTakeAttendance() {
+                        router.go("teacher-take");
+                    }
+
+                    @Override
+                    public void goReports() {
+                        router.go("teacher-reports");
+                    }
+
+                    @Override
+                    public void goEmail() {
+                        router.go("teacher-email");
+                    }
+
+                    @Override
+                    public void logout() {
+                        jwtStore.clear();
+                        router.go("login");
+                    }
+                }
+        );
+    }
+
+    private String resolveTeacherName(AuthState state) {
+        return (state.getName() == null || state.getName().isBlank())
+                ? helper.getMessage("teacher.fallback.name")
+                : state.getName();
+    }
+
+    private VBox buildPageContainer() {
         VBox page = new VBox(16);
         page.setPadding(new Insets(22));
         page.getStyleClass().add("page");
+        return page;
+    }
 
+    private Label buildTitle() {
         Label title = new Label(helper.getMessage("teacher.attendance.title"));
         title.getStyleClass().add("title");
+        return title;
+    }
 
+    private Label buildSubtitle() {
         Label subtitle = new Label(helper.getMessage("teacher.attendance.subtitle"));
         subtitle.getStyleClass().add("subtitle");
+        return subtitle;
+    }
 
-        Label selectClass = new Label(helper.getMessage("teacher.attendance.selectClass"));
-        selectClass.getStyleClass().add("section-title");
+    private Label buildSelectClassLabel() {
+        Label label = new Label(helper.getMessage("teacher.attendance.selectClass"));
+        label.getStyleClass().add("section-title");
+        return label;
+    }
 
+    private ComboBox<ClassItem> buildClassBox() {
         ComboBox<ClassItem> classBox = new ComboBox<>();
         classBox.setPromptText(helper.getMessage("teacher.attendance.class.prompt"));
         classBox.setMaxWidth(320);
+        return classBox;
+    }
 
+    private ImageView buildQrImageView() {
+        ImageView imageView = new ImageView();
+        imageView.setFitWidth(180);
+        imageView.setFitHeight(180);
+        imageView.setPreserveRatio(true);
+        return imageView;
+    }
+
+    private Label buildManualCodeLabel() {
+        Label manualCode = new Label("—");
+        manualCode.getStyleClass().add("small-subtitle");
+        return manualCode;
+    }
+
+    private Button buildGenerateButton() {
+        Button generate = new Button(helper.getMessage("teacher.attendance.generate"));
+        generate.getStyleClass().addAll("pill", "pill-green");
+        generate.setMaxWidth(Double.MAX_VALUE);
+        return generate;
+    }
+
+    private VBox buildQrCard(ImageView qrImageView, Label manualCode, Button generateButton) {
         VBox qrCard = new VBox(12);
         qrCard.getStyleClass().add("card");
         qrCard.setPadding(new Insets(16));
 
         Label qrTitle = new Label(helper.getMessage("teacher.attendance.qr.title"));
         qrTitle.getStyleClass().add("section-title");
-
-        ImageView qrImageView = new ImageView();
-        qrImageView.setFitWidth(180);
-        qrImageView.setFitHeight(180);
-        qrImageView.setPreserveRatio(true);
 
         StackPane qrArea = new StackPane(qrImageView);
         qrArea.setAlignment(Pos.CENTER);
@@ -92,123 +253,41 @@ public class TeacherTakeAttendancePage {
         Label manualTitle = new Label(helper.getMessage("teacher.attendance.manual.title"));
         manualTitle.getStyleClass().add("small-title");
 
-        Label manualCode = new Label("—");
-        manualCode.getStyleClass().add("small-subtitle");
-
         VBox manualBox = new VBox(4, manualTitle, manualCode);
         manualBox.setAlignment(Pos.CENTER);
         manualBox.getStyleClass().add("manual-box");
 
-        Button generate = new Button(helper.getMessage("teacher.attendance.generate"));
-        generate.getStyleClass().addAll("pill", "pill-green");
-        generate.setMaxWidth(Double.MAX_VALUE);
+        qrCard.getChildren().addAll(qrTitle, qrArea, manualBox, generateButton);
+        return qrCard;
+    }
 
-        generate.setOnAction(e -> {
-            ClassItem selected = classBox.getValue();
-            if (selected == null) {
-                new Alert(Alert.AlertType.WARNING, helper.getMessage("teacher.attendance.selectClassFirst"), ButtonType.OK).showAndWait();
-                return;
-            }
-
-            generate.setDisable(true);
-            manualCode.setText(helper.getMessage("teacher.attendance.generating"));
-            qrImageView.setImage(null);
-            currentSessionId[0] = -1L;
-
-            new Thread(() -> {
-                try {
-                    Map<String, Object> res = api.createSession(jwtStore, state, selected.id);
-                    String code = api.extractCode(res);
-                    Number sessionIdNum = (Number) res.get("sessionId");
-                    if (sessionIdNum != null) {
-                        currentSessionId[0] = sessionIdNum.longValue();
-                    }
-
-                    Platform.runLater(() -> {
-                        manualCode.setText(code == null || code.isBlank() ? "—" : code);
-
-                        if (code != null && !code.isBlank()) {
-                            try {
-                                BufferedImage bufferedImage = QRCodeImageUtil.generateQRCodeImage(code, 180, 180);
-                                qrImageView.setImage(SwingFXUtils.toFXImage(bufferedImage, null));
-                            } catch (Exception qrEx) {
-                                qrEx.printStackTrace();
-                            }
-                        }
-
-                        generate.setDisable(false);
-                    });
-                } catch (Exception ex) {
-                    ex.printStackTrace();
-                    Platform.runLater(() -> {
-                        manualCode.setText("—");
-                        qrImageView.setImage(null);
-                        generate.setDisable(false);
-                        new Alert(
-                                Alert.AlertType.ERROR,
-                                helper.getMessage("teacher.attendance.generateFailed") + " " + ex.getMessage(),
-                                ButtonType.OK
-                        ).showAndWait();
-                    });
-                }
-            }).start();
-        });
-
-        qrCard.getChildren().addAll(qrTitle, qrArea, manualBox, generate);
-
+    private Label buildStudentsTitle() {
         Label studentsTitle = new Label();
         studentsTitle.getStyleClass().add("section-title");
-        studentsTitle.textProperty().bind(
-                Bindings.createStringBinding(
-                        () -> helper.getMessage("teacher.attendance.students.title")
-                                .replace("{count}", String.valueOf(rows.size())),
-                        rows
-                )
-        );
+        return studentsTitle;
+    }
 
-        Button markAllPresentBtn = new Button(helper.getMessage("teacher.attendance.markAll"));
-        markAllPresentBtn.getStyleClass().addAll("pill", "pill-green");
+    private Button buildMarkAllPresentButton() {
+        Button button = new Button(helper.getMessage("teacher.attendance.markAll"));
+        button.getStyleClass().addAll("pill", "pill-green");
+        return button;
+    }
 
-        markAllPresentBtn.setOnAction(e -> {
-            if (currentSessionId[0] <= 0) {
-                new Alert(Alert.AlertType.WARNING, helper.getMessage("teacher.attendance.generateSessionFirst"), ButtonType.OK).showAndWait();
-                return;
-            }
-            if (rows.isEmpty()) return;
+    private HBox buildStudentsHeader(Label studentsTitle, Button markAllPresentButton) {
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
 
-            markAllPresentBtn.setDisable(true);
+        HBox header = new HBox(10, studentsTitle, spacer, markAllPresentButton);
+        header.setAlignment(Pos.CENTER_LEFT);
+        return header;
+    }
 
-            new Thread(() -> {
-                try {
-                    for (StudentRow row : rows) {
-                        api.markAttendance(jwtStore, state, row.getStudentId(), currentSessionId[0], "PRESENT");
-                    }
-
-                    Platform.runLater(() -> {
-                        for (StudentRow row : rows) {
-                            row.setStatus("PRESENT");
-                        }
-                        markAllPresentBtn.setDisable(false);
-                    });
-                } catch (Exception ex) {
-                    ex.printStackTrace();
-                    Platform.runLater(() -> {
-                        markAllPresentBtn.setDisable(false);
-                        new Alert(
-                                Alert.AlertType.ERROR,
-                                helper.getMessage("teacher.attendance.markAllFailed") + " " + ex.getMessage(),
-                                ButtonType.OK
-                        ).showAndWait();
-                    });
-                }
-            }).start();
-        });
-
-        Region studentsSpacer = new Region();
-        HBox.setHgrow(studentsSpacer, Priority.ALWAYS);
-        HBox studentsHeader = new HBox(10, studentsTitle, studentsSpacer, markAllPresentBtn);
-        studentsHeader.setAlignment(Pos.CENTER_LEFT);
-
+    private TableView<StudentRow> buildStudentsTable(
+            TeacherApi api,
+            JwtStore jwtStore,
+            AuthState state,
+            long[] currentSessionId
+    ) {
         TableView<StudentRow> table = new TableView<>(rows);
         table.getStyleClass().add("students-table");
         table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
@@ -216,13 +295,13 @@ public class TeacherTakeAttendancePage {
         table.setPrefHeight(300);
 
         TableColumn<StudentRow, String> colName = new TableColumn<>(helper.getMessage("teacher.attendance.table.student"));
-        colName.setCellValueFactory(d -> d.getValue().studentNameProperty());
+        colName.setCellValueFactory(data -> data.getValue().studentNameProperty());
 
         TableColumn<StudentRow, String> colEmail = new TableColumn<>(helper.getMessage("teacher.attendance.table.email"));
-        colEmail.setCellValueFactory(d -> d.getValue().emailProperty());
+        colEmail.setCellValueFactory(data -> data.getValue().emailProperty());
 
         TableColumn<StudentRow, String> colStatus = new TableColumn<>(helper.getMessage("teacher.attendance.table.status"));
-        colStatus.setCellValueFactory(d -> d.getValue().statusProperty());
+        colStatus.setCellValueFactory(data -> data.getValue().statusProperty());
         colStatus.setCellFactory(col -> new TableCell<>() {
             @Override
             protected void updateItem(String item, boolean empty) {
@@ -237,28 +316,70 @@ public class TeacherTakeAttendancePage {
             }
         });
 
-        TableColumn<StudentRow, Void> colActions = new TableColumn<>(helper.getMessage("teacher.attendance.actions"));
+        TableColumn<StudentRow, Void> colActions = buildActionsColumn(
+                api,
+                jwtStore,
+                state,
+                table,
+                currentSessionId
+        );
+
+        table.getColumns().setAll(colName, colEmail, colStatus, colActions);
+        return table;
+    }
+
+    private TableColumn<StudentRow, Void> buildActionsColumn(
+            TeacherApi api,
+            JwtStore jwtStore,
+            AuthState state,
+            TableView<StudentRow> table,
+            long[] currentSessionId
+    ) {
+        TableColumn<StudentRow, Void> colActions =
+                new TableColumn<>(helper.getMessage("teacher.attendance.actions"));
+
         colActions.setCellFactory(col -> new TableCell<>() {
-            private final Button presentBtn = new Button("✓");
-            private final Button absentBtn = new Button("✕");
-            private final Button excusedBtn = new Button("◔");
+            private final Button presentBtn = createActionButton("✓");
+            private final Button absentBtn = createActionButton("✕");
+            private final Button excusedBtn = createActionButton("◔");
             private final HBox box = new HBox(8, presentBtn, absentBtn, excusedBtn);
 
             {
                 box.setAlignment(Pos.CENTER);
 
-                presentBtn.setMinSize(30, 30);
-                presentBtn.setPrefSize(30, 30);
-
-                absentBtn.setMinSize(30, 30);
-                absentBtn.setPrefSize(30, 30);
-
-                excusedBtn.setMinSize(30, 30);
-                excusedBtn.setPrefSize(30, 30);
-
                 presentBtn.setOnAction(e -> updateAttendance("PRESENT"));
                 absentBtn.setOnAction(e -> updateAttendance("ABSENT"));
                 excusedBtn.setOnAction(e -> updateAttendance("EXCUSED"));
+            }
+
+            private void updateAttendance(String status) {
+                StudentRow row = getTableView().getItems().get(getIndex());
+
+                if (currentSessionId[0] <= 0) {
+                    showWarning(helper.getMessage("teacher.attendance.generateSessionFirst"));
+                    return;
+                }
+
+                setButtonsDisabled(true);
+
+                new Thread(() -> {
+                    try {
+                        api.markAttendance(jwtStore, state, row.getStudentId(), currentSessionId[0], status);
+
+                        Platform.runLater(() -> {
+                            row.setStatus(status);
+                            applyStatusStyles(status);
+                            setButtonsDisabled(false);
+                            table.refresh();
+                        });
+                    } catch (Exception ex) {
+                        ex.printStackTrace();
+                        Platform.runLater(() -> {
+                            setButtonsDisabled(false);
+                            showError(helper.getMessage("teacher.attendance.updateFailed") + " " + ex.getMessage());
+                        });
+                    }
+                }).start();
             }
 
             private void applyStatusStyles(String currentStatus) {
@@ -285,44 +406,10 @@ public class TeacherTakeAttendancePage {
                 }
             }
 
-            private void updateAttendance(String status) {
-                StudentRow row = getTableView().getItems().get(getIndex());
-
-                if (currentSessionId[0] <= 0) {
-                    new Alert(Alert.AlertType.WARNING, helper.getMessage("teacher.attendance.generateSessionFirst"), ButtonType.OK).showAndWait();
-                    return;
-                }
-
-                presentBtn.setDisable(true);
-                absentBtn.setDisable(true);
-                excusedBtn.setDisable(true);
-
-                new Thread(() -> {
-                    try {
-                        api.markAttendance(jwtStore, state, row.getStudentId(), currentSessionId[0], status);
-
-                        Platform.runLater(() -> {
-                            row.setStatus(status);
-                            applyStatusStyles(status);
-                            presentBtn.setDisable(false);
-                            absentBtn.setDisable(false);
-                            excusedBtn.setDisable(false);
-                            table.refresh();
-                        });
-                    } catch (Exception ex) {
-                        ex.printStackTrace();
-                        Platform.runLater(() -> {
-                            presentBtn.setDisable(false);
-                            absentBtn.setDisable(false);
-                            excusedBtn.setDisable(false);
-                            new Alert(
-                                    Alert.AlertType.ERROR,
-                                    helper.getMessage("teacher.attendance.updateFailed") + " " + ex.getMessage(),
-                                    ButtonType.OK
-                            ).showAndWait();
-                        });
-                    }
-                }).start();
+            private void setButtonsDisabled(boolean disabled) {
+                presentBtn.setDisable(disabled);
+                absentBtn.setDisable(disabled);
+                excusedBtn.setDisable(disabled);
             }
 
             @Override
@@ -335,99 +422,206 @@ public class TeacherTakeAttendancePage {
                 }
 
                 StudentRow row = getTableView().getItems().get(getIndex());
-                applyStatusStyles(row.statusProperty().get());
+                applyStatusStyles(row.getStatus());
                 setGraphic(box);
             }
         });
 
-        table.getColumns().setAll(colName, colEmail, colStatus, colActions);
+        return colActions;
+    }
 
-        page.getChildren().addAll(title, subtitle, selectClass, classBox, qrCard, studentsHeader, table);
+    private Button createActionButton(String text) {
+        Button button = new Button(text);
+        button.setMinSize(30, 30);
+        button.setPrefSize(30, 30);
+        return button;
+    }
+
+    private void handleGenerateSession(
+            TeacherApi api,
+            JwtStore jwtStore,
+            AuthState state,
+            ComboBox<ClassItem> classBox,
+            Button generateButton,
+            Label manualCode,
+            ImageView qrImageView,
+            long[] currentSessionId
+    ) {
+        ClassItem selected = classBox.getValue();
+        if (selected == null) {
+            showWarning(helper.getMessage("teacher.attendance.selectClassFirst"));
+            return;
+        }
+
+        generateButton.setDisable(true);
+        manualCode.setText(helper.getMessage("teacher.attendance.generating"));
+        qrImageView.setImage(null);
+        currentSessionId[0] = -1L;
 
         new Thread(() -> {
             try {
-                List<Map<String, Object>> list = api.getMyClasses(jwtStore, state);
+                Map<String, Object> response = api.createSession(jwtStore, state, selected.id);
+                String code = api.extractCode(response);
 
-                var items = list.stream().map(m -> {
-                    long id = Long.parseLong(String.valueOf(m.get("id")));
-                    String classCode = String.valueOf(m.get("classCode"));
-                    String name = String.valueOf(m.get("name"));
-                    return new ClassItem(id, classCode + " — " + name);
-                }).toList();
+                Number sessionIdNumber = (Number) response.get("sessionId");
+                if (sessionIdNumber != null) {
+                    currentSessionId[0] = sessionIdNumber.longValue();
+                }
+
+                Platform.runLater(() -> {
+                    manualCode.setText(code == null || code.isBlank() ? "—" : code);
+
+                    if (code != null && !code.isBlank()) {
+                        try {
+                            BufferedImage bufferedImage =
+                                    QRCodeImageUtil.generateQRCodeImage(code, 180, 180);
+                            qrImageView.setImage(SwingFXUtils.toFXImage(bufferedImage, null));
+                        } catch (Exception qrException) {
+                            qrException.printStackTrace();
+                        }
+                    }
+
+                    generateButton.setDisable(false);
+                });
+            } catch (Exception ex) {
+                ex.printStackTrace();
+                Platform.runLater(() -> {
+                    manualCode.setText("—");
+                    qrImageView.setImage(null);
+                    generateButton.setDisable(false);
+                    showError(helper.getMessage("teacher.attendance.generateFailed") + " " + ex.getMessage());
+                });
+            }
+        }).start();
+    }
+
+    private void handleMarkAllPresent(
+            TeacherApi api,
+            JwtStore jwtStore,
+            AuthState state,
+            Button markAllPresentButton,
+            long[] currentSessionId
+    ) {
+        if (currentSessionId[0] <= 0) {
+            showWarning(helper.getMessage("teacher.attendance.generateSessionFirst"));
+            return;
+        }
+
+        if (rows.isEmpty()) {
+            return;
+        }
+
+        markAllPresentButton.setDisable(true);
+
+        new Thread(() -> {
+            try {
+                for (StudentRow row : rows) {
+                    api.markAttendance(jwtStore, state, row.getStudentId(), currentSessionId[0], "PRESENT");
+                }
+
+                Platform.runLater(() -> {
+                    for (StudentRow row : rows) {
+                        row.setStatus("PRESENT");
+                    }
+                    markAllPresentButton.setDisable(false);
+                });
+            } catch (Exception ex) {
+                ex.printStackTrace();
+                Platform.runLater(() -> {
+                    markAllPresentButton.setDisable(false);
+                    showError(helper.getMessage("teacher.attendance.markAllFailed") + " " + ex.getMessage());
+                });
+            }
+        }).start();
+    }
+
+    private void handleClassSelection(
+            TeacherApi api,
+            JwtStore jwtStore,
+            AuthState state,
+            ComboBox<ClassItem> classBox,
+            Label manualCode,
+            ImageView qrImageView,
+            long[] currentSessionId
+    ) {
+        ClassItem selected = classBox.getValue();
+        if (selected == null) {
+            return;
+        }
+
+        currentSessionId[0] = -1L;
+        manualCode.setText("—");
+        qrImageView.setImage(null);
+        rows.clear();
+        rows.add(new StudentRow(-1L, helper.getMessage("teacher.attendance.loading.students"), "-", "—"));
+
+        new Thread(() -> {
+            try {
+                List<Map<String, Object>> students = api.getStudentsForClass(jwtStore, state, selected.id);
+
+                Platform.runLater(() -> {
+                    rows.clear();
+                    for (Map<String, Object> student : students) {
+                        rows.add(mapStudentRow(student));
+                    }
+                });
+            } catch (Exception ex) {
+                ex.printStackTrace();
+                Platform.runLater(() -> {
+                    rows.clear();
+                    showError(helper.getMessage("teacher.attendance.error.loadStudents") + " " + ex.getMessage());
+                });
+            }
+        }).start();
+    }
+
+    private StudentRow mapStudentRow(Map<String, Object> student) {
+        long studentId = Long.parseLong(String.valueOf(student.get("id")));
+        String firstName = String.valueOf(student.get("firstName"));
+        String lastName = String.valueOf(student.get("lastName"));
+        String email = String.valueOf(student.get("email"));
+
+        StudentRow row = new StudentRow(studentId, firstName + " " + lastName, email, "—");
+        row.setExcuseReason("");
+        return row;
+    }
+
+    private void loadClasses(
+            TeacherApi api,
+            JwtStore jwtStore,
+            AuthState state,
+            ComboBox<ClassItem> classBox
+    ) {
+        new Thread(() -> {
+            try {
+                List<Map<String, Object>> classes = api.getMyClasses(jwtStore, state);
+                List<ClassItem> items = classes.stream()
+                        .map(this::mapClassItem)
+                        .toList();
 
                 Platform.runLater(() -> classBox.getItems().setAll(items));
             } catch (Exception ex) {
                 ex.printStackTrace();
                 Platform.runLater(() ->
-                        new Alert(
-                                Alert.AlertType.ERROR,
-                                helper.getMessage("teacher.attendance.loadClassesFailed") + " " + ex.getMessage(),
-                                ButtonType.OK
-                        ).showAndWait()
+                        showError(helper.getMessage("teacher.attendance.loadClassesFailed") + " " + ex.getMessage())
                 );
             }
         }).start();
+    }
 
-        classBox.setOnAction(e -> {
-            ClassItem selected = classBox.getValue();
-            if (selected == null) return;
+    private ClassItem mapClassItem(Map<String, Object> classMap) {
+        long id = Long.parseLong(String.valueOf(classMap.get("id")));
+        String classCode = String.valueOf(classMap.get("classCode"));
+        String name = String.valueOf(classMap.get("name"));
+        return new ClassItem(id, classCode + " — " + name);
+    }
 
-            currentSessionId[0] = -1L;
-            manualCode.setText("—");
-            qrImageView.setImage(null);
-            rows.clear();
-            rows.add(new StudentRow(-1L, helper.getMessage("teacher.attendance.loading.students"), "-", "—"));
+    private void showWarning(String message) {
+        new Alert(Alert.AlertType.WARNING, message, ButtonType.OK).showAndWait();
+    }
 
-            new Thread(() -> {
-                try {
-                    List<Map<String, Object>> students = api.getStudentsForClass(jwtStore, state, selected.id);
-
-                    Platform.runLater(() -> {
-                        rows.clear();
-                        for (var s : students) {
-                            long studentId = Long.parseLong(String.valueOf(s.get("id")));
-                            String fn = String.valueOf(s.get("firstName"));
-                            String ln = String.valueOf(s.get("lastName"));
-                            String email = String.valueOf(s.get("email"));
-                            StudentRow row = new StudentRow(studentId, fn + " " + ln, email, "—");
-                            row.setExcuseReason("");
-                            rows.add(row);
-                        }
-                    });
-                } catch (Exception ex) {
-                    ex.printStackTrace();
-                    Platform.runLater(() -> {
-                        rows.clear();
-                        new Alert(
-                                Alert.AlertType.ERROR,
-                                helper.getMessage("teacher.attendance.error.loadStudents") + " " + ex.getMessage(),
-                                ButtonType.OK
-                        ).showAndWait();
-                    });
-                }
-            }).start();
-        });
-
-        return AppLayout.wrapWithSidebar(
-                teacherName,
-                helper.getMessage("teacher.sidebar.title"),
-                helper.getMessage("teacher.sidebar.menu.dashboard"),
-                helper.getMessage("teacher.sidebar.menu.take_attendance"),
-                helper.getMessage("teacher.sidebar.menu.reports"),
-                helper.getMessage("teacher.sidebar.menu.email"),
-                page,
-                "second",
-                new AppLayout.Navigator() {
-                    @Override public void goDashboard() { router.go("teacher-dashboard"); }
-                    @Override public void goTakeAttendance() { router.go("teacher-take"); }
-                    @Override public void goReports() { router.go("teacher-reports"); }
-                    @Override public void goEmail() { router.go("teacher-email"); }
-                    @Override public void logout() {
-                        jwtStore.clear();
-                        router.go("login");
-                    }
-                }
-        );
+    private void showError(String message) {
+        new Alert(Alert.AlertType.ERROR, message, ButtonType.OK).showAndWait();
     }
 
     private String localizeAttendanceStatus(String status) {

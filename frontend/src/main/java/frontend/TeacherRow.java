@@ -5,20 +5,12 @@ import javafx.beans.property.StringProperty;
 
 public class TeacherRow {
 
-    private final StringProperty teacherName;
-    private final StringProperty email;
+    private final StringProperty teacherName = new SimpleStringProperty();
+    private final StringProperty email = new SimpleStringProperty();
 
-    public TeacherRow(String name, String email) {
-        this.teacherName = new SimpleStringProperty(name);
-        this.email = new SimpleStringProperty(email);
-    }
-
-    public StringProperty teacherNameProperty() {
-        return teacherName;
-    }
-
-    public StringProperty emailProperty() {
-        return email;
+    public TeacherRow(String teacherName, String email) {
+        this.teacherName.set(teacherName);
+        this.email.set(email);
     }
 
     public String getTeacherName() {
@@ -27,5 +19,13 @@ public class TeacherRow {
 
     public String getEmail() {
         return email.get();
+    }
+
+    public StringProperty teacherNameProperty() {
+        return teacherName;
+    }
+
+    public StringProperty emailProperty() {
+        return email;
     }
 }

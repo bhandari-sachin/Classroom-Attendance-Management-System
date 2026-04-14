@@ -82,7 +82,7 @@ public class MainApp extends Application {
 
         //Role previewRole = Role.STUDENT;
         //Role previewRole = Role.TEACHER;
-         Role previewRole = Role.ADMIN;
+        Role previewRole = Role.ADMIN;
 
         store.clear();
         store.save(new AuthState("demo-token", previewRole, "Demo User"));
