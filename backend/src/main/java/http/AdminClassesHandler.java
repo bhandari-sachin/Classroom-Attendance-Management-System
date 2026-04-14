@@ -18,7 +18,7 @@ import java.util.logging.Logger;
 public class AdminClassesHandler implements HttpHandler {
 
     private static final Logger LOGGER = Logger.getLogger(AdminClassesHandler.class.getName());
-    private static final String PATH_PREFIX = "/api/admin/classes/";
+    private static final String PATH_PREFIX = System.getProperty("admin.classes.path.prefix", "/api/admin/classes/");
     private static final String PATH_AVAILABLE_STUDENTS = "/available-students";
     private static final String PATH_ENROLL = "/enroll";
     private static final String METHOD_NOT_ALLOWED = "Method Not Allowed";
@@ -96,13 +96,13 @@ public class AdminClassesHandler implements HttpHandler {
         List<Map<String, Object>> payload = new ArrayList<>();
         for (var c : list) {
             payload.add(Map.of(
-                    "id", c.getId(),
-                    "classCode", n(c.getClassCode()),
-                    "name", n(c.getName()),
-                    "teacherEmail", n(c.getTeacherEmail()),
-                    "semester", n(c.getSemester()),
-                    "academicYear", n(c.getAcademicYear()),
-                    "students", c.getStudentsCount()
+                    "id", c.id(),
+                    "classCode", n(c.classCode()),
+                    "name", n(c.name()),
+                    "teacherEmail", n(c.teacherEmail()),
+                    "semester", n(c.semester()),
+                    "academicYear", n(c.academicYear()),
+                    "students", c.studentsCount()
             ));
         }
 
