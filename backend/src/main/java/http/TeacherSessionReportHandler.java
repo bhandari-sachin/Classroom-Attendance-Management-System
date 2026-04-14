@@ -10,7 +10,6 @@ import model.Session;
 import security.JwtService;
 
 import java.io.IOException;
-import java.sql.SQLException;
 import java.util.Map;
 
 public class TeacherSessionReportHandler extends BaseHandler {
@@ -41,11 +40,7 @@ public class TeacherSessionReportHandler extends BaseHandler {
         }
 
         Session session = null;
-        try {
-            session = sessionSQL.findById(sessionId);
-        } catch (SQLException e) {
-            throw new ApiException(500, "Database error");
-        }
+        session = sessionSQL.findById(sessionId);
         if (session == null) {
             throw new ApiException(404, "Session not found");
         }

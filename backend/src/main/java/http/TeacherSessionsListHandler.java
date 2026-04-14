@@ -4,12 +4,10 @@ import com.auth0.jwt.interfaces.DecodedJWT;
 import com.sun.net.httpserver.HttpExchange;
 import config.ClassSQL;
 import config.SessionSQL;
-import backend.exception.DatabaseException;
 import model.Session;
 import security.JwtService;
 
 import java.io.IOException;
-import java.sql.SQLException;
 import java.util.*;
 
 public class TeacherSessionsListHandler extends BaseHandler {
@@ -53,11 +51,7 @@ public class TeacherSessionsListHandler extends BaseHandler {
 
         List<Session> sessions =
                 null;
-        try {
-            sessions = Collections.singletonList(sessionSQL.findById(classId));
-        } catch (SQLException e) {
-            throw new DatabaseException("Failed to fetch session by classId: " + classId, e);
-        }
+        sessions = Collections.singletonList(sessionSQL.findById(classId));
 
         List<Map<String, Object>> payload = new ArrayList<>();
 

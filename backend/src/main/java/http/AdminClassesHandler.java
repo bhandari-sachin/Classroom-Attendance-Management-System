@@ -86,13 +86,13 @@ public class AdminClassesHandler extends BaseHandler implements HttpHandler {
         List<Map<String, Object>> payload = new ArrayList<>();
         for (var c : list) {
             payload.add(Map.of(
-                    "id", c.id,
-                    "classCode", n(c.classCode),
-                    "name", n(c.name),
-                    "teacherEmail", n(c.teacherEmail),
-                    "semester", n(c.semester),
-                    "academicYear", n(c.academicYear),
-                    "students", c.studentsCount
+                    "id", c.id(),
+                    "classCode", n(c.classCode()),
+                    "name", n(c.name()),
+                    "teacherEmail", n(c.teacherEmail()),
+                    "semester", n(c.semester()),
+                    "academicYear", n(c.academicYear()),
+                    "students", c.studentsCount()
             ));
         }
 

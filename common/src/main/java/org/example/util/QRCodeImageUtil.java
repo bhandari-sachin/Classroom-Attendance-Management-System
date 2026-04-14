@@ -8,6 +8,9 @@ import com.google.zxing.client.j2se.MatrixToImageWriter;
 import java.awt.image.BufferedImage;
 
 public class QRCodeImageUtil {
+    private QRCodeImageUtil() {
+        // Private constructor to prevent instantiation
+    }
 
     public static BufferedImage generateQRCodeImage(String text, int width, int height) {
         try {
