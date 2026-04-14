@@ -6,21 +6,32 @@ import config.LocalizationSQL;
 import service.TranslationService;
 
 import java.io.OutputStream;
+import java.io.IOException;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class I18nHandler implements HttpHandler {
+
+    private static final Logger LOGGER = Logger.getLogger(I18nHandler.class.getName());
+
+    private static final String METHOD_GET = "GET";
+    private static final String JSON_CONTENT_TYPE = "application/json; charset=UTF-8";
+    private static final String ERROR_METHOD_NOT_ALLOWED = "{\"error\":\"Method not allowed\"}";
+    private static final String ERROR_NOT_FOUND = "{\"error\":\"Not found\"}";
+    private static final String ERROR_SERVER = "{\"error\":\"Server error\"}";
 
     private final TranslationService service = new TranslationService();
 
     @Override
     public void handle(HttpExchange exchange) {
         try {
-            if (!"GET".equalsIgnoreCase(exchange.getRequestMethod())) {
-                sendJson(exchange, 405, "{\"error\":\"Method not allowed\"}");
+            if (!METHOD_GET.equalsIgnoreCase(exchange.getRequestMethod())) {
+                sendJson(exchange, 405, ERROR_METHOD_NOT_ALLOWED);
                 return;
             }
 
@@ -40,13 +51,14 @@ public class I18nHandler implements HttpHandler {
                 return;
             }
 
-            sendJson(exchange, 404, "{\"error\":\"Not found\"}");
+            sendJson(exchange, 404, ERROR_NOT_FOUND);
 
-        } catch (Exception e) {
-            e.printStackTrace();
+        } catch (IOException | RuntimeException e) {
+            LOGGER.log(Level.SEVERE, "Failed to handle i18n request", e);
             try {
-                sendJson(exchange, 500, "{\"error\":\"Server error\"}");
-            } catch (Exception ignored) {
+                sendJson(exchange, 500, ERROR_SERVER);
+            } catch (IOException ignored) {
+                LOGGER.fine("Fallback error response could not be sent");
             }
         }
     }
@@ -69,9 +81,9 @@ public class I18nHandler implements HttpHandler {
         return URLDecoder.decode(s, StandardCharsets.UTF_8);
     }
 
-    private static void sendJson(HttpExchange exchange, int status, String body) throws Exception {
+    private static void sendJson(HttpExchange exchange, int status, String body) throws IOException {
         byte[] bytes = body.getBytes(StandardCharsets.UTF_8);
-        exchange.getResponseHeaders().set("Content-Type", "application/json; charset=UTF-8");
+        exchange.getResponseHeaders().set("Content-Type", JSON_CONTENT_TYPE);
         exchange.sendResponseHeaders(status, bytes.length);
 
         try (OutputStream os = exchange.getResponseBody()) {

@@ -1,13 +1,22 @@
 package config;
 
 import java.io.BufferedReader;
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.sql.Connection;
+import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.stream.Collectors;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class DatabaseInitializer {
+
+    private static final Logger LOGGER = Logger.getLogger(DatabaseInitializer.class.getName());
+
+    private DatabaseInitializer() {
+    }
 
     public static void init() {
         try {
@@ -16,7 +25,7 @@ public class DatabaseInitializer {
                     .getResourceAsStream("classroom_attendance_schema.sql");
 
             if (inputStream == null) {
-                throw new RuntimeException("file not found in resources");
+                throw new IllegalStateException("file not found in resources");
             }
 
             String sql;
@@ -35,10 +44,10 @@ public class DatabaseInitializer {
                 }
             }
 
-            System.out.println("Database schema loaded successfully");
+            LOGGER.info("Database schema loaded successfully");
 
-        } catch (Exception e) {
-            e.printStackTrace();
+        } catch (IOException | SQLException e) {
+            LOGGER.log(Level.SEVERE, "Failed to initialize database schema", e);
         }
     }
 }
