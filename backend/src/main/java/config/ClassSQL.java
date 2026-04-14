@@ -24,53 +24,8 @@ public class ClassSQL {
     private static final String COL_EMAIL = "email";
     private static final String COL_STUDENT_CODE = "student_code";
 
-    public static class ClassView {
-        private final long id;
-        private final String classCode;
-        private final String name;
-        private final String teacherEmail;
-        private final String semester;
-        private final String academicYear;
-        private final int studentsCount;
-
-        public ClassView(long id, String classCode, String name,
-                         String teacherEmail, String semester, String academicYear, int studentsCount) {
-            this.id = id;
-            this.classCode = classCode;
-            this.name = name;
-            this.teacherEmail = teacherEmail;
-            this.semester = semester;
-            this.academicYear = academicYear;
-            this.studentsCount = studentsCount;
-        }
-
-        public long getId() {
-            return id;
-        }
-
-        public String getClassCode() {
-            return classCode;
-        }
-
-        public String getName() {
-            return name;
-        }
-
-        public String getTeacherEmail() {
-            return teacherEmail;
-        }
-
-        public String getSemester() {
-            return semester;
-        }
-
-        public String getAcademicYear() {
-            return academicYear;
-        }
-
-        public int getStudentsCount() {
-            return studentsCount;
-        }
+    public record ClassView(long id, String classCode, String name, String teacherEmail, String semester,
+                            String academicYear, int studentsCount) {
     }
 
     public List<ClassView> listAllForAdmin() {
@@ -115,13 +70,7 @@ public class ClassSQL {
     // ================== NEW: helpers for POST / create class ==================
 
     public Long findTeacherIdByEmail(String teacherEmail) {
-        String sql = """
-            SELECT id
-            FROM users
-            WHERE email = ?
-              AND user_type = 'TEACHER'
-            LIMIT 1
-        """;
+        String sql = "SELECT id FROM users WHERE " + COL_EMAIL + " = ? AND user_type = 'TEACHER' LIMIT 1";
 
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -132,7 +81,7 @@ public class ClassSQL {
             }
 
         } catch (SQLException e) {
-            LOGGER.log(Level.SEVERE, "Failed to find teacher by email", e);
+            throw new IllegalStateException("Failed to find teacher by email: " + e.getMessage(), e);
         }
         return null;
     }
@@ -253,7 +202,7 @@ public class ClassSQL {
                             "id", rs.getLong(COL_ID),
                             "firstName", rs.getString("first_name"),
                             "lastName", rs.getString("last_name"),
-                            "email", rs.getString(COL_EMAIL),
+                            COL_EMAIL, rs.getString(COL_EMAIL),
                             "studentCode", rs.getString(COL_STUDENT_CODE)
                     ));
                 }
@@ -318,9 +267,9 @@ public class ClassSQL {
             try (java.sql.ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
                     result.add(Map.of(
-                            "id", rs.getLong("id"),
-                            "classCode", rs.getString("class_code"),
-                            "name", rs.getString("name")
+                            "id", rs.getLong(COL_ID),
+                            "classCode", rs.getString(COL_CLASS_CODE),
+                            "name", rs.getString(COL_NAME)
                     ));
                 }
             }
@@ -363,13 +312,12 @@ public class ClassSQL {
                             "id", rs.getLong(COL_ID),
                             "firstName", rs.getString("first_name"),
                             "lastName", rs.getString("last_name"),
-                            "email", rs.getString(COL_EMAIL),
+                            COL_EMAIL, rs.getString(COL_EMAIL),
                             "studentCode", rs.getString(COL_STUDENT_CODE) == null ? "" : rs.getString(COL_STUDENT_CODE)
                     ));
                 }
             }
         } catch (SQLException | RuntimeException e) {
-            LOGGER.log(Level.SEVERE, "Failed to load available students", e);
             throw new IllegalStateException("Failed to load available students", e);
         }
 
@@ -400,13 +348,7 @@ public class ClassSQL {
     }
 
     public Long findStudentIdByEmail(String email) {
-        String sql = """
-        SELECT id
-        FROM users
-        WHERE email = ?
-          AND user_type = 'STUDENT'
-        LIMIT 1
-    """;
+        String sql = "SELECT id FROM users WHERE " + COL_EMAIL + " = ? AND user_type = 'STUDENT' LIMIT 1";
 
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {

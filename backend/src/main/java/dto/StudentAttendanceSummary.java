@@ -2,12 +2,12 @@ package dto;
 
 public class StudentAttendanceSummary {
 
-    public Long studentId;
-    public String firstName;
-    public String lastName;
-    public int present;
-    public int absent;
-    public int excused;
+    private Long studentId;
+    private String firstName;
+    private String lastName;
+    private int present;
+    private int absent;
+    private int excused;
 
     public StudentAttendanceSummary() {
     }
@@ -75,4 +75,3 @@ public class StudentAttendanceSummary {
         return (present * 100.0) / total;
     }
 }
-

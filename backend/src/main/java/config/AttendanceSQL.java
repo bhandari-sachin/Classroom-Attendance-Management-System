@@ -37,28 +37,100 @@ public class AttendanceSQL {
     private static final String COL_ABSENT_COUNT_ALT = "absent_count";
     private static final String COL_EXCUSED_COUNT_ALT = "excused_count";
     private static final String COL_TOTAL_DAYS = "total_days";
+    private static final String KEY_STATUS = "status";
     private static final String KEY_PRESENT = "present";
     private static final String KEY_ABSENT = "absent";
     private static final String KEY_EXCUSED = "excused";
     private static final String KEY_TOTAL_MARKED = "totalMarked";
-    private static final String PERIOD_YEAR_PREFIX = " AND YEAR(";
-    private static final String PERIOD_MONTH_PREFIX = " AND MONTH(";
-    private static final String PERIOD_CURRENT_SUFFIX = ") = YEAR(CURDATE()) ";
-    private static final String PERIOD_LAST_MONTH_SUFFIX = ") = YEAR(DATE_SUB(CURDATE(), INTERVAL 1 MONTH)) ";
-    private static final String PERIOD_MONTH_MATCH_SUFFIX = ") = MONTH(CURDATE()) ";
-    private static final String PERIOD_LAST_MONTH_MATCH_SUFFIX = ") = MONTH(DATE_SUB(CURDATE(), INTERVAL 1 MONTH)) ";
-    private static final String SESSION_ALIAS = "se";
-    private static final String STATUS_PRESENT = "PRESENT";
-    private static final String STATUS_ABSENT = "ABSENT";
-    private static final String STATUS_EXCUSED = "EXCUSED";
-    private static final String COL_STUDENT_CODE = "student_code";
 
-    private static String studentIdColumn() {
-        return new String(new char[] {'s', 't', 'u', 'd', 'e', 'n', 't', '_', 'i', 'd'});
-    }
 
-    private static String buildYearCondition(int year) {
-        return " AND YEAR(s.session_date) = " + year + " ";
+    private static final String PERIOD_FILTER_SESSION_DATE =
+            "AND (? IS NULL OR ? = 'ALL' "
+                    + "OR (? = 'THIS_MONTH' AND YEAR(s.session_date) = YEAR(CURDATE()) AND MONTH(s.session_date) = MONTH(CURDATE())) "
+                    + "OR (? = 'LAST_MONTH' AND YEAR(s.session_date) = YEAR(DATE_SUB(CURDATE(), INTERVAL 1 MONTH)) AND MONTH(s.session_date) = MONTH(DATE_SUB(CURDATE(), INTERVAL 1 MONTH))) "
+                    + "OR (? = 'THIS_YEAR' AND YEAR(s.session_date) = YEAR(CURDATE())) "
+                    + "OR (? NOT IN ('ALL', 'THIS_MONTH', 'LAST_MONTH'))) ";
+
+    private static final String PERIOD_FILTER_SE_SESSION_DATE =
+            "AND (? IS NULL OR ? = 'ALL' "
+                    + "OR (? = 'THIS_MONTH' AND YEAR(se.session_date) = YEAR(CURDATE()) AND MONTH(se.session_date) = MONTH(CURDATE())) "
+                    + "OR (? = 'LAST_MONTH' AND YEAR(se.session_date) = YEAR(DATE_SUB(CURDATE(), INTERVAL 1 MONTH)) AND MONTH(se.session_date) = MONTH(DATE_SUB(CURDATE(), INTERVAL 1 MONTH))) "
+                    + "OR (? = 'THIS_YEAR' AND YEAR(se.session_date) = YEAR(CURDATE())) "
+                    + "OR (? NOT IN ('ALL', 'THIS_MONTH', 'LAST_MONTH'))) ";
+
+    // getStudentStats — without classId filter
+    private static final String SQL_STUDENT_STATS =
+            "SELECT "
+                    + "SUM(CASE WHEN a.status = 'PRESENT' THEN 1 ELSE 0 END) AS present_count, "
+                    + "SUM(CASE WHEN a.status = 'ABSENT'  THEN 1 ELSE 0 END) AS absent_count, "
+                    + "SUM(CASE WHEN a.status = 'EXCUSED' THEN 1 ELSE 0 END) AS excused_count, "
+                    + "COUNT(*) AS total_days "
+                    + "FROM attendance a "
+                    + "JOIN sessions s ON a.session_id = s.id "
+                    + "WHERE a.student_id = ? "
+                    + PERIOD_FILTER_SESSION_DATE;
+
+    // getStudentStats — with classId filter
+    private static final String SQL_STUDENT_STATS_BY_CLASS =
+            "SELECT "
+                    + "SUM(CASE WHEN a.status = 'PRESENT' THEN 1 ELSE 0 END) AS present_count, "
+                    + "SUM(CASE WHEN a.status = 'ABSENT'  THEN 1 ELSE 0 END) AS absent_count, "
+                    + "SUM(CASE WHEN a.status = 'EXCUSED' THEN 1 ELSE 0 END) AS excused_count, "
+                    + "COUNT(*) AS total_days "
+                    + "FROM attendance a "
+                    + "JOIN sessions s ON a.session_id = s.id "
+                    + "WHERE a.student_id = ? AND s.class_id = ? "
+                    + PERIOD_FILTER_SESSION_DATE;
+
+    // getStudentAttendanceViews — without classId filter
+    private static final String SQL_STUDENT_ATTENDANCE_VIEWS =
+            "SELECT s.session_date, ast.label AS status "
+                    + "FROM attendance a "
+                    + "JOIN sessions s ON a.session_id = s.id "
+                    + "JOIN attendance_status_translation ast ON a.status = ast.status_code "
+                    + "WHERE a.student_id = ? AND ast.language_code = ? "
+                    + PERIOD_FILTER_SESSION_DATE
+                    + "ORDER BY s.session_date DESC";
+
+    // getStudentAttendanceViews — with classId filter
+    private static final String SQL_STUDENT_ATTENDANCE_VIEWS_BY_CLASS =
+            "SELECT s.session_date, ast.label AS status "
+                    + "FROM attendance a "
+                    + "JOIN sessions s ON a.session_id = s.id "
+                    + "JOIN attendance_status_translation ast ON a.status = ast.status_code "
+                    + "WHERE a.student_id = ? AND ast.language_code = ? AND s.class_id = ? "
+                    + PERIOD_FILTER_SESSION_DATE
+                    + "ORDER BY s.session_date DESC";
+
+    // getAdminAttendanceReport
+    private static final String SQL_ADMIN_ATTENDANCE_REPORT =
+            "SELECT u.id AS student_id, u.first_name, u.last_name, se.session_date, ast.label AS status "
+                    + "FROM attendance a "
+                    + "JOIN sessions se ON a.session_id = se.id "
+                    + "JOIN users u ON a.student_id = u.id "
+                    + "JOIN attendance_status_translation ast ON a.status = ast.status_code "
+                    + "WHERE se.class_id = ? AND ast.language_code = ? "
+                    + PERIOD_FILTER_SE_SESSION_DATE
+                    + "AND (CAST(u.id AS CHAR) LIKE ? OR LOWER(u.first_name) LIKE ? "
+                    + "OR LOWER(u.last_name) LIKE ? OR LOWER(CONCAT(u.first_name, ' ', u.last_name)) LIKE ?) "
+                    + "ORDER BY u.last_name, u.first_name, se.session_date DESC";
+
+    // filterAttendanceByStudent
+    private static final String SQL_FILTER_ATTENDANCE_BY_STUDENT =
+            "SELECT u.id AS student_id, u.first_name, u.last_name, se.session_date, ast.label AS status "
+                    + "FROM attendance a "
+                    + "JOIN sessions se ON a.session_id = se.id "
+                    + "JOIN users u ON a.student_id = u.id "
+                    + "JOIN attendance_status_translation ast ON a.status = ast.status_code "
+                    + "WHERE se.class_id = ? AND ast.language_code = ? "
+                    + "AND (CAST(u.id AS CHAR) LIKE ? OR LOWER(u.first_name) LIKE ? "
+                    + "OR LOWER(u.last_name) LIKE ? OR LOWER(CONCAT(u.first_name, ' ', u.last_name)) LIKE ?) "
+                    + "ORDER BY u.last_name, u.first_name, se.session_date";
+
+    private static void bindPeriodParameters(PreparedStatement stmt, int startIndex, String period) throws SQLException {
+        for (int i = 0; i < 6; i++) {
+            stmt.setString(startIndex + i, period);
+        }
     }
 
     public boolean exists(Long studentId, Long sessionId) {
@@ -121,7 +193,7 @@ public class AttendanceSQL {
     // Fetch attendance records for a student
     public List<Attendance> findByStudentId(Long studentId) {
         List<Attendance> attendanceList = new ArrayList<>();
-        String sql = "SELECT " + COL_STUDENT_ID + ", " + COL_SESSION_ID + ", " + COL_STATUS + ", " + COL_MARKED_BY + " FROM attendance WHERE student_id = ?";
+        String sql = "SELECT student_id, session_id, status, marked_by FROM attendance WHERE student_id = ?";
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
 
@@ -146,7 +218,7 @@ public class AttendanceSQL {
     // Fetch attendance records for a class
     public List<Attendance> findByClassId(Long classId) {
         List<Attendance> attendanceList = new ArrayList<>();
-        String sql = "SELECT a." + COL_STUDENT_ID + ", a." + COL_SESSION_ID + ", a." + COL_STATUS + ", a." + COL_MARKED_BY + " FROM attendance a JOIN sessions s ON a.session_id = s.id WHERE s.class_id = ?";
+        String sql = "SELECT a.student_id, a.session_id, a.status, a.marked_by FROM attendance a JOIN sessions s ON a.session_id = s.id WHERE s.class_id = ?";
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
 
@@ -176,29 +248,9 @@ public class AttendanceSQL {
     ) {
 
         List<AttendanceView> results = new ArrayList<>();
-        String studentIdColumn = studentIdColumn();
-
-        String sql = "SELECT u.id AS student_id,\n" +
-                "       u.first_name,\n" +
-                "       u.last_name,\n" +
-                "       se.session_date,\n" + // NOSONAR
-                "       ast.label AS status\n" +
-                "FROM attendance a\n" +
-                "JOIN sessions se ON a.session_id = se.id\n" +
-                "JOIN users u ON a." + studentIdColumn + " = u.id\n" +
-                "JOIN attendance_status_translation ast ON a.status = ast.status_code\n" +
-                "WHERE se.class_id = ?\n" +
-                "  AND ast.language_code = ?\n" +
-                "  AND (\n" +
-                "        CAST(u." + studentIdColumn + " AS CHAR) LIKE ?\n" +
-                "     OR LOWER(u.first_name) LIKE ?\n" +
-                "     OR LOWER(u.last_name) LIKE ?\n" +
-                "     OR LOWER(CONCAT(u.first_name, ' ', u.last_name)) LIKE ?\n" +
-                "  )\n" +
-                "ORDER BY u.last_name, u.first_name, se.session_date";
 
         try (Connection conn = DatabaseConnection.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
+             PreparedStatement stmt = conn.prepareStatement(SQL_FILTER_ATTENDANCE_BY_STUDENT)) {
 
             String term = "%" + searchTerm.toLowerCase() + "%";
 
@@ -213,7 +265,7 @@ public class AttendanceSQL {
 
             while (rs.next()) {
                 results.add(new AttendanceView(
-                        rs.getLong("student_id"),
+                        rs.getLong(COL_STUDENT_ID),
                         rs.getString(COL_FIRST_NAME),
                         rs.getString(COL_LAST_NAME),
                         rs.getDate(COL_SESSION_DATE).toLocalDate(),
@@ -229,7 +281,7 @@ public class AttendanceSQL {
     }
 
     public String getSessionCode(Long sessionId) {
-        String sql = "SELECT " + COL_QR_TOKEN + " FROM sessions WHERE id = ?";
+        String sql = "SELECT qr_token FROM sessions WHERE id = ?";
 
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
@@ -306,7 +358,7 @@ public class AttendanceSQL {
         return new dto.AttendanceStats(0, 0, 0, 0);
     }
     public Long findSessionIdByCode(String code) {
-        String sql = "SELECT id FROM sessions WHERE " + COL_QR_TOKEN + " = ?";
+        String sql = "SELECT id FROM sessions WHERE qr_token = ?";
 
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
@@ -351,13 +403,13 @@ public class AttendanceSQL {
 
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
-                        results.add(new dto.AttendanceView(
-                                rs.getLong(COL_STUDENT_ID),
-                                rs.getString(COL_FIRST_NAME),
-                                rs.getString(COL_LAST_NAME),
-                                rs.getDate(COL_SESSION_DATE).toLocalDate(),
-                                rs.getString(COL_STATUS)
-                        ));
+                    results.add(new dto.AttendanceView(
+                            rs.getLong(COL_STUDENT_ID),
+                            rs.getString(COL_FIRST_NAME),
+                            rs.getString(COL_LAST_NAME),
+                            rs.getDate(COL_SESSION_DATE).toLocalDate(),
+                            rs.getString(COL_STATUS)
+                    ));
                 }
             }
         } catch (SQLException e) {
@@ -466,7 +518,7 @@ public class AttendanceSQL {
                                 "firstName", rs.getString(COL_FIRST_NAME),
                                 "lastName", rs.getString(COL_LAST_NAME),
                                 "email", rs.getString("email"),
-                                "status", rs.getString(COL_STATUS)
+                                KEY_STATUS, rs.getString(COL_STATUS)
                         ));
                     }
                 }
@@ -479,9 +531,9 @@ public class AttendanceSQL {
         double rate = (total == 0) ? 0.0 : (present * 100.0) / total;
 
         result.put("stats", java.util.Map.of(
-                "present", present,
-                "absent", absent,
-                "excused", excused,
+                KEY_PRESENT, present,
+                KEY_ABSENT, absent,
+                KEY_EXCUSED, excused,
                 "total", total,
                 "rate", rate
         ));
@@ -517,46 +569,26 @@ public class AttendanceSQL {
             return 0;
         }
     }
-    private String buildPeriodCondition(String period) {
-        if (period == null || period.equalsIgnoreCase("ALL")) {
-            return "";
-        }
-
-        return switch (period) {
-            case "THIS_MONTH" -> PERIOD_YEAR_PREFIX + "s.session_date" + PERIOD_CURRENT_SUFFIX + PERIOD_MONTH_PREFIX + "s.session_date" + PERIOD_MONTH_MATCH_SUFFIX;
-            case "LAST_MONTH" -> PERIOD_YEAR_PREFIX + "s.session_date" + PERIOD_LAST_MONTH_SUFFIX + PERIOD_MONTH_PREFIX + "s.session_date" + PERIOD_LAST_MONTH_MATCH_SUFFIX;
-            case "THIS_YEAR" -> PERIOD_YEAR_PREFIX + "s.session_date" + PERIOD_CURRENT_SUFFIX;
-            default -> "";
-        };
-    }
     public dto.AttendanceStats getStudentStats(Long studentId, Long classId, String period) {
-        String sql = String.format("""
-        SELECT
-            SUM(CASE WHEN a.status = '%s' THEN 1 ELSE 0 END) AS %s,
-            SUM(CASE WHEN a.status = '%s' THEN 1 ELSE 0 END) AS %s,
-            SUM(CASE WHEN a.status = '%s' THEN 1 ELSE 0 END) AS %s,
-            COUNT(*) AS %s
-        FROM attendance a
-        JOIN sessions s ON a.session_id = s.id
-        WHERE a.student_id = ?
-        """, STATUS_PRESENT, COL_PRESENT_COUNT_ALT, STATUS_ABSENT, COL_ABSENT_COUNT_ALT, STATUS_EXCUSED, COL_EXCUSED_COUNT_ALT, COL_TOTAL_DAYS)
-                + (classId != null ? " AND s.class_id = ? " : "") + buildPeriodCondition(period);
+        final String sql = classId != null ? SQL_STUDENT_STATS_BY_CLASS : SQL_STUDENT_STATS;
 
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
 
-            stmt.setLong(1, studentId);
+            int parameterIndex = 1;
+            stmt.setLong(parameterIndex++, studentId);
             if (classId != null) {
-                stmt.setLong(2, classId);
+                stmt.setLong(parameterIndex++, classId);
             }
+            bindPeriodParameters(stmt, parameterIndex, period);
 
             ResultSet rs = stmt.executeQuery();
 
             if (rs.next()) {
-                    int present = rs.getInt(COL_PRESENT_COUNT_ALT);
-                    int absent = rs.getInt(COL_ABSENT_COUNT_ALT);
-                    int excused = rs.getInt(COL_EXCUSED_COUNT_ALT);
-                    int total = rs.getInt(COL_TOTAL_DAYS);
+                int present = rs.getInt(COL_PRESENT_COUNT_ALT);
+                int absent = rs.getInt(COL_ABSENT_COUNT_ALT);
+                int excused = rs.getInt(COL_EXCUSED_COUNT_ALT);
+                int total = rs.getInt(COL_TOTAL_DAYS);
 
                 return new dto.AttendanceStats(present, absent, excused, total);
             }
@@ -568,27 +600,20 @@ public class AttendanceSQL {
         }
     }
     public List<dto.AttendanceView> getStudentAttendanceViews(Long studentId, Long classId, String period, String languageCode) {
-        String sql = """
-        SELECT
-            s.session_date,
-            ast.label AS status
-        FROM attendance a
-        JOIN sessions s ON a.session_id = s.id
-        JOIN attendance_status_translation ast ON a.status = ast.status_code
-        WHERE a.student_id = ?
-        AND ast.language_code = ?
-        """ + (classId != null ? " AND s.class_id = ? " : "") + buildPeriodCondition(period) + " ORDER BY s.session_date DESC ";
+        final String sql = classId != null ? SQL_STUDENT_ATTENDANCE_VIEWS_BY_CLASS : SQL_STUDENT_ATTENDANCE_VIEWS;
 
         List<dto.AttendanceView> list = new java.util.ArrayList<>();
 
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
 
-            stmt.setLong(1, studentId);
-            stmt.setString(2, languageCode);
+            int parameterIndex = 1;
+            stmt.setLong(parameterIndex++, studentId);
+            stmt.setString(parameterIndex++, languageCode);
             if (classId != null) {
-                stmt.setLong(3, classId);
+                stmt.setLong(parameterIndex++, classId);
             }
+            bindPeriodParameters(stmt, parameterIndex, period);
 
             ResultSet rs = stmt.executeQuery();
 
@@ -608,41 +633,21 @@ public class AttendanceSQL {
     public List<dto.AttendanceView> getAdminAttendanceReport(Long classId, String period, String searchTerm, String languageCode) {
         List<dto.AttendanceView> results = new ArrayList<>();
 
-        String sql = """
-        SELECT
-            u.id AS student_id,
-            u.first_name,
-            u.last_name,
-            se.session_date,
-            ast.label AS status
-        FROM attendance a
-        JOIN sessions se ON a.session_id = se.id
-        JOIN users u ON a.student_id = u.id
-        JOIN attendance_status_translation ast ON a.status = ast.status_code
-        WHERE se.class_id = ?
-            AND ast.language_code = ?
-        """ + buildPeriodConditionForSessionAlias(period) + """
-          AND (
-                CAST(u.id AS CHAR) LIKE ?
-             OR LOWER(u.first_name) LIKE ?
-             OR LOWER(u.last_name) LIKE ?
-             OR LOWER(CONCAT(u.first_name, ' ', u.last_name)) LIKE ?
-          )
-        ORDER BY u.last_name, u.first_name, se.session_date DESC
-        """;
-
         try (Connection conn = DatabaseConnection.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
+             PreparedStatement stmt = conn.prepareStatement(SQL_ADMIN_ATTENDANCE_REPORT)) {
 
             String safeSearch = searchTerm == null ? "" : searchTerm.trim().toLowerCase();
             String likeText = "%" + safeSearch + "%";
 
-            stmt.setLong(1, classId);
-            stmt.setString(2, languageCode);
-            stmt.setString(3, "%" + safeSearch + "%");
-            stmt.setString(4, likeText);
-            stmt.setString(5, likeText);
-            stmt.setString(6, likeText);
+            int parameterIndex = 1;
+            stmt.setLong(parameterIndex++, classId);
+            stmt.setString(parameterIndex++, languageCode);
+            bindPeriodParameters(stmt, parameterIndex, period);
+            parameterIndex += 6;
+            stmt.setString(parameterIndex++, "%" + safeSearch + "%");
+            stmt.setString(parameterIndex++, likeText);
+            stmt.setString(parameterIndex++, likeText);
+            stmt.setString(parameterIndex, likeText);
 
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
@@ -662,27 +667,10 @@ public class AttendanceSQL {
 
         return results;
     }
-    private String buildPeriodConditionForSessionAlias(String period) {
-        if (period == null || period.equalsIgnoreCase("ALL")) {
-            return "";
-        }
-
-        return switch (period) {
-            case "THIS_MONTH" -> PERIOD_YEAR_PREFIX + SESSION_ALIAS + ".session_date" + PERIOD_CURRENT_SUFFIX + PERIOD_MONTH_PREFIX + SESSION_ALIAS + ".session_date" + PERIOD_MONTH_MATCH_SUFFIX;
-            case "LAST_MONTH" -> PERIOD_YEAR_PREFIX + SESSION_ALIAS + ".session_date" + PERIOD_LAST_MONTH_SUFFIX + PERIOD_MONTH_PREFIX + SESSION_ALIAS + ".session_date" + PERIOD_LAST_MONTH_MATCH_SUFFIX;
-            case "THIS_YEAR" -> PERIOD_YEAR_PREFIX + SESSION_ALIAS + ".session_date" + PERIOD_CURRENT_SUFFIX;
-            default -> "";
-        };
-    }
 
     // exporting stats
     @SuppressWarnings("java:S1172")
     public List<StudentClassReportRow> getStudentYearlyReport(Long studentId, int year) { // NOSONAR
-
-        switch (year) {
-            default -> {
-            }
-        }
 
         String sql = """
         SELECT c.name,
@@ -696,7 +684,7 @@ public class AttendanceSQL {
         JOIN sessions s ON a.session_id = s.id
         JOIN classes c ON s.class_id = c.id
         WHERE a.student_id = ?
-        """ + buildYearCondition(year) + """
+          AND YEAR(s.session_date) = ?
         GROUP BY c.name, u.student_code
     """;
 
@@ -706,6 +694,7 @@ public class AttendanceSQL {
              PreparedStatement stmt = conn.prepareStatement(sql)) {
 
             stmt.setLong(1, studentId);
+            stmt.setInt(2, year);
 
             ResultSet rs = stmt.executeQuery();
 
@@ -737,7 +726,7 @@ public class AttendanceSQL {
     public List<TeacherStudentReportRow> getTeacherClassReport(Long teacherId, Long classId, int year) {
 
         if (year < 0) {
-            LOGGER.fine("Ignoring negative year parameter: " + year);
+            LOGGER.log(Level.FINE, "Ignoring negative year parameter: {0}", year);
         }
 
         String sql = """
@@ -756,7 +745,7 @@ public class AttendanceSQL {
         WHERE c.teacher_id = ?
           AND c.id = ?
         GROUP BY c.name, t.first_name, t.last_name, u.id
-    """ + " /* year=" + year + " */";
+    """;
 
         List<TeacherStudentReportRow> list = new ArrayList<>();
 
@@ -797,17 +786,19 @@ public class AttendanceSQL {
 
     public List<AttendanceReportRow> getAllStudentsStats() {
 
-        String sql = "SELECT u.id,\n" +
-                "       u." + COL_FIRST_NAME + ",\n" +
-                "       u." + COL_LAST_NAME + ",\n" +
-                "       SUM(CASE WHEN a.status='" + STATUS_PRESENT + "' THEN 1 ELSE 0 END) present,\n" +
-                "       SUM(CASE WHEN a.status='" + STATUS_ABSENT + "' THEN 1 ELSE 0 END) absent,\n" +
-                "       SUM(CASE WHEN a.status='" + STATUS_EXCUSED + "' THEN 1 ELSE 0 END) excused,\n" +
-                "       COUNT(*) total\n" +
-                "FROM users u\n" +
-                "LEFT JOIN attendance a ON u.id = a.student_id\n" +
-                "WHERE u.user_type = 'STUDENT'\n" +
-                "GROUP BY u.id";
+        String sql = """
+                SELECT u.id,
+                       u.first_name,
+                       u.last_name,
+                       SUM(CASE WHEN a.status='PRESENT' THEN 1 ELSE 0 END) present,
+                       SUM(CASE WHEN a.status='ABSENT' THEN 1 ELSE 0 END) absent,
+                       SUM(CASE WHEN a.status='EXCUSED' THEN 1 ELSE 0 END) excused,
+                       COUNT(*) total
+                FROM users u
+                LEFT JOIN attendance a ON u.id = a.student_id
+                WHERE u.user_type = 'STUDENT'
+                GROUP BY u.id
+                """;
 
         List<AttendanceReportRow> list = new ArrayList<>();
         try(Connection conn = DatabaseConnection.getConnection();
@@ -820,9 +811,9 @@ public class AttendanceSQL {
                         rs.getLong("id"),
                         rs.getString(COL_FIRST_NAME),
                         rs.getString(COL_LAST_NAME),
-                        rs.getInt("present"),
-                        rs.getInt("absent"),
-                        rs.getInt("excused"),
+                        rs.getInt(KEY_PRESENT),
+                        rs.getInt(KEY_ABSENT),
+                        rs.getInt(KEY_EXCUSED),
                         rs.getInt("total")
                 ));
             }
