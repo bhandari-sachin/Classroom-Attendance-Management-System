@@ -1,10 +1,11 @@
 package http;
 
+import backend.exception.ApiException;
 import com.auth0.jwt.interfaces.Claim;
 import com.auth0.jwt.interfaces.DecodedJWT;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sun.net.httpserver.*;
-import config.ClassSQL;
+import config.AttendanceSQL;
+import dto.AttendanceView;
 import http.BaseHandler.RequestContext;
 import org.junit.jupiter.api.Test;
 import security.JwtService;
@@ -14,32 +15,27 @@ import java.net.InetSocketAddress;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
-import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
-class AdminClassesHandlerTest {
+class AdminAttendanceReportsHandlerTest {
 
-    private final ObjectMapper om = new ObjectMapper();
-
-    // -------------------------------------------------------------
-    // GET TEST
-    // -------------------------------------------------------------
     @Test
-    void getClasses_returns200AndList() throws Exception {
+    void missingClassId_throws400ApiException() throws Exception {
         JwtService jwtService = mock(JwtService.class);
-        ClassSQL classSQL = mock(ClassSQL.class);
+        AttendanceSQL attendanceSQL = mock(AttendanceSQL.class);
 
-        AdminClassesHandler handler = new AdminClassesHandler(jwtService, classSQL);
-        AdminClassesHandler spyHandler = spy(handler);
+        AdminAttendanceReportsHandler handler =
+                new AdminAttendanceReportsHandler(jwtService, attendanceSQL);
+        AdminAttendanceReportsHandler spyHandler = spy(handler);
 
         doReturn(null).when(spyHandler).requireAdmin(any(), any());
 
-        FakeExchange ex = new FakeExchange("GET", "/api/admin/classes", null);
+        FakeExchange ex = new FakeExchange("GET", "/admin/attendance", null);
         ex.getRequestHeaders().add("Authorization", "Bearer test-token");
 
-        // ✅ INLINE JWT MOCK (FIX)
+        // ✅ FIX: inline JWT mock (no helper method)
         DecodedJWT jwt = mock(DecodedJWT.class);
         Claim role = mock(Claim.class);
         when(role.asString()).thenReturn("ADMIN");
@@ -48,67 +44,56 @@ class AdminClassesHandlerTest {
         when(jwtService.verify("test-token")).thenReturn(jwt);
 
         RequestContext ctx = mock(RequestContext.class);
+        when(ctx.getClassId()).thenReturn(null);
 
-        ClassSQL.ClassView cv = mock(ClassSQL.ClassView.class);
-        cv.id = 1L;
-        cv.classCode = "MATH101";
-        cv.name = "Math";
+        ApiException exThrown =
+                assertThrows(ApiException.class, () -> spyHandler.handleRequest(ex, ctx));
 
-        when(classSQL.listAllForAdmin()).thenReturn(List.of(cv));
+        assertEquals(400, exThrown.getStatus());
+        assertTrue(exThrown.getMessage().contains("classId is required"));
+    }
+
+    @Test
+    void validRequest_callsSqlAndReturns200() throws Exception {
+        JwtService jwtService = mock(JwtService.class);
+        AttendanceSQL attendanceSQL = mock(AttendanceSQL.class);
+
+        AdminAttendanceReportsHandler handler =
+                new AdminAttendanceReportsHandler(jwtService, attendanceSQL);
+        AdminAttendanceReportsHandler spyHandler = spy(handler);
+
+        doReturn(null).when(spyHandler).requireAdmin(any(), any());
+
+        FakeExchange ex = new FakeExchange("GET", "/admin/attendance?lang=en", null);
+        ex.getRequestHeaders().add("Authorization", "Bearer test-token");
+
+        // ✅ FIX: inline JWT mock here too
+        DecodedJWT jwt = mock(DecodedJWT.class);
+        Claim role = mock(Claim.class);
+        when(role.asString()).thenReturn("ADMIN");
+        when(jwt.getClaim("role")).thenReturn(role);
+
+        when(jwtService.verify("test-token")).thenReturn(jwt);
+
+        RequestContext ctx = mock(RequestContext.class);
+        when(ctx.getClassId()).thenReturn(10L);
+        when(ctx.getPeriod()).thenReturn("WEEK");
+        when(ctx.getQuery("search", "")).thenReturn("");
+        when(ctx.getQuery("lang", "en")).thenReturn("en");
+
+        List<AttendanceView> rows = List.of(mock(AttendanceView.class));
+        when(attendanceSQL.getAdminAttendanceReport(10L, "WEEK", "", "en"))
+                .thenReturn(rows);
 
         spyHandler.handleRequest(ex, ctx);
 
         assertEquals(200, ex.statusCode);
-        assertTrue(ex.responseBodyString().contains("MATH101"));
+        assertFalse(ex.responseBodyString().isBlank());
     }
 
-    // -------------------------------------------------------------
-    // POST TEST
-    // -------------------------------------------------------------
-    @Test
-    void postClasses_createsClassAndReturns201() throws Exception {
-        JwtService jwtService = mock(JwtService.class);
-        ClassSQL classSQL = mock(ClassSQL.class);
-
-        AdminClassesHandler handler = new AdminClassesHandler(jwtService, classSQL);
-        AdminClassesHandler spyHandler = spy(handler);
-
-        doReturn(null).when(spyHandler).requireAdmin(any(), any());
-
-        FakeExchange ex = new FakeExchange("POST", "/api/admin/classes", """
-                {
-                  "classCode": "MATH101",
-                  "name": "Math",
-                  "teacherEmail": "teacher@test.com"
-                }
-                """);
-
-        ex.getRequestHeaders().add("Authorization", "Bearer test-token");
-
-        // ✅ INLINE JWT MOCK (FIX)
-        DecodedJWT jwt = mock(DecodedJWT.class);
-        Claim role = mock(Claim.class);
-        when(role.asString()).thenReturn("ADMIN");
-        when(jwt.getClaim("role")).thenReturn(role);
-
-        when(jwtService.verify("test-token")).thenReturn(jwt);
-
-        RequestContext ctx = mock(RequestContext.class);
-
-        when(classSQL.findTeacherIdByEmail("teacher@test.com")).thenReturn(5L);
-        when(classSQL.createClass(any(), any(), anyLong(), any(), any(), any()))
-                .thenReturn(99L);
-
-        spyHandler.handleRequest(ex, ctx);
-
-        assertEquals(201, ex.statusCode);
-        assertTrue(ex.responseBodyString().contains("created"));
-        assertTrue(ex.responseBodyString().contains("99"));
-    }
-
-    // -------------------------------------------------------------
+    // ---------------------------------------------------------------------
     // Fake HttpExchange
-    // -------------------------------------------------------------
+    // ---------------------------------------------------------------------
     static class FakeExchange extends HttpExchange {
         private final Headers reqHeaders = new Headers();
         private final Headers respHeaders = new Headers();

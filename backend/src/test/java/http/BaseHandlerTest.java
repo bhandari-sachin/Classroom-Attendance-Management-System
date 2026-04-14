@@ -1,7 +1,8 @@
 package http;
 
+import com.auth0.jwt.interfaces.Claim;
+import com.auth0.jwt.interfaces.DecodedJWT;
 import com.sun.net.httpserver.*;
-import config.ClassSQL;
 import org.junit.jupiter.api.Test;
 import security.JwtService;
 
@@ -9,50 +10,88 @@ import java.io.*;
 import java.net.InetSocketAddress;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
-import java.util.List;
-import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
-class TeacherClassesHandlerTest {
+class BaseHandlerTest {
 
     // -------------------------------------------------------------
-    // SUCCESS CASE
+    // Concrete implementation (since BaseHandler is abstract)
+    // -------------------------------------------------------------
+    static class TestHandler extends BaseHandler {
+        public TestHandler(JwtService jwtService) {
+            super(jwtService, "GET");
+        }
+
+        @Override
+        protected void handleRequest(HttpExchange ex, RequestContext ctx) {
+            try {
+                requireAdmin(ex, ctx);
+                HttpUtil.json(ex, 200, "OK");
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        }
+    }
+
+    // -------------------------------------------------------------
+    // TEST: method allowed + admin access
     // -------------------------------------------------------------
     @Test
-    void teacherClasses_returns200AndList() throws Exception {
+    void handle_validRequest_callsRequireAdmin() throws Exception {
 
         JwtService jwtService = mock(JwtService.class);
-        ClassSQL classSQL = mock(ClassSQL.class);
+        TestHandler handler = new TestHandler(jwtService);
 
-        TeacherClassesHandler handler =
-                new TeacherClassesHandler(jwtService, classSQL);
+        TestHandler spy = spy(handler);
 
-        TeacherClassesHandler spy = spy(handler);
+        doReturn(null).when(spy).requireAdmin(any(), any());
 
-        // bypass BaseHandler auth
-        doReturn(null).when(spy).requireTeacherOrAdmin(any(), any());
+        FakeExchange ex = new FakeExchange("GET", "/test", null);
 
         BaseHandler.RequestContext ctx = mock(BaseHandler.RequestContext.class);
-        when(ctx.getUserId()).thenReturn(42L);
-
-        List<Map<String, Object>> mockList = List.of(
-                Map.of("id", 1, "classCode", "MATH101"),
-                Map.of("id", 2, "classCode", "PHY101")
-        );
-
-        when(classSQL.listForTeacher(42L)).thenReturn(mockList);
-
-        FakeExchange ex = new FakeExchange("GET", "/teacher/classes", null);
 
         spy.handleRequest(ex, ctx);
 
-        assertEquals(200, ex.statusCode);
-        assertTrue(ex.responseBodyString().contains("MATH101"));
-        assertTrue(ex.responseBodyString().contains("PHY101"));
+        verify(spy).requireAdmin(ex, ctx);
+    }
 
-        verify(classSQL).listForTeacher(42L);
+    // -------------------------------------------------------------
+    // TEST: RequestContext parsing
+    // -------------------------------------------------------------
+    @Test
+    void requestContext_readsQueryParams() throws Exception {
+
+        JwtService jwtService = mock(JwtService.class);
+        TestHandler handler = new TestHandler(jwtService);
+
+        FakeExchange ex = new FakeExchange(
+                "GET",
+                "/test?classId=10&period=WEEK",
+                null
+        );
+
+        BaseHandler.RequestContext ctx = new BaseHandler.RequestContext(ex);
+
+        assertEquals(10L, ctx.getClassId());
+        assertEquals("WEEK", ctx.getPeriod());
+    }
+
+    // -------------------------------------------------------------
+    // TEST: authentication state in RequestContext
+    // -------------------------------------------------------------
+    @Test
+    void requestContext_authenticationFlag() throws Exception {
+
+        JwtService jwtService = mock(JwtService.class);
+        TestHandler handler = new TestHandler(jwtService);
+
+        FakeExchange ex = new FakeExchange("GET", "/test", null);
+
+        BaseHandler.RequestContext ctx = new BaseHandler.RequestContext(ex);
+
+        assertFalse(ctx.isAuthenticated());
     }
 
     // -------------------------------------------------------------
