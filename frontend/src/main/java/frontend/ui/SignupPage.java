@@ -2,14 +2,10 @@ package frontend.ui;
 
 import frontend.auth.AppRouter;
 import frontend.auth.AuthService;
-import frontend.auth.AuthState;
 import frontend.auth.JwtStore;
 import frontend.auth.Role;
-import frontend.auth.RoleRedirect;
-import frontend.i18n.FrontendI18n;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
-import javafx.geometry.Pos;
 import javafx.scene.control.Button;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Control;
@@ -17,11 +13,9 @@ import javafx.scene.control.Label;
 import javafx.scene.control.ListCell;
 import javafx.scene.control.PasswordField;
 import javafx.scene.control.TextField;
-import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 
 import java.io.IOException;
-import java.util.Optional;
 
 /**
  * Signup page for creating a new user account.
@@ -31,21 +25,17 @@ import java.util.Optional;
  * select a role,
  * optionally provide a student code,
  * create an account,
- * and navigate back to login.</p>
+ * and navigate back to log in.</p>
  */
-public class SignupPage extends StackPane {
+public class SignupPage extends BaseAuthPage {
 
-    private static final double CARD_MAX_WIDTH = 420;
-    private static final int CARD_PADDING = 22;
-    private static final int CARD_SPACING = 10;
     private static final int FIELD_SPACING = 6;
-    private static final int MAX_ERROR_MESSAGE_LENGTH = 200;
 
     public SignupPage(AppRouter router, AuthService authService, JwtStore jwtStore) {
         validateAutoLogin(router, jwtStore);
 
-        Label titleLabel = createTitleLabel();
-        Label subtitleLabel = createSubtitleLabel();
+        Label titleLabel = createTitleLabel("signup.title", "Create Account");
+        Label subtitleLabel = createSubtitleLabel("signup.subtitle", "Sign up to continue");
 
         SignupFormFields fields = createSignupFormFields();
         SignupMessages messages = createSignupMessages();
@@ -71,39 +61,9 @@ public class SignupPage extends StackPane {
                 loginButton
         );
 
-        StackPane.setAlignment(card, Pos.CENTER);
-        getChildren().add(card);
+        showCenteredCard(card);
     }
 
-    /**
-     * Redirects the user immediately if an authentication state already exists.
-     */
-    private void validateAutoLogin(AppRouter router, JwtStore jwtStore) {
-        Optional<AuthState> existingState = jwtStore.load();
-        existingState.ifPresent(state -> router.go(RoleRedirect.routeFor(state.getRole())));
-    }
-
-    /**
-     * Creates the page title label.
-     */
-    private Label createTitleLabel() {
-        Label title = new Label(t("signup.title", "Create Account"));
-        title.getStyleClass().add("title");
-        return title;
-    }
-
-    /**
-     * Creates the page subtitle label.
-     */
-    private Label createSubtitleLabel() {
-        Label subtitle = new Label(t("signup.subtitle", "Sign up to continue"));
-        subtitle.getStyleClass().add("subtitle");
-        return subtitle;
-    }
-
-    /**
-     * Creates all signup form fields.
-     */
     private SignupFormFields createSignupFormFields() {
         TextField firstNameField = createTextField("signup.firstname.placeholder", "First name");
         TextField lastNameField = createTextField("signup.lastname.placeholder", "Last name");
@@ -124,9 +84,6 @@ public class SignupPage extends StackPane {
         );
     }
 
-    /**
-     * Creates all message labels.
-     */
     private SignupMessages createSignupMessages() {
         return new SignupMessages(
                 createMessageLabel("error"),
@@ -134,47 +91,24 @@ public class SignupPage extends StackPane {
         );
     }
 
-    /**
-     * Creates a standard text field with translated placeholder text.
-     */
     private TextField createTextField(String placeholderKey, String fallbackPlaceholder) {
         TextField textField = new TextField();
         textField.setPromptText(t(placeholderKey, fallbackPlaceholder));
         return textField;
     }
 
-    /**
-     * Creates the password field.
-     */
     private PasswordField createPasswordField() {
         PasswordField passwordField = new PasswordField();
         passwordField.setPromptText(t("signup.password.placeholder", "Password"));
         return passwordField;
     }
 
-    /**
-     * Creates a styled field label.
-     */
     private Label createFieldLabel(String text) {
         Label label = new Label(text);
         label.getStyleClass().add("field-label");
         return label;
     }
 
-    /**
-     * Creates a styled message label.
-     */
-    private Label createMessageLabel(String styleClass) {
-        Label label = new Label();
-        label.getStyleClass().add(styleClass);
-        label.setVisible(false);
-        label.setManaged(false);
-        return label;
-    }
-
-    /**
-     * Creates the role selection combo box.
-     */
     private ComboBox<Role> createRoleComboBox() {
         ComboBox<Role> roleComboBox = new ComboBox<>();
         roleComboBox.getItems().addAll(Role.STUDENT, Role.TEACHER);
@@ -200,9 +134,6 @@ public class SignupPage extends StackPane {
         return roleComboBox;
     }
 
-    /**
-     * Binds student code visibility so it only appears for students.
-     */
     private void bindStudentCodeVisibility(ComboBox<Role> roleComboBox, Label studentCodeLabel, TextField studentCodeField) {
         studentCodeLabel.visibleProperty().bind(roleComboBox.valueProperty().isEqualTo(Role.STUDENT));
         studentCodeField.visibleProperty().bind(roleComboBox.valueProperty().isEqualTo(Role.STUDENT));
@@ -211,17 +142,12 @@ public class SignupPage extends StackPane {
         studentCodeField.managedProperty().bind(studentCodeField.visibleProperty());
     }
 
-    /**
-     * Creates the signup button and binds the signup action.
-     */
     private Button createSignupButton(AppRouter router,
                                       AuthService authService,
                                       SignupFormFields fields,
                                       SignupMessages messages) {
 
-        Button signupButton = new Button(t("signup.button.submit", "Sign Up"));
-        signupButton.getStyleClass().add("primary-btn");
-        signupButton.setMaxWidth(Double.MAX_VALUE);
+        Button signupButton = createPrimaryButton("signup.button.submit", "Sign Up");
 
         signupButton.setOnAction(event -> attemptSignup(
                 router,
@@ -234,31 +160,12 @@ public class SignupPage extends StackPane {
         return signupButton;
     }
 
-    /**
-     * Creates the login navigation button.
-     */
     private Button createLoginButton(AppRouter router) {
-        Button loginButton = new Button(t("signup.button.login", "Back to Login"));
-        loginButton.getStyleClass().add("link-button");
+        Button loginButton = createLinkButton("signup.button.login", "Back to Login");
         loginButton.setOnAction(event -> router.go("login"));
         return loginButton;
     }
 
-    /**
-     * Creates the main card container.
-     */
-    private VBox createCard(javafx.scene.Node... children) {
-        VBox card = new VBox(CARD_SPACING);
-        card.getStyleClass().add("card");
-        card.setMaxWidth(CARD_MAX_WIDTH);
-        card.setPadding(new Insets(CARD_PADDING));
-        card.getChildren().addAll(children);
-        return card;
-    }
-
-    /**
-     * Handles signup validation and backend request.
-     */
     private void attemptSignup(AppRouter router,
                                AuthService authService,
                                SignupFormFields fields,
@@ -299,9 +206,6 @@ public class SignupPage extends StackPane {
         signupThread.start();
     }
 
-    /**
-     * Performs the signup request in a background thread.
-     */
     private void performSignup(AppRouter router,
                                AuthService authService,
                                SignupData signupData,
@@ -343,9 +247,6 @@ public class SignupPage extends StackPane {
         }
     }
 
-    /**
-     * Extracts and normalizes signup input values.
-     */
     private SignupData extractSignupData(SignupFormFields fields) {
         String firstName = safeTrim(fields.firstNameField.getText());
         String lastName = safeTrim(fields.lastNameField.getText());
@@ -357,9 +258,6 @@ public class SignupPage extends StackPane {
         return new SignupData(firstName, lastName, email, password, role, studentCode);
     }
 
-    /**
-     * Validates signup form input and returns translated error message if invalid.
-     */
     private String validateSignupInput(String firstName,
                                        String lastName,
                                        String email,
@@ -386,18 +284,15 @@ public class SignupPage extends StackPane {
         return null;
     }
 
-    /**
-     * Creates a labeled field block.
-     */
     private static VBox field(String labelText, Control input) {
         Label label = new Label(labelText);
         label.getStyleClass().add("field-label");
-        return new VBox(FIELD_SPACING, label, input);
+
+        VBox box = new VBox(FIELD_SPACING, label, input);
+        box.setPadding(new Insets(0));
+        return box;
     }
 
-    /**
-     * Returns the translated label for a role.
-     */
     private String roleLabel(Role role) {
         return switch (role) {
             case STUDENT -> t("signup.role.student", "Student");
@@ -406,54 +301,6 @@ public class SignupPage extends StackPane {
         };
     }
 
-    /**
-     * Shows a message label.
-     */
-    private static void showMessage(Label label, String message) {
-        label.setText(message);
-        label.setVisible(true);
-        label.setManaged(true);
-    }
-
-    /**
-     * Hides a message label.
-     */
-    private static void hideMessage(Label label) {
-        label.setVisible(false);
-        label.setManaged(false);
-        label.setText("");
-    }
-
-    /**
-     * Safely trims text input.
-     */
-    private static String safeTrim(String value) {
-        return value == null ? "" : value.trim();
-    }
-
-    /**
-     * Cleans long or empty exception messages before displaying them in UI.
-     */
-    private static String cleanMessage(String message) {
-        if (message == null || message.isBlank()) {
-            return "Unknown error";
-        }
-        return message.length() > MAX_ERROR_MESSAGE_LENGTH
-                ? message.substring(0, MAX_ERROR_MESSAGE_LENGTH) + "..."
-                : message;
-    }
-
-    /**
-     * Returns a translated value, or a fallback if the key is missing.
-     */
-    private static String t(String key, String fallback) {
-        String value = FrontendI18n.t(key);
-        return key.equals(value) ? fallback : value;
-    }
-
-    /**
-     * Holder for all signup form controls.
-     */
     private static final class SignupFormFields {
         private final TextField firstNameField;
         private final TextField lastNameField;
@@ -480,9 +327,6 @@ public class SignupPage extends StackPane {
         }
     }
 
-    /**
-     * Holder for page message labels.
-     */
     private static final class SignupMessages {
         private final Label errorLabel;
         private final Label infoLabel;
@@ -493,9 +337,6 @@ public class SignupPage extends StackPane {
         }
     }
 
-    /**
-     * Signup input data.
-     */
     private record SignupData(String firstName,
                               String lastName,
                               String email,
