@@ -1,41 +1,46 @@
 package frontend.api;
 
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import frontend.auth.AuthState;
 import frontend.auth.JwtStore;
 
-import java.net.URI;
-import java.net.http.*;
+import java.io.IOException;
+import java.net.http.HttpClient;
 import java.util.List;
 import java.util.Map;
 
-public class StudentTeacherApi {
+/**
+ * API client for student-teacher related requests.
+ */
+public final class StudentTeacherApi extends BaseApiClient {
 
-    private final HttpClient client = HttpClient.newHttpClient();
-    private final ObjectMapper om = new ObjectMapper();
-    private final String baseUrl;
+    private final Paths paths;
 
     public StudentTeacherApi(String baseUrl) {
-        this.baseUrl = baseUrl;
+        this(baseUrl, HttpClient.newHttpClient(), new ObjectMapper(), Paths.defaults());
     }
 
-    private String token(JwtStore jwtStore, AuthState state) {
-        return jwtStore.load().map(AuthState::getToken).orElse(state.getToken());
+    public StudentTeacherApi(String baseUrl, HttpClient client, ObjectMapper objectMapper, Paths paths) {
+        super(baseUrl, client, objectMapper);
+
+        if (paths == null) {
+            throw new IllegalArgumentException("Paths must not be null.");
+        }
+        this.paths = paths;
     }
 
-    public List<Map<String, Object>> getTeachers(JwtStore jwtStore, AuthState state) throws Exception {
-        HttpRequest req = HttpRequest.newBuilder()
-                .uri(URI.create(baseUrl + "/api/student/teachers"))
-                .header("Authorization", "Bearer " + token(jwtStore, state))
-                .GET()
-                .build();
-
-        HttpResponse<String> res = client.send(req, HttpResponse.BodyHandlers.ofString());
-        if (res.statusCode() >= 400) {
-            throw new RuntimeException("Teachers failed: " + res.statusCode() + " " + res.body());
+    public record Paths(String teachersPath) {
+        public Paths {
+            requirePath(teachersPath, "teachersPath");
         }
 
-        return om.readValue(res.body(), new TypeReference<>() {});
+        public static Paths defaults() {
+            return new Paths("/api/student/teachers");
+        }
+    }
+
+    public List<Map<String, Object>> getTeachers(JwtStore jwtStore, AuthState state)
+            throws IOException, InterruptedException {
+        return readList(paths.teachersPath(), jwtStore, state);
     }
 }

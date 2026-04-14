@@ -1,193 +1,347 @@
 package frontend.ui;
 
-import frontend.auth.*;
-import frontend.i18n.FrontendI18n;
+import frontend.auth.AppRouter;
+import frontend.auth.AuthService;
+import frontend.auth.JwtStore;
+import frontend.auth.Role;
 import javafx.application.Platform;
-import javafx.geometry.Pos;
-import javafx.scene.control.*;
-import javafx.scene.layout.StackPane;
+import javafx.geometry.Insets;
+import javafx.scene.control.Button;
+import javafx.scene.control.ComboBox;
+import javafx.scene.control.Control;
+import javafx.scene.control.Label;
+import javafx.scene.control.ListCell;
+import javafx.scene.control.PasswordField;
+import javafx.scene.control.TextField;
 import javafx.scene.layout.VBox;
 
-import java.util.Optional;
+import java.io.IOException;
 
-public class SignupPage extends StackPane {
+/**
+ * Signup page for creating a new user account.
+ *
+ * <p>This page allows the user to:
+ * enter personal details,
+ * select a role,
+ * optionally provide a student code,
+ * create an account,
+ * and navigate back to log in.</p>
+ */
+public class SignupPage extends BaseAuthPage {
+
+    private static final int FIELD_SPACING = 6;
 
     public SignupPage(AppRouter router, AuthService authService, JwtStore jwtStore) {
+        validateAutoLogin(router, jwtStore);
 
-        VBox card = new VBox(10);
-        card.getStyleClass().add("card");
-        card.setMaxWidth(420);
-        card.setPadding(new javafx.geometry.Insets(22));
+        Label titleLabel = createTitleLabel("signup.title", "Create Account");
+        Label subtitleLabel = createSubtitleLabel("signup.subtitle", "Sign up to continue");
 
-        Label title = new Label(t("signup.title", "Create Account"));
-        title.getStyleClass().add("title");
+        SignupFormFields fields = createSignupFormFields();
+        SignupMessages messages = createSignupMessages();
 
-        Label sub = new Label(t("signup.subtitle", "Sign up to continue"));
-        sub.getStyleClass().add("subtitle");
+        bindStudentCodeVisibility(fields.roleComboBox, fields.studentCodeLabel, fields.studentCodeField);
 
-        TextField firstName = new TextField();
-        firstName.setPromptText(t("signup.firstname.placeholder", "First name"));
+        Button signupButton = createSignupButton(router, authService, fields, messages);
+        Button loginButton = createLoginButton(router);
 
-        TextField lastName = new TextField();
-        lastName.setPromptText(t("signup.lastname.placeholder", "Last name"));
-
-        TextField email = new TextField();
-        email.setPromptText(t("signup.email.placeholder", "Email"));
-
-        PasswordField password = new PasswordField();
-        password.setPromptText(t("signup.password.placeholder", "Password"));
-
-        ComboBox<Role> role = new ComboBox<>();
-        role.getItems().addAll(Role.STUDENT, Role.TEACHER);
-        role.setValue(Role.STUDENT);
-        role.setMaxWidth(Double.MAX_VALUE);
-
-        role.setCellFactory(listView -> new ListCell<>() {
-            @Override
-            protected void updateItem(Role item, boolean empty) {
-                super.updateItem(item, empty);
-                if (empty || item == null) {
-                    setText(null);
-                } else {
-                    setText(item == Role.STUDENT
-                            ? t("signup.role.student", "Student")
-                            : t("signup.role.teacher", "Teacher"));
-                }
-            }
-        });
-
-        role.setButtonCell(new ListCell<>() {
-            @Override
-            protected void updateItem(Role item, boolean empty) {
-                super.updateItem(item, empty);
-                if (empty || item == null) {
-                    setText(null);
-                } else {
-                    setText(item == Role.STUDENT
-                            ? t("signup.role.student", "Student")
-                            : t("signup.role.teacher", "Teacher"));
-                }
-            }
-        });
-
-        Label studentCodeLabel = new Label(t("signup.studentcode.label", "Student Code"));
-        studentCodeLabel.getStyleClass().add("field-label");
-
-        TextField studentCode = new TextField();
-        studentCode.setPromptText(t("signup.studentcode.placeholder", "Enter student code"));
-
-        studentCodeLabel.visibleProperty().bind(role.valueProperty().isEqualTo(Role.STUDENT));
-        studentCode.visibleProperty().bind(role.valueProperty().isEqualTo(Role.STUDENT));
-        studentCodeLabel.managedProperty().bind(studentCodeLabel.visibleProperty());
-        studentCode.managedProperty().bind(studentCode.visibleProperty());
-
-        Label error = new Label();
-        error.getStyleClass().add("error");
-        error.setVisible(false);
-        error.setManaged(false);
-
-        Label info = new Label();
-        info.getStyleClass().add("subtitle");
-        info.setVisible(false);
-        info.setManaged(false);
-
-        Button signupBtn = new Button(t("signup.button.submit", "Sign Up"));
-        signupBtn.getStyleClass().add("primary-btn");
-        signupBtn.setMaxWidth(Double.MAX_VALUE);
-
-        Button goLogin = new Button(t("signup.button.login", "Back to Login"));
-        goLogin.getStyleClass().add("link-button");
-        goLogin.setOnAction(e -> router.go("login"));
-
-        signupBtn.setOnAction(e -> {
-            hideMsg(error);
-            hideMsg(info);
-
-            String fn = firstName.getText().trim();
-            String ln = lastName.getText().trim();
-            String em = email.getText().trim();
-            String pw = password.getText();
-            Role r = role.getValue();
-            String sc = studentCode.getText().trim();
-
-            if (fn.isBlank() || ln.isBlank() || em.isBlank() || pw.isBlank()) {
-                showMsg(error, t("signup.error.required_fields", "Please fill in all required fields."));
-                return;
-            }
-            if (!em.contains("@")) {
-                showMsg(error, t("signup.error.invalid_email", "Please enter a valid email address."));
-                return;
-            }
-            if (pw.length() < 6) {
-                showMsg(error, t("signup.error.password_short", "Password must be at least 6 characters."));
-                return;
-            }
-            if (r == Role.STUDENT && sc.isBlank()) {
-                showMsg(error, t("signup.error.student_code_required", "Student code is required."));
-                return;
-            }
-
-            signupBtn.setDisable(true);
-
-            new Thread(() -> {
-                try {
-                    authService.signup(fn, ln, em, pw, r, (r == Role.STUDENT ? sc : null));
-
-                    Platform.runLater(() -> {
-                        signupBtn.setDisable(false);
-                        showMsg(info, t("signup.success.created", "Account created successfully."));
-                        router.go("login");
-                    });
-                } catch (Exception ex) {
-                    Platform.runLater(() -> {
-                        signupBtn.setDisable(false);
-                        showMsg(error, t("signup.error.failed", "Signup failed:") + " " + ex.getMessage());
-                    });
-                }
-            }).start();
-        });
-
-        card.getChildren().addAll(
-                title, sub,
-                field(t("signup.firstname.label", "First Name"), firstName),
-                field(t("signup.lastname.label", "Last Name"), lastName),
-                field(t("signup.email.label", "Email"), email),
-                field(t("signup.password.label", "Password"), password),
-                field(t("signup.role.label", "Role"), role),
-                studentCodeLabel, studentCode,
-                error,
-                info,
-                signupBtn,
-                goLogin
+        VBox card = createCard(
+                titleLabel,
+                subtitleLabel,
+                field(t("signup.firstname.label", "First Name"), fields.firstNameField),
+                field(t("signup.lastname.label", "Last Name"), fields.lastNameField),
+                field(t("signup.email.label", "Email"), fields.emailField),
+                field(t("signup.password.label", "Password"), fields.passwordField),
+                field(t("signup.role.label", "Role"), fields.roleComboBox),
+                fields.studentCodeLabel,
+                fields.studentCodeField,
+                messages.errorLabel,
+                messages.infoLabel,
+                signupButton,
+                loginButton
         );
 
-        StackPane.setAlignment(card, Pos.CENTER);
-        getChildren().add(card);
-
-        Optional<AuthState> existing = jwtStore.load();
-        existing.ifPresent(state -> router.go(RoleRedirect.routeFor(state.getRole())));
+        showCenteredCard(card);
     }
 
-    private static VBox field(String label, Control input) {
-        Label l = new Label(label);
-        l.getStyleClass().add("field-label");
-        return new VBox(6, l, input);
+    private SignupFormFields createSignupFormFields() {
+        TextField firstNameField = createTextField("signup.firstname.placeholder", "First name");
+        TextField lastNameField = createTextField("signup.lastname.placeholder", "Last name");
+        TextField emailField = createTextField("signup.email.placeholder", "Email");
+        PasswordField passwordField = createPasswordField();
+        ComboBox<Role> roleComboBox = createRoleComboBox();
+        Label studentCodeLabel = createFieldLabel(t("signup.studentcode.label", "Student Code"));
+        TextField studentCodeField = createTextField("signup.studentcode.placeholder", "Enter student code");
+
+        return new SignupFormFields(
+                firstNameField,
+                lastNameField,
+                emailField,
+                passwordField,
+                roleComboBox,
+                studentCodeLabel,
+                studentCodeField
+        );
     }
 
-    private static void showMsg(Label lbl, String msg) {
-        lbl.setText(msg);
-        lbl.setVisible(true);
-        lbl.setManaged(true);
+    private SignupMessages createSignupMessages() {
+        return new SignupMessages(
+                createMessageLabel("error"),
+                createMessageLabel("subtitle")
+        );
     }
 
-    private static void hideMsg(Label lbl) {
-        lbl.setVisible(false);
-        lbl.setManaged(false);
-        lbl.setText("");
+    private TextField createTextField(String placeholderKey, String fallbackPlaceholder) {
+        TextField textField = new TextField();
+        textField.setPromptText(t(placeholderKey, fallbackPlaceholder));
+        return textField;
     }
 
-    private static String t(String key, String fallback) {
-        String value = FrontendI18n.t(key);
-        return key.equals(value) ? fallback : value;
+    private PasswordField createPasswordField() {
+        PasswordField passwordField = new PasswordField();
+        passwordField.setPromptText(t("signup.password.placeholder", "Password"));
+        return passwordField;
+    }
+
+    private Label createFieldLabel(String text) {
+        Label label = new Label(text);
+        label.getStyleClass().add("field-label");
+        return label;
+    }
+
+    private ComboBox<Role> createRoleComboBox() {
+        ComboBox<Role> roleComboBox = new ComboBox<>();
+        roleComboBox.getItems().addAll(Role.STUDENT, Role.TEACHER);
+        roleComboBox.setValue(Role.STUDENT);
+        roleComboBox.setMaxWidth(Double.MAX_VALUE);
+
+        roleComboBox.setCellFactory(listView -> new ListCell<>() {
+            @Override
+            protected void updateItem(Role item, boolean empty) {
+                super.updateItem(item, empty);
+                setText(empty || item == null ? null : roleLabel(item));
+            }
+        });
+
+        roleComboBox.setButtonCell(new ListCell<>() {
+            @Override
+            protected void updateItem(Role item, boolean empty) {
+                super.updateItem(item, empty);
+                setText(empty || item == null ? null : roleLabel(item));
+            }
+        });
+
+        return roleComboBox;
+    }
+
+    private void bindStudentCodeVisibility(ComboBox<Role> roleComboBox, Label studentCodeLabel, TextField studentCodeField) {
+        studentCodeLabel.visibleProperty().bind(roleComboBox.valueProperty().isEqualTo(Role.STUDENT));
+        studentCodeField.visibleProperty().bind(roleComboBox.valueProperty().isEqualTo(Role.STUDENT));
+
+        studentCodeLabel.managedProperty().bind(studentCodeLabel.visibleProperty());
+        studentCodeField.managedProperty().bind(studentCodeField.visibleProperty());
+    }
+
+    private Button createSignupButton(AppRouter router,
+                                      AuthService authService,
+                                      SignupFormFields fields,
+                                      SignupMessages messages) {
+
+        Button signupButton = createPrimaryButton("signup.button.submit", "Sign Up");
+
+        signupButton.setOnAction(event -> attemptSignup(
+                router,
+                authService,
+                fields,
+                messages,
+                signupButton
+        ));
+
+        return signupButton;
+    }
+
+    private Button createLoginButton(AppRouter router) {
+        Button loginButton = createLinkButton("signup.button.login", "Back to Login");
+        loginButton.setOnAction(event -> router.go("login"));
+        return loginButton;
+    }
+
+    private void attemptSignup(AppRouter router,
+                               AuthService authService,
+                               SignupFormFields fields,
+                               SignupMessages messages,
+                               Button signupButton) {
+
+        hideMessage(messages.errorLabel);
+        hideMessage(messages.infoLabel);
+
+        SignupData signupData = extractSignupData(fields);
+
+        String validationError = validateSignupInput(
+                signupData.firstName(),
+                signupData.lastName(),
+                signupData.email(),
+                signupData.password(),
+                signupData.role(),
+                signupData.studentCode()
+        );
+
+        if (validationError != null) {
+            showMessage(messages.errorLabel, validationError);
+            return;
+        }
+
+        signupButton.setDisable(true);
+
+        Thread signupThread = new Thread(() -> performSignup(
+                router,
+                authService,
+                signupData,
+                messages,
+                signupButton
+        ));
+
+        signupThread.setName("signup-thread");
+        signupThread.setDaemon(true);
+        signupThread.start();
+    }
+
+    private void performSignup(AppRouter router,
+                               AuthService authService,
+                               SignupData signupData,
+                               SignupMessages messages,
+                               Button signupButton) {
+        try {
+            authService.signup(
+                    signupData.firstName(),
+                    signupData.lastName(),
+                    signupData.email(),
+                    signupData.password(),
+                    signupData.role(),
+                    signupData.role() == Role.STUDENT ? signupData.studentCode() : null
+            );
+
+            Platform.runLater(() -> {
+                signupButton.setDisable(false);
+                showMessage(messages.infoLabel, t("signup.success.created", "Account created successfully."));
+                router.go("login");
+            });
+
+        } catch (InterruptedException ex) {
+            Thread.currentThread().interrupt();
+            Platform.runLater(() -> {
+                signupButton.setDisable(false);
+                showMessage(
+                        messages.errorLabel,
+                        t("signup.error.failed", "Signup failed:") + " " + t("signup.error.interrupted", "Operation was interrupted.")
+                );
+            });
+        } catch (IOException | RuntimeException ex) {
+            Platform.runLater(() -> {
+                signupButton.setDisable(false);
+                showMessage(
+                        messages.errorLabel,
+                        t("signup.error.failed", "Signup failed:") + " " + cleanMessage(ex.getMessage())
+                );
+            });
+        }
+    }
+
+    private SignupData extractSignupData(SignupFormFields fields) {
+        String firstName = safeTrim(fields.firstNameField.getText());
+        String lastName = safeTrim(fields.lastNameField.getText());
+        String email = safeTrim(fields.emailField.getText());
+        String password = fields.passwordField.getText() == null ? "" : fields.passwordField.getText();
+        Role role = fields.roleComboBox.getValue();
+        String studentCode = safeTrim(fields.studentCodeField.getText());
+
+        return new SignupData(firstName, lastName, email, password, role, studentCode);
+    }
+
+    private String validateSignupInput(String firstName,
+                                       String lastName,
+                                       String email,
+                                       String password,
+                                       Role role,
+                                       String studentCode) {
+
+        if (firstName.isBlank() || lastName.isBlank() || email.isBlank() || password.isBlank()) {
+            return t("signup.error.required_fields", "Please fill in all required fields.");
+        }
+
+        if (!email.contains("@")) {
+            return t("signup.error.invalid_email", "Please enter a valid email address.");
+        }
+
+        if (password.length() < 6) {
+            return t("signup.error.password_short", "Password must be at least 6 characters.");
+        }
+
+        if (role == Role.STUDENT && studentCode.isBlank()) {
+            return t("signup.error.student_code_required", "Student code is required.");
+        }
+
+        return null;
+    }
+
+    private static VBox field(String labelText, Control input) {
+        Label label = new Label(labelText);
+        label.getStyleClass().add("field-label");
+
+        VBox box = new VBox(FIELD_SPACING, label, input);
+        box.setPadding(new Insets(0));
+        return box;
+    }
+
+    private String roleLabel(Role role) {
+        return switch (role) {
+            case STUDENT -> t("signup.role.student", "Student");
+            case TEACHER -> t("signup.role.teacher", "Teacher");
+            case ADMIN -> t("signup.role.admin", "Admin");
+        };
+    }
+
+    private static final class SignupFormFields {
+        private final TextField firstNameField;
+        private final TextField lastNameField;
+        private final TextField emailField;
+        private final PasswordField passwordField;
+        private final ComboBox<Role> roleComboBox;
+        private final Label studentCodeLabel;
+        private final TextField studentCodeField;
+
+        private SignupFormFields(TextField firstNameField,
+                                 TextField lastNameField,
+                                 TextField emailField,
+                                 PasswordField passwordField,
+                                 ComboBox<Role> roleComboBox,
+                                 Label studentCodeLabel,
+                                 TextField studentCodeField) {
+            this.firstNameField = firstNameField;
+            this.lastNameField = lastNameField;
+            this.emailField = emailField;
+            this.passwordField = passwordField;
+            this.roleComboBox = roleComboBox;
+            this.studentCodeLabel = studentCodeLabel;
+            this.studentCodeField = studentCodeField;
+        }
+    }
+
+    private static final class SignupMessages {
+        private final Label errorLabel;
+        private final Label infoLabel;
+
+        private SignupMessages(Label errorLabel, Label infoLabel) {
+            this.errorLabel = errorLabel;
+            this.infoLabel = infoLabel;
+        }
+    }
+
+    private record SignupData(String firstName,
+                              String lastName,
+                              String email,
+                              String password,
+                              Role role,
+                              String studentCode) {
     }
 }

@@ -1,120 +1,142 @@
 package frontend.ui;
 
-import frontend.auth.*;
-import frontend.i18n.FrontendI18n;
+import frontend.auth.AppRouter;
+import frontend.auth.AuthService;
+import frontend.auth.AuthState;
+import frontend.auth.JwtStore;
+import frontend.auth.RoleRedirect;
 import javafx.application.Platform;
-import javafx.geometry.Insets;
-import javafx.geometry.Pos;
-import javafx.scene.control.*;
-import javafx.scene.layout.*;
+import javafx.scene.control.Button;
+import javafx.scene.control.Label;
+import javafx.scene.control.PasswordField;
+import javafx.scene.control.TextField;
+import javafx.scene.layout.VBox;
 
-import java.util.Optional;
-
-public class LoginPage extends StackPane {
+/**
+ * Login page for user authentication.
+ *
+ * <p>This page allows the user to:
+ * enter email and password,
+ * authenticate against the backend,
+ * persist the JWT state,
+ * and redirect to the correct dashboard based on role.</p>
+ */
+public class LoginPage extends BaseAuthPage {
 
     public LoginPage(AppRouter router, AuthService authService, JwtStore jwtStore) {
+        validateAutoLogin(router, jwtStore);
 
-        setPadding(new Insets(24));
+        Label titleLabel = createTitleLabel("auth.login.title", "Login");
+        Label subtitleLabel = createSubtitleLabel("auth.login.subtitle", "Sign in to your account");
 
-        VBox card = new VBox(12);
-        card.setMaxWidth(420);
-        card.setPadding(new Insets(22));
-        card.getStyleClass().add("card");
+        TextField emailField = createEmailField();
+        PasswordField passwordField = createPasswordField();
+        Label errorLabel = createMessageLabel("error");
 
-        Label title = new Label(t("auth.login.title", "Login"));
-        title.getStyleClass().add("title");
+        Button loginButton = createLoginButton(router, authService, jwtStore, emailField, passwordField, errorLabel);
+        Button signupButton = createSignupButton(router);
 
-        Label sub = new Label(t("auth.login.subtitle", "Sign in to your account"));
-        sub.getStyleClass().add("subtitle");
-
-        // ✅ Font test (keep if you want Ethiopic support)
-        Label test = new Label("አማርኛ");
-        test.setStyle("-fx-font-family: 'Noto Sans Ethiopic'; -fx-font-size: 20px;");
-
-        TextField email = new TextField();
-        email.setPromptText(t("login.email.placeholder", "Email"));
-
-        PasswordField password = new PasswordField();
-        password.setPromptText(t("login.password.placeholder", "Password"));
-
-        Label error = new Label();
-        error.getStyleClass().add("error");
-        error.setManaged(false);
-        error.setVisible(false);
-
-        Button loginBtn = new Button(t("login.button.submit", "Login"));
-        loginBtn.getStyleClass().add("primary-btn");
-        loginBtn.setMaxWidth(Double.MAX_VALUE);
-
-        loginBtn.setOnAction(e -> {
-            error.setVisible(false);
-            error.setManaged(false);
-
-            String em = email.getText().trim();
-            String pw = password.getText();
-
-            if (em.isBlank() || pw.isBlank()) {
-                showError(error, t("login.error.empty_fields", "Please fill all fields"));
-                return;
-            }
-
-            loginBtn.setDisable(true);
-
-            new Thread(() -> {
-                try {
-                    AuthState state = authService.login(em, pw);
-
-                    Platform.runLater(() -> {
-                        jwtStore.save(state);
-                        router.go(RoleRedirect.routeFor(state.getRole()));
-                    });
-
-                } catch (Exception ex) {
-                    Platform.runLater(() -> {
-                        showError(
-                                error,
-                                t("login.error.failed", "Login failed:") + " " + cleanMessage(ex.getMessage())
-                        );
-                        loginBtn.setDisable(false);
-                    });
-                }
-            }).start();
-        });
-
-        Button goSignup = new Button(t("login.button.signup", "Create account"));
-        goSignup.getStyleClass().add("link-button");
-        goSignup.setOnAction(e -> router.go("signup"));
-
-        card.getChildren().addAll(
-                title,
-                sub,
-                email,
-                password,
-                error,
-                loginBtn,
-                goSignup
+        VBox card = createCard(
+                titleLabel,
+                subtitleLabel,
+                emailField,
+                passwordField,
+                errorLabel,
+                loginButton,
+                signupButton
         );
 
-        StackPane.setAlignment(card, Pos.CENTER);
-        getChildren().add(card);
-
-        Optional<AuthState> existing = jwtStore.load();
-        existing.ifPresent(state -> router.go(RoleRedirect.routeFor(state.getRole())));
+        showCenteredCard(card);
     }
 
-    private static void showError(Label error, String msg) {
-        error.setText(msg);
-        error.setVisible(true);
-        error.setManaged(true);
+    private TextField createEmailField() {
+        TextField emailField = new TextField();
+        emailField.setPromptText(t("login.email.placeholder", "Email"));
+        return emailField;
     }
 
-    private static String cleanMessage(String msg) {
-        if (msg == null || msg.isBlank()) return "Unknown error";
-        return msg.length() > 200 ? msg.substring(0, 200) + "..." : msg;
+    private PasswordField createPasswordField() {
+        PasswordField passwordField = new PasswordField();
+        passwordField.setPromptText(t("login.password.placeholder", "Password"));
+        return passwordField;
     }
 
-    private static String t(String key, String fallback) {
-        String value = FrontendI18n.t(key);
-        return key.equals(value) ? fallback : value;
+    private Button createLoginButton(AppRouter router,
+                                     AuthService authService,
+                                     JwtStore jwtStore,
+                                     TextField emailField,
+                                     PasswordField passwordField,
+                                     Label errorLabel) {
+
+        Button loginButton = createPrimaryButton("login.button.submit", "Login");
+
+        loginButton.setOnAction(event -> attemptLogin(
+                router,
+                authService,
+                jwtStore,
+                emailField,
+                passwordField,
+                errorLabel,
+                loginButton
+        ));
+
+        return loginButton;
+    }
+
+    private Button createSignupButton(AppRouter router) {
+        Button signupButton = createLinkButton("login.button.signup", "Create account");
+        signupButton.setOnAction(event -> router.go("signup"));
+        return signupButton;
+    }
+
+    private void attemptLogin(AppRouter router,
+                              AuthService authService,
+                              JwtStore jwtStore,
+                              TextField emailField,
+                              PasswordField passwordField,
+                              Label errorLabel,
+                              Button loginButton) {
+
+        hideMessage(errorLabel);
+
+        String email = safeTrim(emailField.getText());
+        String password = passwordField.getText() == null ? "" : passwordField.getText();
+
+        if (email.isBlank() || password.isBlank()) {
+            showMessage(errorLabel, t("login.error.empty_fields", "Please fill all fields"));
+            return;
+        }
+
+        loginButton.setDisable(true);
+
+        Thread loginThread = new Thread(() -> {
+            try {
+                AuthState state = authService.login(email, password);
+
+                Platform.runLater(() -> {
+                    jwtStore.save(state);
+                    router.go(RoleRedirect.routeFor(state.getRole()));
+                });
+
+            } catch (InterruptedException ex) {
+                Thread.currentThread().interrupt();
+                Platform.runLater(() -> {
+                    showMessage(errorLabel, t("login.error.failed", "Login interrupted."));
+                    loginButton.setDisable(false);
+                });
+            } catch (Exception ex) {
+                Platform.runLater(() -> {
+                    showMessage(
+                            errorLabel,
+                            t("login.error.failed", "Login failed:") + " " + cleanMessage(ex.getMessage())
+                    );
+                    loginButton.setDisable(false);
+                });
+            }
+        });
+
+        loginThread.setName("login-thread");
+        loginThread.setDaemon(true);
+        loginThread.start();
     }
 }

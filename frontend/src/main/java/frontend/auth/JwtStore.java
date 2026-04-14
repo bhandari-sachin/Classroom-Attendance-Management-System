@@ -1,34 +1,50 @@
 package frontend.auth;
 
+import java.util.Objects;
 import java.util.Optional;
 import java.util.prefs.Preferences;
 
+/**
+ * Stores and retrieves JWT authentication data using Java Preferences.
+ */
 public class JwtStore {
 
     private static final String KEY_TOKEN = "jwt_token";
     private static final String KEY_ROLE  = "jwt_role";
     private static final String KEY_NAME  = "jwt_name";
 
-    private final Preferences prefs = Preferences.userNodeForPackage(JwtStore.class);
+    private final Preferences preferences;
+
+    public JwtStore() {
+        this.preferences = Preferences.userNodeForPackage(JwtStore.class);
+    }
 
     public void save(AuthState state) {
-        prefs.put(KEY_TOKEN, state.getToken());
-        prefs.put(KEY_ROLE, state.getRole().name());
-        prefs.put(KEY_NAME, state.getName() == null ? "" : state.getName());
+        Objects.requireNonNull(state, "AuthState must not be null");
+
+        preferences.put(KEY_TOKEN, state.getToken());
+        preferences.put(KEY_ROLE, state.getRole().name());
+        preferences.put(KEY_NAME, state.getName() == null ? "" : state.getName());
     }
 
     public Optional<AuthState> load() {
-        String token = prefs.get(KEY_TOKEN, "");
-        if (token == null || token.isBlank()) return Optional.empty();
+        String token = preferences.get(KEY_TOKEN, null);
 
-        String role = prefs.get(KEY_ROLE, "STUDENT");
-        String name = prefs.get(KEY_NAME, "");
-        return Optional.of(new AuthState(token, Role.fromString(role), name));
+        if (token == null || token.isBlank()) {
+            return Optional.empty();
+        }
+
+        String roleValue = preferences.get(KEY_ROLE, Role.STUDENT.name());
+        String name = preferences.get(KEY_NAME, "");
+
+        Role role = Role.fromString(roleValue);
+
+        return Optional.of(new AuthState(token, role, name));
     }
 
     public void clear() {
-        prefs.remove(KEY_TOKEN);
-        prefs.remove(KEY_ROLE);
-        prefs.remove(KEY_NAME);
+        preferences.remove(KEY_TOKEN);
+        preferences.remove(KEY_ROLE);
+        preferences.remove(KEY_NAME);
     }
 }

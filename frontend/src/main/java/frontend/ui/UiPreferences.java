@@ -5,47 +5,77 @@ import javafx.scene.Scene;
 
 import java.util.prefs.Preferences;
 
-public class UiPreferences {
+/**
+ * Manages UI preferences such as theme and language.
+ */
+public final class UiPreferences {
 
-    private static final Preferences prefs = Preferences.userRoot().node("attendance-app");
+    private static final Preferences PREFS =
+            Preferences.userRoot().node("attendance-app");
 
     private static final String KEY_THEME = "theme";
     private static final String KEY_LANG = "lang";
+
+    private static final String DEFAULT_LANG = "en";
+    private static final Theme DEFAULT_THEME = Theme.LIGHT;
+
+    private UiPreferences() {
+        // Utility class
+    }
 
     public enum Theme {
         LIGHT, DARK
     }
 
+    // ===== Theme =====
+
     public static Theme getTheme() {
-        String t = prefs.get(KEY_THEME, "LIGHT");
+        String value = PREFS.get(KEY_THEME, DEFAULT_THEME.name());
         try {
-            return Theme.valueOf(t);
+            return Theme.valueOf(value);
         } catch (Exception e) {
-            return Theme.LIGHT;
+            return DEFAULT_THEME;
         }
     }
 
     public static void setTheme(Theme theme) {
-        prefs.put(KEY_THEME, theme.name());
+        if (theme != null) {
+            PREFS.put(KEY_THEME, theme.name());
+        }
     }
 
+    // ===== Language =====
+
     public static String getLanguage() {
-        return prefs.get(KEY_LANG, "en");
+        String lang = PREFS.get(KEY_LANG, DEFAULT_LANG);
+        return (lang == null || lang.isBlank()) ? DEFAULT_LANG : lang;
     }
 
     public static void setLanguage(String lang) {
-        prefs.put(KEY_LANG, lang);
+        if (lang != null && !lang.isBlank()) {
+            PREFS.put(KEY_LANG, lang);
+        }
     }
 
+    // ===== Apply Theme =====
+
+    /**
+     * Applies the selected theme to the scene root.
+     */
     public static void applyTheme(Scene scene) {
         if (scene == null || scene.getRoot() == null) return;
 
         Platform.runLater(() -> {
-            scene.getRoot().getStyleClass().removeAll("theme-light", "theme-dark");
+            var root = scene.getRoot();
+
+            // Remove old theme classes
+            root.getStyleClass().removeAll("theme-light", "theme-dark");
+
+            // Apply new theme
             if (getTheme() == Theme.DARK) {
-                scene.getRoot().getStyleClass().add("theme-dark");
+                root.getStyleClass().add("theme-dark");
             } else {
-                scene.getRoot().getStyleClass().add("theme-light");
+                root.getStyleClass().add("theme-light");
             }
         });
     }
