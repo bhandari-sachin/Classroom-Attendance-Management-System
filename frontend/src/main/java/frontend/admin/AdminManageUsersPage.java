@@ -12,7 +12,6 @@ import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.collections.transformation.FilteredList;
-import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
@@ -25,14 +24,20 @@ import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
 public class AdminManageUsersPage {
+
+    private static final Logger LOGGER =
+            Logger.getLogger(AdminManageUsersPage.class.getName());
 
     private final HelperClass helper = new HelperClass();
 
     public Parent build(Scene scene, AppRouter router, JwtStore jwtStore, AuthState state) {
-        String adminName = resolveAdminName(state);
+        String adminName = AdminPageSupport.resolveAdminName(state, helper);
 
-        VBox content = buildContentContainer();
+        VBox content = AdminPageSupport.buildContentContainer();
 
         Label title = buildTitle();
         Label subtitle = buildSubtitle();
@@ -92,56 +97,14 @@ public class AdminManageUsersPage {
         scroll.setFitToWidth(true);
         scroll.getStyleClass().add("scroll");
 
-        return AdminAppLayout.wrapWithSidebar(
+        return AdminPageSupport.wrapWithSidebar(
                 adminName,
-                helper.getMessage("admin.sidebar.title"),
-                helper.getMessage("admin.dashboard.title"),
-                helper.getMessage("admin.classes.title"),
-                helper.getMessage("admin.users.title"),
-                helper.getMessage("admin.reports.title"),
+                helper,
                 scroll,
                 "third",
-                new AdminAppLayout.Navigator() {
-                    @Override
-                    public void goDashboard() {
-                        router.go("admin-dashboard");
-                    }
-
-                    @Override
-                    public void goTakeAttendance() {
-                        router.go("admin-classes");
-                    }
-
-                    @Override
-                    public void goReports() {
-                        router.go("admin-users");
-                    }
-
-                    @Override
-                    public void goEmail() {
-                        router.go("admin-reports");
-                    }
-
-                    @Override
-                    public void logout() {
-                        jwtStore.clear();
-                        router.go("login");
-                    }
-                }
+                router,
+                jwtStore
         );
-    }
-
-    private String resolveAdminName(AuthState state) {
-        return (state.getName() == null || state.getName().isBlank())
-                ? helper.getMessage("teacher.fallback.name")
-                : state.getName();
-    }
-
-    private VBox buildContentContainer() {
-        VBox content = new VBox(14);
-        content.getStyleClass().add("content");
-        content.setPadding(new Insets(18));
-        return content;
     }
 
     private Label buildTitle() {
@@ -203,7 +166,7 @@ public class AdminManageUsersPage {
         return loadError;
     }
 
-    private void applyFilter(
+    void applyFilter(
             FilteredList<UserRow> filteredRows,
             TextField searchField,
             ComboBox<String> typeFilter,
@@ -260,10 +223,11 @@ public class AdminManageUsersPage {
                     applyFilter.run();
                 });
             } catch (Exception ex) {
-                ex.printStackTrace();
+                LOGGER.log(Level.SEVERE, "Failed to load admin users.", ex);
                 Platform.runLater(() -> showLabel(
                         loadError,
-                        helper.getMessage("admin.users.loadError") + " " + ex.getMessage()
+                        helper.getMessage("admin.users.loadError") + " "
+                                + (ex.getMessage() == null ? "Unknown error" : ex.getMessage())
                 ));
             }
         }).start();
@@ -292,7 +256,7 @@ public class AdminManageUsersPage {
         );
     }
 
-    private ObservableList<UserRow> mapUserRows(AdminUsersResponseDto data) {
+    ObservableList<UserRow> mapUserRows(AdminUsersResponseDto data) {
         ObservableList<UserRow> mappedRows = FXCollections.observableArrayList();
 
         if (data.users == null) {
@@ -310,7 +274,7 @@ public class AdminManageUsersPage {
         return mappedRows;
     }
 
-    private String localizeRole(String role) {
+    String localizeRole(String role) {
         if (role == null) {
             return "";
         }
@@ -323,7 +287,7 @@ public class AdminManageUsersPage {
         };
     }
 
-    private String localizeEnrolled(String enrolled) {
+    String localizeEnrolled(String enrolled) {
         if (enrolled == null || enrolled.isBlank()) {
             return helper.getMessage("common.status.noData");
         }
@@ -341,11 +305,11 @@ public class AdminManageUsersPage {
         label.setManaged(false);
     }
 
-    private static String safe(String value) {
+    static String safe(String value) {
         return value == null ? "" : value.toLowerCase();
     }
 
-    private static String nullToEmpty(String value) {
+    static String nullToEmpty(String value) {
         return value == null ? "" : value;
     }
 }

@@ -36,16 +36,21 @@ import javafx.scene.layout.VBox;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 public class AdminManageClassesPage {
 
+    private static final Logger LOGGER =
+            Logger.getLogger(AdminManageClassesPage.class.getName());
+
     private final HelperClass helper = new HelperClass();
 
     public Parent build(Scene scene, AppRouter router, JwtStore jwtStore, AuthState state) {
-        String adminName = resolveAdminName(state);
+        String adminName = AdminPageSupport.resolveAdminName(state, helper);
 
-        VBox content = buildContentContainer();
+        VBox content = AdminPageSupport.buildContentContainer();
 
         HBox titleRow = buildTitleRow();
         TextField searchField = buildSearchField();
@@ -89,56 +94,14 @@ public class AdminManageClassesPage {
         scroll.setFitToWidth(true);
         scroll.getStyleClass().add("scroll");
 
-        return AdminAppLayout.wrapWithSidebar(
+        return AdminPageSupport.wrapWithSidebar(
                 adminName,
-                helper.getMessage("admin.sidebar.title"),
-                helper.getMessage("admin.dashboard.title"),
-                helper.getMessage("admin.classes.title"),
-                helper.getMessage("admin.users.title"),
-                helper.getMessage("admin.reports.title"),
+                helper,
                 scroll,
                 "second",
-                new AdminAppLayout.Navigator() {
-                    @Override
-                    public void goDashboard() {
-                        router.go("admin-dashboard");
-                    }
-
-                    @Override
-                    public void goTakeAttendance() {
-                        router.go("admin-classes");
-                    }
-
-                    @Override
-                    public void goReports() {
-                        router.go("admin-users");
-                    }
-
-                    @Override
-                    public void goEmail() {
-                        router.go("admin-reports");
-                    }
-
-                    @Override
-                    public void logout() {
-                        jwtStore.clear();
-                        router.go("login");
-                    }
-                }
+                router,
+                jwtStore
         );
-    }
-
-    private String resolveAdminName(AuthState state) {
-        return (state.getName() == null || state.getName().isBlank())
-                ? helper.getMessage("teacher.fallback.name")
-                : state.getName();
-    }
-
-    private VBox buildContentContainer() {
-        VBox content = new VBox(14);
-        content.getStyleClass().add("content");
-        content.setPadding(new Insets(18));
-        return content;
     }
 
     private HBox buildTitleRow() {
@@ -197,7 +160,7 @@ public class AdminManageClassesPage {
         return section;
     }
 
-    private void applySearchFilter(FilteredList<ClassRow> filteredRows, String query) {
+    void applySearchFilter(FilteredList<ClassRow> filteredRows, String query) {
         String searchValue = query == null ? "" : query.trim().toLowerCase();
 
         filteredRows.setPredicate(row -> {
@@ -227,16 +190,18 @@ public class AdminManageClassesPage {
 
                 Platform.runLater(() -> rows.setAll(mappedRows));
             } catch (Exception ex) {
-                ex.printStackTrace();
+                LOGGER.log(Level.SEVERE, "Failed to load admin classes.", ex);
                 Platform.runLater(() -> showLabel(
                         loadError,
-                        helper.getMessage("admin.classes.dialog.loadStudents.failed") + " " + ex.getMessage()
+                        helper.getMessage("admin.classes.dialog.loadStudents.failed")
+                                + " "
+                                + (ex.getMessage() == null ? "Unknown error" : ex.getMessage())
                 ));
             }
         }).start();
     }
 
-    private ClassRow mapClassRow(AdminClassDto classDto) {
+    ClassRow mapClassRow(AdminClassDto classDto) {
         String schedule = joinNonEmpty(classDto.semester, classDto.academicYear);
 
         return new ClassRow(
@@ -353,9 +318,11 @@ public class AdminManageClassesPage {
                 adminApi.createClass(classCode, name, teacherEmail, semester, academicYear, maxCapacity);
                 Platform.runLater(reload);
             } catch (Exception ex) {
-                ex.printStackTrace();
+                LOGGER.log(Level.SEVERE, "Failed to create class.", ex);
                 Platform.runLater(() -> showError(
-                        helper.getMessage("admin.classes.dialog.add.error") + ":\n" + ex.getMessage()
+                        helper.getMessage("admin.classes.dialog.add.error")
+                                + ":\n"
+                                + (ex.getMessage() == null ? "Unknown error" : ex.getMessage())
                 ));
             }
         }).start();
@@ -451,7 +418,7 @@ public class AdminManageClassesPage {
         return selectedCount;
     }
 
-    private void applyStudentFilter(FilteredList<AdminStudentDto> filteredStudents, String query) {
+    void applyStudentFilter(FilteredList<AdminStudentDto> filteredStudents, String query) {
         String searchValue = query == null ? "" : query.trim().toLowerCase();
 
         filteredStudents.setPredicate(student -> {
@@ -489,10 +456,12 @@ public class AdminManageClassesPage {
                     );
                 });
             } catch (Exception ex) {
-                ex.printStackTrace();
+                LOGGER.log(Level.SEVERE, "Failed to load available students for class enrollment.", ex);
                 Platform.runLater(() ->
                         statusLabel.setText(
-                                helper.getMessage("admin.classes.dialog.loadStudents.failed") + " " + ex.getMessage()
+                                helper.getMessage("admin.classes.dialog.loadStudents.failed")
+                                        + " "
+                                        + (ex.getMessage() == null ? "Unknown error" : ex.getMessage())
                         )
                 );
             }
@@ -532,20 +501,21 @@ public class AdminManageClassesPage {
                     reload.run();
                 });
             } catch (Exception ex) {
-                ex.printStackTrace();
+                LOGGER.log(Level.SEVERE, "Failed to enroll students into class.", ex);
                 Platform.runLater(() -> {
+                    String errorMessage = ex.getMessage() == null ? "Unknown error" : ex.getMessage();
                     statusLabel.setText(
-                            helper.getMessage("admin.classes.dialog.enroll.failure") + " " + ex.getMessage()
+                            helper.getMessage("admin.classes.dialog.enroll.failure") + " " + errorMessage
                     );
                     showError(
-                            helper.getMessage("admin.classes.dialog.enroll.failure") + "\n" + ex.getMessage()
+                            helper.getMessage("admin.classes.dialog.enroll.failure") + "\n" + errorMessage
                     );
                 });
             }
         }).start();
     }
 
-    private Integer parseInteger(String value) {
+    Integer parseInteger(String value) {
         try {
             if (value == null || value.isBlank()) {
                 return null;
@@ -579,15 +549,15 @@ public class AdminManageClassesPage {
         new Alert(Alert.AlertType.ERROR, message, ButtonType.OK).showAndWait();
     }
 
-    private static String safe(String value) {
+    static String safe(String value) {
         return value == null ? "" : value.toLowerCase();
     }
 
-    private static String nullToEmpty(String value) {
+    static String nullToEmpty(String value) {
         return value == null ? "" : value;
     }
 
-    private static String joinNonEmpty(String first, String second) {
+    static String joinNonEmpty(String first, String second) {
         if ((first == null || first.isBlank()) && (second == null || second.isBlank())) {
             return "";
         }

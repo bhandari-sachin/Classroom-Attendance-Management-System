@@ -83,7 +83,7 @@ public final class AppLayout {
         return root;
     }
 
-    private static boolean isRtl() {
+    static boolean isRtl() {
         String lang = UiPreferences.getLanguage();
         return lang != null && lang.toLowerCase().startsWith("ar");
     }
@@ -253,7 +253,7 @@ public final class AppLayout {
         return label;
     }
 
-    private static void refreshCurrentPage(Navigator nav, String activeKey) {
+    static void refreshCurrentPage(Navigator nav, String activeKey) {
         switch (activeKey) {
             case KEY_DASHBOARD -> nav.goDashboard();
             case KEY_SECOND -> nav.goTakeAttendance();
@@ -263,7 +263,7 @@ public final class AppLayout {
         }
     }
 
-    private static NodeOrientation toOrientation(boolean rtl) {
+    static NodeOrientation toOrientation(boolean rtl) {
         return rtl ? NodeOrientation.RIGHT_TO_LEFT : NodeOrientation.LEFT_TO_RIGHT;
     }
 

@@ -1,12 +1,10 @@
 package frontend.teacher;
 
-import frontend.AppLayout;
 import frontend.StudentRow;
 import frontend.auth.AppRouter;
 import frontend.auth.AuthState;
 import frontend.auth.JwtStore;
 import frontend.ui.HelperClass;
-import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
@@ -30,9 +28,9 @@ public class TeacherExcuseReasonPage {
             StudentRow student,
             Runnable onDoneBack
     ) {
-        String teacherName = resolveTeacherName(state);
+        String teacherName = TeacherPageSupport.resolveTeacherName(state, helper);
 
-        VBox page = buildPageContainer();
+        VBox page = TeacherPageSupport.buildExcusePageContainer();
 
         Label title = buildTitle();
         Label studentInfo = buildStudentInfo(student);
@@ -45,56 +43,15 @@ public class TeacherExcuseReasonPage {
 
         page.getChildren().addAll(title, studentInfo, hint, reasonArea, actions);
 
-        return AppLayout.wrapWithSidebar(
+        return TeacherPageSupport.wrapWithSidebar(
                 teacherName,
-                helper.getMessage("teacher.sidebar.title"),
-                helper.getMessage("teacher.sidebar.menu.dashboard"),
-                helper.getMessage("teacher.sidebar.menu.take_attendance"),
-                helper.getMessage("teacher.sidebar.menu.reports"),
-                helper.getMessage("teacher.sidebar.menu.email"),
+                helper,
                 page,
                 "second",
-                new AppLayout.Navigator() {
-                    @Override
-                    public void goDashboard() {
-                        router.go("teacher-dashboard");
-                    }
-
-                    @Override
-                    public void goTakeAttendance() {
-                        onDoneBack.run();
-                    }
-
-                    @Override
-                    public void goReports() {
-                        router.go("teacher-reports");
-                    }
-
-                    @Override
-                    public void goEmail() {
-                        router.go("teacher-email");
-                    }
-
-                    @Override
-                    public void logout() {
-                        jwtStore.clear();
-                        router.go("login");
-                    }
-                }
+                router,
+                jwtStore,
+                onDoneBack
         );
-    }
-
-    private String resolveTeacherName(AuthState state) {
-        return (state.getName() == null || state.getName().isBlank())
-                ? helper.getMessage("teacher.fallback.name")
-                : state.getName();
-    }
-
-    private VBox buildPageContainer() {
-        VBox page = new VBox(12);
-        page.setPadding(new Insets(22));
-        page.getStyleClass().add("page");
-        return page;
     }
 
     private Label buildTitle() {
@@ -103,7 +60,7 @@ public class TeacherExcuseReasonPage {
         return title;
     }
 
-    private Label buildStudentInfo(StudentRow student) {
+    Label buildStudentInfo(StudentRow student) {
         Label studentInfo = new Label(
                 helper.getMessage("teacher.excuse.student")
                         .replace("{name}", student.getStudentName())

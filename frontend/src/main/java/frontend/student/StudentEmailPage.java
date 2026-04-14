@@ -1,6 +1,5 @@
 package frontend.student;
 
-import frontend.AppLayout;
 import frontend.TeacherRow;
 import frontend.api.StudentTeacherApi;
 import frontend.auth.AppRouter;
@@ -11,29 +10,34 @@ import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.concurrent.Task;
-import javafx.geometry.Insets;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.Label;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
+import javafx.scene.control.ScrollPane;
 import javafx.scene.layout.VBox;
 
 import java.util.List;
 import java.util.Map;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class StudentEmailPage {
 
     private static final String BASE_URL =
             System.getenv().getOrDefault("BACKEND_URL", "http://localhost:8081");
 
+    private static final Logger LOGGER = Logger.getLogger(StudentEmailPage.class.getName());
+
     private final ObservableList<TeacherRow> rows = FXCollections.observableArrayList();
     private final HelperClass helper = new HelperClass();
 
     public Parent build(Scene scene, AppRouter router, JwtStore jwtStore, AuthState state) {
-        String studentName = resolveStudentName(state);
+        String studentName = StudentPageSupport.resolveStudentName(state, helper);
 
-        VBox page = buildPageContainer();
+        VBox page = StudentPageSupport.buildPageContainer();
+        page.setSpacing(14);
 
         Label title = buildTitle();
         Label subtitle = buildSubtitle();
@@ -44,56 +48,18 @@ public class StudentEmailPage {
 
         loadTeachers(jwtStore, state, statusLabel);
 
-        return AppLayout.wrapWithSidebar(
+        ScrollPane scroll = new ScrollPane(page);
+        scroll.setFitToWidth(true);
+        scroll.getStyleClass().add("scroll");
+
+        return StudentPageSupport.wrapWithSidebar(
                 studentName,
-                helper.getMessage("student.panel.title"),
-                helper.getMessage("student.nav.dashboard"),
-                helper.getMessage("student.nav.markAttendance"),
-                helper.getMessage("student.nav.myAttendance"),
-                helper.getMessage("student.nav.email"),
-                page,
+                helper,
+                scroll,
                 "fourth",
-                new AppLayout.Navigator() {
-                    @Override
-                    public void goDashboard() {
-                        router.go("student-dashboard");
-                    }
-
-                    @Override
-                    public void goTakeAttendance() {
-                        router.go("student-mark");
-                    }
-
-                    @Override
-                    public void goReports() {
-                        router.go("student-attendance");
-                    }
-
-                    @Override
-                    public void goEmail() {
-                        router.go("student-email");
-                    }
-
-                    @Override
-                    public void logout() {
-                        jwtStore.clear();
-                        router.go("login");
-                    }
-                }
+                router,
+                jwtStore
         );
-    }
-
-    private String resolveStudentName(AuthState state) {
-        return (state.getName() == null || state.getName().isBlank())
-                ? helper.getMessage("student.name.placeholder")
-                : state.getName();
-    }
-
-    private VBox buildPageContainer() {
-        VBox page = new VBox(14);
-        page.setPadding(new Insets(22));
-        page.getStyleClass().add("page");
-        return page;
     }
 
     private Label buildTitle() {
@@ -168,7 +134,7 @@ public class StudentEmailPage {
                 ));
 
                 if (exception != null) {
-                    exception.printStackTrace();
+                    LOGGER.log(Level.WARNING, "Failed to load teacher email list", exception);
                 }
             }
         };
@@ -178,7 +144,7 @@ public class StudentEmailPage {
         thread.start();
     }
 
-    private TeacherRow mapTeacherRow(Map<String, Object> teacherData) {
+    TeacherRow mapTeacherRow(Map<String, Object> teacherData) {
         String name = String.valueOf(teacherData.getOrDefault("teacherName", ""));
         String email = String.valueOf(teacherData.getOrDefault("email", ""));
         return new TeacherRow(name, email);

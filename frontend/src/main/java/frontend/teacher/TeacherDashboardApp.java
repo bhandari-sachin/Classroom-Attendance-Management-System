@@ -1,6 +1,5 @@
 package frontend.teacher;
 
-import frontend.AppLayout;
 import frontend.api.TeacherApi;
 import frontend.auth.AppRouter;
 import frontend.auth.AuthState;
@@ -26,18 +25,23 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class TeacherDashboardApp {
+
+    private static final Logger LOGGER =
+            Logger.getLogger(TeacherDashboardApp.class.getName());
 
     private final HelperClass helper = new HelperClass();
 
     public Parent build(Scene scene, AppRouter router, JwtStore jwtStore, AuthState state) {
-        String teacherName = resolveTeacherName(state);
+        String teacherName = TeacherPageSupport.resolveTeacherName(state, helper);
 
         String backendUrl = System.getenv().getOrDefault("BACKEND_URL", "http://localhost:8081");
         TeacherApi api = new TeacherApi(backendUrl);
 
-        VBox page = buildPageContainer();
+        VBox page = TeacherPageSupport.buildWidePageContainer();
 
         Label greeting = buildGreetingLabel(teacherName);
         Label dateLabel = buildDateLabel();
@@ -85,56 +89,14 @@ public class TeacherDashboardApp {
 
         loadTeacherClasses(api, jwtStore, state, classesContainer);
 
-        return AppLayout.wrapWithSidebar(
+        return TeacherPageSupport.wrapWithSidebar(
                 teacherName,
-                helper.getMessage("teacher.sidebar.title"),
-                helper.getMessage("teacher.sidebar.menu.dashboard"),
-                helper.getMessage("teacher.sidebar.menu.take_attendance"),
-                helper.getMessage("teacher.sidebar.menu.reports"),
-                helper.getMessage("teacher.sidebar.menu.email"),
+                helper,
                 scroll,
                 "dashboard",
-                new AppLayout.Navigator() {
-                    @Override
-                    public void goDashboard() {
-                        router.go("teacher-dashboard");
-                    }
-
-                    @Override
-                    public void goTakeAttendance() {
-                        router.go("teacher-take");
-                    }
-
-                    @Override
-                    public void goReports() {
-                        router.go("teacher-reports");
-                    }
-
-                    @Override
-                    public void goEmail() {
-                        router.go("teacher-email");
-                    }
-
-                    @Override
-                    public void logout() {
-                        jwtStore.clear();
-                        router.go("login");
-                    }
-                }
+                router,
+                jwtStore
         );
-    }
-
-    private String resolveTeacherName(AuthState state) {
-        return (state.getName() == null || state.getName().isBlank())
-                ? helper.getMessage("teacher.fallback.name")
-                : state.getName();
-    }
-
-    private VBox buildPageContainer() {
-        VBox page = new VBox(16);
-        page.setPadding(new Insets(26));
-        page.getStyleClass().add("page");
-        return page;
     }
 
     private Label buildGreetingLabel(String teacherName) {
@@ -253,11 +215,11 @@ public class TeacherDashboardApp {
                     setStatValue(absentTodayCard, absentToday);
                 });
             } catch (Exception ex) {
-                ex.printStackTrace();
+                LOGGER.log(Level.SEVERE, "Failed to load teacher dashboard stats.", ex);
                 Platform.runLater(() ->
                         showError(
                                 helper.getMessage("teacher.dashboard.error.stats")
-                                        .replace("{error}", ex.getMessage())
+                                        .replace("{error}", ex.getMessage() == null ? "Unknown error" : ex.getMessage())
                         )
                 );
             }
@@ -275,8 +237,11 @@ public class TeacherDashboardApp {
                 List<Map<String, Object>> classes = api.getMyClasses(jwtStore, state);
                 Platform.runLater(() -> renderTeacherClasses(classesContainer, classes));
             } catch (Exception ex) {
-                ex.printStackTrace();
-                Platform.runLater(() -> showClassesError(classesContainer, ex.getMessage()));
+                LOGGER.log(Level.SEVERE, "Failed to load teacher classes for dashboard.", ex);
+                Platform.runLater(() -> showClassesError(
+                        classesContainer,
+                        ex.getMessage() == null ? "Unknown error" : ex.getMessage()
+                ));
             }
         }).start();
     }
@@ -406,7 +371,7 @@ public class TeacherDashboardApp {
         return box;
     }
 
-    private String resolveIcon(String label) {
+    String resolveIcon(String label) {
         if (label.equals(helper.getMessage("teacher.dashboard.stats.classes"))) {
             return "📚";
         }
@@ -422,7 +387,7 @@ public class TeacherDashboardApp {
         return "📊";
     }
 
-    private static int toInt(Object value) {
+    static int toInt(Object value) {
         if (value == null) {
             return 0;
         }
@@ -436,7 +401,7 @@ public class TeacherDashboardApp {
         }
     }
 
-    private static String valueOr(Object value, String fallback) {
+    static String valueOr(Object value, String fallback) {
         return value == null ? fallback : String.valueOf(value);
     }
 

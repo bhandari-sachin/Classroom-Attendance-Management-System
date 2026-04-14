@@ -1,6 +1,5 @@
 package frontend.teacher;
 
-import frontend.AppLayout;
 import frontend.api.ReportApi;
 import frontend.api.TeacherApi;
 import frontend.auth.AppRouter;
@@ -11,7 +10,6 @@ import javafx.application.Platform;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
-import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
@@ -33,10 +31,15 @@ import java.io.File;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class TeacherReportsPage {
 
-    private static class ClassItem {
+    private static final Logger LOGGER =
+            Logger.getLogger(TeacherReportsPage.class.getName());
+
+    static class ClassItem {
         final long id;
         final String label;
 
@@ -51,7 +54,7 @@ public class TeacherReportsPage {
         }
     }
 
-    private static class SessionItem {
+    static class SessionItem {
         final long id;
         final String label;
 
@@ -66,7 +69,7 @@ public class TeacherReportsPage {
         }
     }
 
-    private static class ReportRow {
+    static class ReportRow {
         final String name;
         final String email;
         final String status;
@@ -94,13 +97,13 @@ public class TeacherReportsPage {
     private final HelperClass helper = new HelperClass();
 
     public Parent build(Scene scene, AppRouter router, JwtStore jwtStore, AuthState state) {
-        String teacherName = resolveTeacherName(state);
+        String teacherName = TeacherPageSupport.resolveTeacherName(state, helper);
 
         String backendUrl = System.getenv().getOrDefault("BACKEND_URL", "http://localhost:8081");
         TeacherApi api = new TeacherApi(backendUrl);
         ReportApi reportApi = new ReportApi(backendUrl);
 
-        VBox page = buildPageContainer();
+        VBox page = TeacherPageSupport.buildPageContainer();
 
         Label title = buildTitle();
         Label subtitle = buildSubtitle();
@@ -175,56 +178,14 @@ public class TeacherReportsPage {
         exportPdf.setOnAction(e -> exportReport(scene, reportApi, jwtStore, state, classBox.getValue(), "pdf"));
         exportCsv.setOnAction(e -> exportReport(scene, reportApi, jwtStore, state, classBox.getValue(), "csv"));
 
-        return AppLayout.wrapWithSidebar(
+        return TeacherPageSupport.wrapWithSidebar(
                 teacherName,
-                helper.getMessage("teacher.sidebar.title"),
-                helper.getMessage("teacher.sidebar.menu.dashboard"),
-                helper.getMessage("teacher.sidebar.menu.take_attendance"),
-                helper.getMessage("teacher.sidebar.menu.reports"),
-                helper.getMessage("teacher.sidebar.menu.email"),
+                helper,
                 page,
                 "third",
-                new AppLayout.Navigator() {
-                    @Override
-                    public void goDashboard() {
-                        router.go("teacher-dashboard");
-                    }
-
-                    @Override
-                    public void goTakeAttendance() {
-                        router.go("teacher-take");
-                    }
-
-                    @Override
-                    public void goReports() {
-                        router.go("teacher-reports");
-                    }
-
-                    @Override
-                    public void goEmail() {
-                        router.go("teacher-email");
-                    }
-
-                    @Override
-                    public void logout() {
-                        jwtStore.clear();
-                        router.go("login");
-                    }
-                }
+                router,
+                jwtStore
         );
-    }
-
-    private String resolveTeacherName(AuthState state) {
-        return (state.getName() == null || state.getName().isBlank())
-                ? helper.getMessage("teacher.fallback.name")
-                : state.getName();
-    }
-
-    private VBox buildPageContainer() {
-        VBox page = new VBox(14);
-        page.setPadding(new Insets(22));
-        page.getStyleClass().add("page");
-        return page;
     }
 
     private Label buildTitle() {
@@ -346,18 +307,18 @@ public class TeacherReportsPage {
             try {
                 List<Map<String, Object>> classes = api.getMyClasses(jwtStore, state);
                 List<ClassItem> items = mapClassItems(classes);
-
                 Platform.runLater(() -> classBox.getItems().setAll(items));
             } catch (Exception ex) {
-                ex.printStackTrace();
+                LOGGER.log(Level.SEVERE, "Failed to load teacher classes for reports.", ex);
                 Platform.runLater(() ->
-                        showError(helper.getMessage("teacher.reports.error.loadClasses").replace("{error}", ex.getMessage()))
+                        showError(helper.getMessage("teacher.reports.error.loadClasses")
+                                .replace("{error}", ex.getMessage() == null ? "Unknown error" : ex.getMessage()))
                 );
             }
         }).start();
     }
 
-    private List<ClassItem> mapClassItems(List<Map<String, Object>> classes) {
+    List<ClassItem> mapClassItems(List<Map<String, Object>> classes) {
         return classes.stream().map(classMap -> {
             long id = Long.parseLong(String.valueOf(classMap.get("id")));
             String classCode = String.valueOf(classMap.get("classCode"));
@@ -377,18 +338,18 @@ public class TeacherReportsPage {
             try {
                 List<Map<String, Object>> sessions = api.getSessionsForClass(jwtStore, state, classId);
                 List<SessionItem> items = mapSessionItems(sessions);
-
                 Platform.runLater(() -> sessionBox.getItems().setAll(items));
             } catch (Exception ex) {
-                ex.printStackTrace();
+                LOGGER.log(Level.SEVERE, "Failed to load teacher sessions for reports.", ex);
                 Platform.runLater(() ->
-                        showError(helper.getMessage("teacher.reports.error.loadSessions").replace("{error}", ex.getMessage()))
+                        showError(helper.getMessage("teacher.reports.error.loadSessions")
+                                .replace("{error}", ex.getMessage() == null ? "Unknown error" : ex.getMessage()))
                 );
             }
         }).start();
     }
 
-    private List<SessionItem> mapSessionItems(List<Map<String, Object>> sessions) {
+    List<SessionItem> mapSessionItems(List<Map<String, Object>> sessions) {
         return sessions.stream().map(session -> {
             long sessionId = Long.parseLong(String.valueOf(session.get("id")));
             String date = pick(session, "date", "sessionDate", "session_date");
@@ -454,21 +415,21 @@ public class TeacherReportsPage {
                             helper.getMessage("teacher.reports.stats.rate")
                                     .replace("{rate}", formatOneDecimal(rate))
                     );
-
                     tableRows.setAll(mappedRows);
                     loadButton.setDisable(false);
                 });
             } catch (Exception ex) {
-                ex.printStackTrace();
+                LOGGER.log(Level.SEVERE, "Failed to load teacher session report.", ex);
                 Platform.runLater(() -> {
                     loadButton.setDisable(false);
-                    showError(helper.getMessage("teacher.reports.error.loadReport") + " " + ex.getMessage());
+                    showError(helper.getMessage("teacher.reports.error.loadReport") + " "
+                            + (ex.getMessage() == null ? "Unknown error" : ex.getMessage()));
                 });
             }
         }).start();
     }
 
-    private List<ReportRow> mapReportRows(List<Map<String, Object>> rows) {
+    List<ReportRow> mapReportRows(List<Map<String, Object>> rows) {
         return rows.stream().map(row -> {
             String firstName = pick(row, "firstName", "first_name");
             String lastName = pick(row, "lastName", "last_name");
@@ -524,7 +485,6 @@ public class TeacherReportsPage {
         new Thread(() -> {
             try {
                 reportApi.exportTeacherReport(jwtStore, state, selectedClass.id, format, destination.getAbsolutePath());
-
                 Platform.runLater(() -> showInfo(
                         helper.getMessage(
                                 pdf
@@ -533,9 +493,10 @@ public class TeacherReportsPage {
                         ) + "\n" + destination.getAbsolutePath()
                 ));
             } catch (Exception ex) {
-                ex.printStackTrace();
+                LOGGER.log(Level.SEVERE, "Failed to export teacher report.", ex);
                 Platform.runLater(() ->
-                        showError(helper.getMessage("teacher.reports.error.export") + " " + ex.getMessage())
+                        showError(helper.getMessage("teacher.reports.error.export") + " "
+                                + (ex.getMessage() == null ? "Unknown error" : ex.getMessage()))
                 );
             }
         }).start();
@@ -554,7 +515,7 @@ public class TeacherReportsPage {
     }
 
     @SuppressWarnings("unchecked")
-    private static Map<String, Object> asMap(Object object) {
+    static Map<String, Object> asMap(Object object) {
         if (object instanceof Map<?, ?> map) {
             return (Map<String, Object>) map;
         }
@@ -562,14 +523,14 @@ public class TeacherReportsPage {
     }
 
     @SuppressWarnings("unchecked")
-    private static List<Map<String, Object>> asList(Object object) {
+    static List<Map<String, Object>> asList(Object object) {
         if (object instanceof List<?> list) {
             return (List<Map<String, Object>>) list;
         }
         return List.of();
     }
 
-    private static int asInt(Object object) {
+    static int asInt(Object object) {
         if (object == null) {
             return 0;
         }
@@ -579,7 +540,7 @@ public class TeacherReportsPage {
         return Integer.parseInt(String.valueOf(object));
     }
 
-    private static double asDouble(Object object) {
+    static double asDouble(Object object) {
         if (object == null) {
             return 0.0;
         }
@@ -589,7 +550,7 @@ public class TeacherReportsPage {
         return Double.parseDouble(String.valueOf(object));
     }
 
-    private static String pick(Map<String, Object> map, String... keys) {
+    static String pick(Map<String, Object> map, String... keys) {
         for (String key : keys) {
             Object value = map.get(key);
             if (value != null) {
@@ -599,19 +560,8 @@ public class TeacherReportsPage {
         return "";
     }
 
-    private static String formatOneDecimal(double value) {
-        double rounded = Math.round(value * 10.0) / 10.0;
-        long wholePart = (long) rounded;
-
-        if (rounded == wholePart) {
-            return wholePart + ".0";
-        }
-
-        return Double.toString(rounded);
-    }
-
-    private String localizeAttendanceStatus(String status) {
-        if (status == null || status.isBlank() || "—".equals(status)) {
+    String localizeAttendanceStatus(String status) {
+        if (status == null || status.isBlank()) {
             return "—";
         }
 
@@ -621,5 +571,16 @@ public class TeacherReportsPage {
             case "EXCUSED" -> helper.getMessage("student.attendance.stats.excused");
             default -> status;
         };
+    }
+
+    String formatOneDecimal(double value) {
+        double rounded = Math.round(value * 10.0) / 10.0;
+        long wholePart = (long) rounded;
+
+        if (rounded == wholePart) {
+            return wholePart + ".0";
+        }
+
+        return Double.toString(rounded);
     }
 }

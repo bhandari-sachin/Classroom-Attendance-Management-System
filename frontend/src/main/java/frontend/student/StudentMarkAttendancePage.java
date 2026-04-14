@@ -1,6 +1,5 @@
 package frontend.student;
 
-import frontend.AppLayout;
 import frontend.api.StudentAttendanceApi;
 import frontend.auth.AppRouter;
 import frontend.auth.AuthState;
@@ -30,9 +29,10 @@ public class StudentMarkAttendancePage {
     private final HelperClass helper = new HelperClass();
 
     public Parent build(Scene scene, AppRouter router, JwtStore jwtStore, AuthState state) {
-        String studentName = resolveStudentName(state);
+        String studentName = StudentPageSupport.resolveStudentName(state, helper);
 
-        VBox page = buildPageContainer();
+        VBox page = StudentPageSupport.buildPageContainer();
+        page.setPadding(new Insets(26, 26, 40, 26));
 
         Button backButton = buildBackButton(router);
         Label title = buildTitle();
@@ -59,56 +59,14 @@ public class StudentMarkAttendancePage {
         scroll.setPannable(true);
         scroll.getStyleClass().add("scroll");
 
-        return AppLayout.wrapWithSidebar(
+        return StudentPageSupport.wrapWithSidebar(
                 studentName,
-                helper.getMessage("student.panel.title"),
-                helper.getMessage("student.nav.dashboard"),
-                helper.getMessage("student.nav.markAttendance"),
-                helper.getMessage("student.nav.myAttendance"),
-                helper.getMessage("student.nav.email"),
+                helper,
                 scroll,
                 "second",
-                new AppLayout.Navigator() {
-                    @Override
-                    public void goDashboard() {
-                        router.go("student-dashboard");
-                    }
-
-                    @Override
-                    public void goTakeAttendance() {
-                        router.go("student-mark");
-                    }
-
-                    @Override
-                    public void goReports() {
-                        router.go("student-attendance");
-                    }
-
-                    @Override
-                    public void goEmail() {
-                        router.go("student-email");
-                    }
-
-                    @Override
-                    public void logout() {
-                        jwtStore.clear();
-                        router.go("login");
-                    }
-                }
+                router,
+                jwtStore
         );
-    }
-
-    private String resolveStudentName(AuthState state) {
-        return (state.getName() == null || state.getName().isBlank())
-                ? helper.getMessage("student.name.placeholder")
-                : state.getName();
-    }
-
-    private VBox buildPageContainer() {
-        VBox page = new VBox(16);
-        page.setPadding(new Insets(26, 26, 40, 26));
-        page.getStyleClass().add("page");
-        return page;
     }
 
     private Button buildBackButton(AppRouter router) {
@@ -241,7 +199,7 @@ public class StudentMarkAttendancePage {
         }).start();
     }
 
-    private String safeMessage(Throwable throwable) {
+    String safeMessage(Throwable throwable) {
         if (throwable == null || throwable.getMessage() == null || throwable.getMessage().isBlank()) {
             return "Unknown error";
         }
