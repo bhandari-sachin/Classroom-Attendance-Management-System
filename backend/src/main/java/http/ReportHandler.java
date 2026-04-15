@@ -1,6 +1,8 @@
 package http;
 
+import backend.exception.ReportExportException;
 import com.auth0.jwt.interfaces.DecodedJWT;
+import com.lowagie.text.DocumentException;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import config.AttendanceSQL;
@@ -85,64 +87,76 @@ public class ReportHandler implements HttpHandler {
         }
     }
 
-    private void exportStudentReport(HttpExchange ex, DecodedJWT jwt, Map<String,String> queryParams, String lang) throws Exception {
+    private void exportStudentReport(HttpExchange ex, DecodedJWT jwt, Map<String, String> queryParams, String lang) throws IOException {
 
-        Long studentId = jwt.getClaim("id").asLong();
-        int year = resolveYear(queryParams);
+        try {
+            Long studentId = jwt.getClaim("id").asLong();
+            int year = resolveYear(queryParams);
 
-        var rows = attendanceSQL.getStudentYearlyReport(studentId, year);
+            var rows = attendanceSQL.getStudentYearlyReport(studentId, year);
 
-        String file = "student-report.pdf";
+            String file = "student-report.pdf";
 
-        PDFReportExporter.studentYearReport(file, year, rows, lang);
+            PDFReportExporter.studentYearReport(file, year, rows, lang);
 
-        sendFile(ex, file, PDF_MIME, "student-report.pdf");
+            sendFile(ex, file, PDF_MIME, "student-report.pdf");
+        } catch (IOException | DocumentException e) {
+            throw new ReportExportException("Failed to export teacher report", e);
+        }
     }
 
-    private void exportTeacherReport(HttpExchange ex, DecodedJWT jwt, Map<String, String> queryParams, String format, String lang) throws Exception {
+    private void exportTeacherReport(HttpExchange ex, DecodedJWT jwt, Map<String, String> queryParams, String format, String lang) throws IOException {
 
-        Long teacherId = jwt.getClaim("id").asLong();
-        Long classId = parseRequiredLong(queryParams, "classId");
-        int year = resolveYear(queryParams);
+        try {
+            Long teacherId = jwt.getClaim("id").asLong();
+            Long classId = parseRequiredLong(queryParams, "classId");
+            int year = resolveYear(queryParams);
 
-        var rows = attendanceSQL.getTeacherClassReport(teacherId, classId, year);
+            var rows = attendanceSQL.getTeacherClassReport(teacherId, classId, year);
 
-        if ("csv".equals(format)) {
-            ex.getResponseHeaders().set(CONTENT_TYPE, "text/csv; charset=UTF-8");
-            ex.getResponseHeaders().set(CONTENT_DISPOSITION, "attachment; filename=\"teacher-report.csv\"");
-            ex.sendResponseHeaders(200, 0);
+            if ("csv".equals(format)) {
+                ex.getResponseHeaders().set(CONTENT_TYPE, "text/csv; charset=UTF-8");
+                ex.getResponseHeaders().set(CONTENT_DISPOSITION, "attachment; filename=\"teacher-report.csv\"");
+                ex.sendResponseHeaders(200, 0);
 
-            try (var os = ex.getResponseBody()) {
-                CSVReportExporter.teacherClassReport(os, year, rows, lang);
+                try (var os = ex.getResponseBody()) {
+                    CSVReportExporter.teacherClassReport(os, year, rows, lang);
+                }
+                return;
             }
-            return;
+            String file = "teacher-report.pdf";
+
+            PDFReportExporter.teacherClassReport(file, year, rows, lang);
+
+            sendFile(ex, file, PDF_MIME, "teacher-report.pdf");
+        } catch (IOException | DocumentException e) {
+            throw new ReportExportException("Failed to export teacher report", e);
         }
-        String file = "teacher-report.pdf";
-
-        PDFReportExporter.teacherClassReport(file, year, rows, lang);
-
-        sendFile(ex, file, PDF_MIME, "teacher-report.pdf");
     }
 
-    private void exportAdminReport(HttpExchange ex, String format, String lang) throws Exception {
-        var rows = attendanceSQL.getAllStudentsStats();
+    private void exportAdminReport(HttpExchange ex, String format, String lang) throws IOException {
+        try {
+            var rows = attendanceSQL.getAllStudentsStats();
 
-        if ("csv".equals(format)) {
-            ex.getResponseHeaders().set(CONTENT_TYPE, "text/csv; charset=UTF-8");
-            ex.getResponseHeaders().set(CONTENT_DISPOSITION, "attachment; filename=\"teacher-report.csv\"");
-            ex.sendResponseHeaders(200, 0);
+            if ("csv".equals(format)) {
+                ex.getResponseHeaders().set(CONTENT_TYPE, "text/csv; charset=UTF-8");
+                ex.getResponseHeaders().set(CONTENT_DISPOSITION, "attachment; filename=\"teacher-report.csv\"");
+                ex.sendResponseHeaders(200, 0);
 
-            try (var os = ex.getResponseBody()) {
-                CSVReportExporter.adminAllStudentsReport(os, rows, lang);
+                try (var os = ex.getResponseBody()) {
+                    CSVReportExporter.adminAllStudentsReport(os, rows, lang);
+                }
+                return;
             }
-            return;
+
+            String file = "admin-report.pdf";
+
+            PDFReportExporter.adminAllStudentsReport(file, rows, lang);
+
+            sendFile(ex, file, PDF_MIME, "admin-report.pdf");
+        } catch (IOException | DocumentException e) {
+            throw new ReportExportException("Failed to export teacher report", e);
         }
-
-        String file = "admin-report.pdf";
-
-        PDFReportExporter.adminAllStudentsReport(file, rows, lang);
-
-        sendFile(ex, file, PDF_MIME, "admin-report.pdf");
     }
 
     private int resolveYear(Map<String, String> queryParams) {
