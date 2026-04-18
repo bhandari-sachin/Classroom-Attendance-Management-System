@@ -40,9 +40,14 @@ public class AdminApi {
         AuthState s = store.load()
                 .orElseThrow(() -> new RuntimeException("No AuthState in JwtStore. Please login first."));
 
+        String token = s.getToken();
+        if (token == null || token.isBlank()) {
+            throw new RuntimeException("JWT token is missing or empty. Please login again.");
+        }
+
         HttpRequest req = HttpRequest.newBuilder()
                 .uri(URI.create(baseUrl + "/api/admin/attendance/stats"))
-                .header("Authorization", "Bearer " + s.getToken())
+                .header("Authorization", "Bearer " + token)
                 .GET()
                 .build();
 

@@ -1,17 +1,14 @@
 package frontend.admin;
 
-import javafx.geometry.Insets;
-import javafx.geometry.Pos;
+import frontend.AppLayout;
 import javafx.scene.Node;
 import javafx.scene.Parent;
-import javafx.scene.control.Label;
-import javafx.scene.control.Separator;
-import javafx.scene.layout.BorderPane;
-import javafx.scene.layout.Priority;
-import javafx.scene.layout.Region;
-import javafx.scene.layout.VBox;
 
-public class AdminAppLayout {
+public final class AdminAppLayout {
+
+    private AdminAppLayout() {
+        // Utility class
+    }
 
     public interface Navigator {
         void goDashboard();
@@ -21,26 +18,6 @@ public class AdminAppLayout {
         void logout();
     }
 
-    /**
-     * Default labels for ADMIN sidebar.
-     */
-    public static Parent wrapWithSidebar(String name, Node content, String activeKey, Navigator nav) {
-        return wrapWithSidebar(
-                name,
-                "Admin Panel",
-                "Dashboard",
-                "Manage Classes",
-                "Attendance Reports",
-                "Manage Users",
-                content,
-                activeKey,
-                nav
-        );
-    }
-
-    /**
-     * Custom labels (Admin/Teacher/Student/etc.)
-     */
     public static Parent wrapWithSidebar(
             String name,
             String roleLabel,
@@ -52,69 +29,41 @@ public class AdminAppLayout {
             String activeKey,
             Navigator nav
     ) {
-        BorderPane root = new BorderPane();
-        root.getStyleClass().add("app-root");
+        return AppLayout.wrapWithSidebar(
+                name,
+                roleLabel,
+                dashboardLabel,
+                secondLabel,
+                thirdLabel,
+                fourthLabel,
+                content,
+                activeKey,
+                new AppLayout.Navigator() {
+                    @Override
+                    public void goDashboard() {
+                        nav.goDashboard();
+                    }
 
-        // ===== SIDEBAR =====
-        VBox sidebar = new VBox(14);
-        sidebar.getStyleClass().add("sidebar");
-        sidebar.setPadding(new Insets(18));
-        sidebar.setPrefWidth(260);
+                    @Override
+                    public void goTakeAttendance() {
+                        nav.goTakeAttendance();
+                    }
 
-        Label nameLbl = new Label(name);
-        nameLbl.getStyleClass().add("sidebar-name");
+                    @Override
+                    public void goReports() {
+                        nav.goReports();
+                    }
 
-        Label role = new Label(roleLabel);
-        role.getStyleClass().add("sidebar-role");
+                    @Override
+                    public void goEmail() {
+                        nav.goEmail();
+                    }
 
-        Separator sep = new Separator();
-
-        VBox navBox = new VBox(10);
-        navBox.getStyleClass().add("sidebar-nav");
-
-        Label dash   = navLabel(dashboardLabel, "dashboard", activeKey, nav::goDashboard);
-        Label second = navLabel(secondLabel, "second", activeKey, nav::goTakeAttendance);
-        Label third  = navLabel(thirdLabel, "third", activeKey, nav::goReports);
-        Label fourth = navLabel(fourthLabel, "fourth", activeKey, nav::goEmail);
-
-        navBox.getChildren().addAll(dash, second, third, fourth);
-
-        Region spacer = new Region();
-        VBox.setVgrow(spacer, Priority.ALWAYS);
-
-        Label logout = new Label("Logout");
-        logout.getStyleClass().add("logout-link");
-        logout.setOnMouseClicked(e -> nav.logout());
-
-        sidebar.getChildren().addAll(nameLbl, role, sep, navBox, spacer, logout);
-
-        VBox centerWrap = new VBox();
-        centerWrap.getStyleClass().add("content-wrap");
-        centerWrap.setFillWidth(true);
-
-        centerWrap.getChildren().add(content);
-
-        if (content instanceof Region r) {
-            r.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE);
-            VBox.setVgrow(r, Priority.ALWAYS);
-        }
-
-        root.setLeft(sidebar);
-        root.setCenter(centerWrap);
-
-        return root;
-    }
-
-    private static Label navLabel(String text, String key, String activeKey, Runnable action) {
-        Label l = new Label(text);
-        l.getStyleClass().add("nav-item");
-
-        if (key.equals(activeKey)) {
-            l.getStyleClass().add("nav-item-active");
-        }
-
-        l.setOnMouseClicked(e -> action.run());
-        l.setAlignment(Pos.CENTER_LEFT);
-        return l;
+                    @Override
+                    public void logout() {
+                        nav.logout();
+                    }
+                }
+        );
     }
 }

@@ -1,11 +1,11 @@
 package frontend.student;
 
-import frontend.AppLayout;
 import frontend.api.ReportApi;
 import frontend.api.StudentAttendanceApi;
 import frontend.auth.AppRouter;
 import frontend.auth.AuthState;
 import frontend.auth.JwtStore;
+import frontend.ui.HelperClass;
 import javafx.application.Platform;
 import javafx.concurrent.Task;
 import javafx.geometry.Insets;
@@ -19,41 +19,50 @@ import javafx.scene.control.Button;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
+import javafx.scene.control.ScrollPane;
 import javafx.scene.control.Separator;
-import javafx.scene.layout.*;
+import javafx.scene.layout.ColumnConstraints;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.GridPane;
+import javafx.scene.layout.Priority;
+import javafx.scene.layout.Region;
+import javafx.scene.layout.StackPane;
+import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
-import javafx.scene.shape.*;
+import javafx.scene.shape.Circle;
+import javafx.scene.shape.Line;
+import javafx.scene.shape.Rectangle;
+import javafx.scene.shape.StrokeLineCap;
 import javafx.scene.text.Font;
 import javafx.stage.FileChooser;
 
 import java.io.File;
 import java.util.List;
 import java.util.Map;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class StudentAttendancePage {
 
-    // backend base url (same port as BackendMain)
-    //private static final String BASE_URL = "http://localhost:8081";
     private static final String BASE_URL =
             System.getenv().getOrDefault("BACKEND_URL", "http://localhost:8081");
 
+    private static final Logger LOGGER = Logger.getLogger(StudentAttendancePage.class.getName());
+
+    private final HelperClass helper = new HelperClass();
+
     public Parent build(Scene scene, AppRouter router, JwtStore jwtStore, AuthState state) {
+        String studentName = StudentPageSupport.resolveStudentName(state, helper);
 
-        String studentName = (state.getName() == null || state.getName().isBlank())
-                ? "Name"
-                : state.getName();
+        VBox page = StudentPageSupport.buildPageContainer();
+        page.setSpacing(16);
 
-        VBox page = new VBox(16);
-        page.setPadding(new Insets(26));
-        page.getStyleClass().add("page");
-
-        Label title = new Label("My Attendance");
+        Label title = new Label(msg("student.attendance.title", "My Attendance"));
         title.getStyleClass().add("dash-title");
 
-        Label subtitle = new Label("View your attendance history and statistics");
+        Label subtitle = new Label(msg("student.attendance.subtitle", "View attendance history and statistics"));
         subtitle.getStyleClass().add("dash-subtitle");
 
-        /* ================= FILTERS ================= */
         HBox filters = new HBox(10);
         filters.setAlignment(Pos.CENTER_LEFT);
 
@@ -61,46 +70,74 @@ public class StudentAttendancePage {
         filterIcon.getStyleClass().add("filter-icon");
 
         ComboBox<String> classFilter = new ComboBox<>();
-        classFilter.getItems().addAll("All Classes", "OOP1", "Databases", "Web Dev");
-        classFilter.setValue("All Classes");
+        classFilter.getItems().addAll(
+                msg("student.attendance.filter.all", "All Classes"),
+                "OOP1",
+                "Databases",
+                "Web Dev"
+        );
+        classFilter.setValue(msg("student.attendance.filter.all", "All Classes"));
         classFilter.getStyleClass().add("filter-combo");
 
         ComboBox<String> timeFilter = new ComboBox<>();
-        timeFilter.getItems().addAll("This Month", "Last Month", "This Year");
-        timeFilter.setValue("This Month");
+        timeFilter.getItems().addAll(
+                msg("student.attendance.filter.time.thisMonth",
+                        msg("student.attendance.filter.thisMonth", "This Month")),
+                msg("student.attendance.filter.time.lastMonth",
+                        msg("student.attendance.filter.lastMonth", "Last Month")),
+                msg("student.attendance.filter.time.thisYear",
+                        msg("student.attendance.filter.thisYear", "This Year"))
+        );
+        timeFilter.setValue(
+                msg("student.attendance.filter.time.thisMonth",
+                        msg("student.attendance.filter.thisMonth", "This Month"))
+        );
         timeFilter.getStyleClass().add("filter-combo");
 
         filters.getChildren().addAll(filterIcon, classFilter, timeFilter);
 
-        /* ================= EXPORT ================= */
         ReportApi reportApi = new ReportApi(BASE_URL);
 
-        Button exportPdfBtn = new Button("⬇ Export PDF");
+        Button exportPdfBtn = new Button(msg("common.export.pdf", "Export as PDF"));
         exportPdfBtn.getStyleClass().addAll("pill", "pill-blue");
 
         exportPdfBtn.setOnAction(e -> {
             FileChooser fc = new FileChooser();
-            fc.setTitle("Save Attendance Report");
-            fc.setInitialFileName("student-report.pdf");
-            fc.getExtensionFilters().add(new FileChooser.ExtensionFilter("PDF Files", "*.pdf"));
+            fc.setTitle(msg("student.attendance.export.file.title", "Export Attendance PDF"));
+            fc.setInitialFileName(msg("student.attendance.export.file.name", "attendance-report.pdf"));
+            fc.getExtensionFilters().add(
+                    new FileChooser.ExtensionFilter("PDF Files", "*.pdf")
+            );
+
             File dest = fc.showSaveDialog(scene.getWindow());
-            if (dest == null) return;
+            if (dest == null) {
+                return;
+            }
+
             new Thread(() -> {
                 try {
                     reportApi.exportStudentPdf(jwtStore, state, dest.getAbsolutePath());
-                    Platform.runLater(() -> new Alert(Alert.AlertType.INFORMATION,
-                            "PDF saved to:\n" + dest.getAbsolutePath(), ButtonType.OK).showAndWait());
+                    Platform.runLater(() -> new Alert(
+                            Alert.AlertType.INFORMATION,
+                            msg("student.attendance.export.success", "Attendance exported successfully.")
+                                    .replace("{path}", dest.getAbsolutePath()),
+                            ButtonType.OK
+                    ).showAndWait());
                 } catch (Exception ex) {
-                    ex.printStackTrace();
-                    Platform.runLater(() -> new Alert(Alert.AlertType.ERROR,
-                            "Export failed: " + ex.getMessage(), ButtonType.OK).showAndWait());
+                    LOGGER.log(Level.SEVERE, "Failed to export student attendance PDF.", ex);
+                    Platform.runLater(() -> new Alert(
+                            Alert.AlertType.ERROR,
+                            msg("student.attendance.export.error", "Export failed: {error}")
+                                    .replace("{error}", ex.getMessage() == null ? "Unknown error" : ex.getMessage()),
+                            ButtonType.OK
+                    ).showAndWait());
                 }
             }).start();
         });
 
-        /* ================= STATS ================= */
         HBox exportRow = new HBox(exportPdfBtn);
         exportRow.setAlignment(Pos.CENTER_RIGHT);
+
         GridPane stats = new GridPane();
         stats.setHgap(14);
         stats.setVgap(14);
@@ -116,21 +153,43 @@ public class StudentAttendancePage {
 
         stats.getColumnConstraints().addAll(c1, c2);
 
-        // Labels we can update after API call
         Label rateValue = new Label("0%");
         rateValue.getStyleClass().add("rate-value");
 
-        VBox rateCard = rateCardWithValue("Attendance Rate", rateValue);
+        VBox rateCard = rateCardWithValue(
+                msg("student.attendance.stats.rate", "Attendance Rate"),
+                rateValue
+        );
 
         Label presentValue = new Label("0");
         Label absentValue = new Label("0");
         Label excusedValue = new Label("0");
         Label totalDaysValue = new Label("0");
 
-        VBox presentCard = smallStatCardWithValue("Present", presentValue, "#3BAA66", "check");
-        VBox absentCard  = smallStatCardWithValue("Absent",  absentValue,  "#E05A5A", "x");
-        VBox excusedCard = smallStatCardWithValue("Excused", excusedValue, "#E09A3B", "clock");
-        VBox totalDaysCard = smallStatCardWithValue("Total Days", totalDaysValue, "#BFC5CC", "calendar");
+        VBox presentCard = smallStatCardWithValue(
+                msg("student.attendance.stats.present", "Present"),
+                presentValue,
+                "#3BAA66",
+                "check"
+        );
+        VBox absentCard = smallStatCardWithValue(
+                msg("student.attendance.stats.absent", "Absent"),
+                absentValue,
+                "#E05A5A",
+                "x"
+        );
+        VBox excusedCard = smallStatCardWithValue(
+                msg("student.attendance.stats.excused", "Excused"),
+                excusedValue,
+                "#E09A3B",
+                "clock"
+        );
+        VBox totalDaysCard = smallStatCardWithValue(
+                msg("student.attendance.stats.totalDays", "Total Days"),
+                totalDaysValue,
+                "#BFC5CC",
+                "calendar"
+        );
 
         stats.add(rateCard, 0, 0);
         stats.add(presentCard, 1, 0);
@@ -138,15 +197,14 @@ public class StudentAttendancePage {
         stats.add(excusedCard, 1, 1);
         stats.add(totalDaysCard, 0, 2);
 
-        /* ================= RECORDS ================= */
-        Label recordsTitle = new Label("Attendance Records");
+        Label recordsTitle = new Label(msg("student.attendance.records.title", "Attendance Records"));
         recordsTitle.getStyleClass().add("section-title");
 
         VBox recordsCard = new VBox(10);
         recordsCard.getStyleClass().add("records-card");
         recordsCard.setMinHeight(160);
 
-        Label loadingRecords = new Label("Loading records…");
+        Label loadingRecords = new Label(msg("student.attendance.records.loading", "Loading attendance records..."));
         loadingRecords.getStyleClass().add("empty-subtitle");
         recordsCard.setAlignment(Pos.CENTER);
         recordsCard.getChildren().add(loadingRecords);
@@ -162,40 +220,41 @@ public class StudentAttendancePage {
                 recordsCard
         );
 
-        // Load from backend (NOT on UI thread)
-        loadAttendance(jwtStore, state, rateValue, presentValue, absentValue, excusedValue, totalDaysValue, recordsCard);
+        loadAttendance(
+                jwtStore,
+                state,
+                rateValue,
+                presentValue,
+                absentValue,
+                excusedValue,
+                totalDaysValue,
+                recordsCard
+        );
 
-        return AppLayout.wrapWithSidebar(
+        ScrollPane scroll = new ScrollPane(page);
+        scroll.setFitToWidth(true);
+        scroll.getStyleClass().add("scroll");
+
+        return StudentPageSupport.wrapWithSidebar(
                 studentName,
-                "Student Panel",
-                "Dashboard",
-                "Mark Attendance",
-                "My Attendance",
-                "Email",
-                page,
+                helper,
+                scroll,
                 "third",
-                new AppLayout.Navigator() {
-                    @Override public void goDashboard() { router.go("student-dashboard"); }
-                    @Override public void goTakeAttendance() { router.go("student-mark"); }
-                    @Override public void goReports() { router.go("student-attendance"); }
-                    @Override public void goEmail() { router.go("student-email"); }
-                    @Override public void logout() {
-                        jwtStore.clear();
-                        router.go("login");
-                    }
-                }
+                router,
+                jwtStore
         );
     }
 
-    private void loadAttendance(JwtStore jwtStore,
-                                AuthState state,
-                                Label rateValue,
-                                Label presentValue,
-                                Label absentValue,
-                                Label excusedValue,
-                                Label totalDaysValue,
-                                VBox recordsCard) {
-
+    private void loadAttendance(
+            JwtStore jwtStore,
+            AuthState state,
+            Label rateValue,
+            Label presentValue,
+            Label absentValue,
+            Label excusedValue,
+            Label totalDaysValue,
+            VBox recordsCard
+    ) {
         StudentAttendanceApi api = new StudentAttendanceApi(BASE_URL);
 
         Task<Void> task = new Task<>() {
@@ -212,14 +271,12 @@ public class StudentAttendancePage {
             @Override
             protected void succeeded() {
                 Platform.runLater(() -> {
-                    // summary
                     int present = num(summary.get("presentCount"));
-                    int absent  = num(summary.get("absentCount"));
+                    int absent = num(summary.get("absentCount"));
                     int excused = num(summary.get("excusedCount"));
-                    int total   = num(summary.get("totalDays"));
+                    int total = num(summary.get("totalDays"));
 
-                    double rate = dbl(summary.get("attendanceRate")); // already percent in backend example
-                    // if backend returns 0..100:
+                    double rate = dbl(summary.get("attendanceRate"));
                     rateValue.setText(((int) Math.round(rate)) + "%");
 
                     presentValue.setText(String.valueOf(present));
@@ -227,7 +284,6 @@ public class StudentAttendancePage {
                     excusedValue.setText(String.valueOf(excused));
                     totalDaysValue.setText(String.valueOf(total));
 
-                    // records
                     recordsCard.getChildren().clear();
                     recordsCard.setAlignment(Pos.TOP_LEFT);
 
@@ -240,8 +296,9 @@ public class StudentAttendancePage {
 
                     for (Map<String, Object> r : records) {
                         String date = String.valueOf(r.getOrDefault("sessionDate", "—"));
-                        String status = String.valueOf(r.getOrDefault("status", "—"));
-                        recordsCard.getChildren().add(recordRow(date, status));
+                        String rawStatus = String.valueOf(r.getOrDefault("status", "—"));
+                        String status = localizeAttendanceStatus(rawStatus);
+                        recordsCard.getChildren().add(recordRow(date, status, rawStatus));
                     }
                 });
             }
@@ -253,7 +310,10 @@ public class StudentAttendancePage {
                     recordsCard.getChildren().clear();
                     recordsCard.setAlignment(Pos.CENTER);
 
-                    Label err = new Label("Failed to load attendance: " + (e == null ? "" : e.getMessage()));
+                    Label err = new Label(
+                            msg("student.attendance.error.load", "Failed to load attendance: {error}")
+                                    .replace("{error}", e == null || e.getMessage() == null ? "Unknown error" : e.getMessage())
+                    );
                     err.getStyleClass().add("empty-subtitle");
                     recordsCard.getChildren().add(err);
                 });
@@ -265,19 +325,46 @@ public class StudentAttendancePage {
         t.start();
     }
 
+    private String localizeAttendanceStatus(String status) {
+        if (status == null || status.isBlank()) {
+            return "—";
+        }
+
+        return switch (status.trim().toUpperCase()) {
+            case "PRESENT" -> msg("student.attendance.stats.present", "Present");
+            case "ABSENT" -> msg("student.attendance.stats.absent", "Absent");
+            case "EXCUSED" -> msg("student.attendance.stats.excused", "Excused");
+            default -> status;
+        };
+    }
+
     private static int num(Object v) {
-        if (v == null) return 0;
-        if (v instanceof Number n) return n.intValue();
-        try { return Integer.parseInt(String.valueOf(v)); } catch (Exception e) { return 0; }
+        if (v == null) {
+            return 0;
+        }
+        if (v instanceof Number n) {
+            return n.intValue();
+        }
+        try {
+            return Integer.parseInt(String.valueOf(v));
+        } catch (Exception e) {
+            return 0;
+        }
     }
 
     private static double dbl(Object v) {
-        if (v == null) return 0;
-        if (v instanceof Number n) return n.doubleValue();
-        try { return Double.parseDouble(String.valueOf(v)); } catch (Exception e) { return 0; }
+        if (v == null) {
+            return 0;
+        }
+        if (v instanceof Number n) {
+            return n.doubleValue();
+        }
+        try {
+            return Double.parseDouble(String.valueOf(v));
+        } catch (Exception e) {
+            return 0;
+        }
     }
-
-    /* ================= UI helpers ================= */
 
     private VBox emptyRecords() {
         VBox box = new VBox(8);
@@ -287,17 +374,25 @@ public class StudentAttendancePage {
         recIcon.getStyleClass().add("empty-icon");
         recIcon.setFont(Font.font("Segoe UI Emoji", 18));
 
-        Label recT = new Label("No Records Found");
+        Label recT = new Label(
+                msg("student.attendance.records.empty.title",
+                        msg("student.attendance.records.empty", "No attendance records yet"))
+        );
         recT.getStyleClass().add("empty-title");
 
-        Label recS = new Label("No attendance records for the selected filters");
+        Label recS = new Label(
+                msg("student.attendance.records.empty.subtitle", "")
+        );
         recS.getStyleClass().add("empty-subtitle");
 
-        box.getChildren().addAll(recIcon, recT, recS);
+        box.getChildren().addAll(recIcon, recT);
+        if (!recS.getText().isBlank()) {
+            box.getChildren().add(recS);
+        }
         return box;
     }
 
-    private HBox recordRow(String date, String status) {
+    private HBox recordRow(String date, String status, String rawStatus) {
         HBox row = new HBox(10);
         row.setAlignment(Pos.CENTER_LEFT);
         row.setPadding(new Insets(10));
@@ -311,6 +406,15 @@ public class StudentAttendancePage {
 
         Label chip = new Label(status);
         chip.getStyleClass().add("record-chip");
+
+        String normalized = rawStatus == null ? "" : rawStatus.trim().toUpperCase();
+        switch (normalized) {
+            case "PRESENT" -> chip.getStyleClass().add("record-chip-present");
+            case "ABSENT" -> chip.getStyleClass().add("record-chip-absent");
+            case "EXCUSED" -> chip.getStyleClass().add("record-chip-excused");
+            default -> {
+            }
+        }
 
         row.getChildren().addAll(d, spacer, chip);
         return row;
@@ -333,7 +437,6 @@ public class StudentAttendancePage {
         trend.getStyleClass().add("rate-trend");
 
         top.getChildren().addAll(lbl, spacer, trend);
-
         card.getChildren().addAll(top, valueLabel);
         return card;
     }
@@ -349,11 +452,7 @@ public class StudentAttendancePage {
         badge.setPrefSize(26, 26);
         badge.setMinSize(26, 26);
         badge.setMaxSize(26, 26);
-
-        badge.setStyle(
-                "-fx-background-color: " + colorHex + ";" +
-                        "-fx-background-radius: 8;"
-        );
+        badge.setStyle("-fx-background-color: " + colorHex + ";" + "-fx-background-radius: 8;");
 
         Node iconNode = makeBadgeIcon(iconKey);
         badge.getChildren().add(iconNode);
@@ -363,7 +462,9 @@ public class StudentAttendancePage {
 
         row1.getChildren().addAll(badge, lbl);
 
-        valueLabel.getStyleClass().add("mini-value");
+        if (!valueLabel.getStyleClass().contains("mini-value")) {
+            valueLabel.getStyleClass().add("mini-value");
+        }
 
         HBox row2 = new HBox(valueLabel);
         row2.setPadding(new Insets(0, 0, 0, 36));
@@ -379,8 +480,10 @@ public class StudentAttendancePage {
             case "check": {
                 Line l1 = new Line(6, 14, 11, 18);
                 Line l2 = new Line(11, 18, 20, 8);
-                l1.setStroke(stroke); l2.setStroke(stroke);
-                l1.setStrokeWidth(2.6); l2.setStrokeWidth(2.6);
+                l1.setStroke(stroke);
+                l2.setStroke(stroke);
+                l1.setStrokeWidth(2.6);
+                l2.setStrokeWidth(2.6);
                 l1.setStrokeLineCap(StrokeLineCap.ROUND);
                 l2.setStrokeLineCap(StrokeLineCap.ROUND);
                 return new Group(l1, l2);
@@ -388,8 +491,10 @@ public class StudentAttendancePage {
             case "x": {
                 Line a = new Line(7, 7, 19, 19);
                 Line b = new Line(19, 7, 7, 19);
-                a.setStroke(stroke); b.setStroke(stroke);
-                a.setStrokeWidth(2.6); b.setStrokeWidth(2.6);
+                a.setStroke(stroke);
+                b.setStroke(stroke);
+                a.setStrokeWidth(2.6);
+                b.setStrokeWidth(2.6);
                 a.setStrokeLineCap(StrokeLineCap.ROUND);
                 b.setStrokeLineCap(StrokeLineCap.ROUND);
                 return new Group(a, b);
@@ -402,8 +507,10 @@ public class StudentAttendancePage {
 
                 Line h = new Line(13, 13, 13, 9);
                 Line m = new Line(13, 13, 17, 13);
-                h.setStroke(stroke); m.setStroke(stroke);
-                h.setStrokeWidth(2.2); m.setStrokeWidth(2.2);
+                h.setStroke(stroke);
+                m.setStroke(stroke);
+                h.setStrokeWidth(2.2);
+                m.setStrokeWidth(2.2);
                 h.setStrokeLineCap(StrokeLineCap.ROUND);
                 m.setStrokeLineCap(StrokeLineCap.ROUND);
 
@@ -423,8 +530,10 @@ public class StudentAttendancePage {
 
                 Line ring1 = new Line(10, 6, 10, 9);
                 Line ring2 = new Line(16, 6, 16, 9);
-                ring1.setStroke(stroke); ring2.setStroke(stroke);
-                ring1.setStrokeWidth(2.0); ring2.setStrokeWidth(2.0);
+                ring1.setStroke(stroke);
+                ring2.setStroke(stroke);
+                ring1.setStrokeWidth(2.0);
+                ring2.setStrokeWidth(2.0);
                 ring1.setStrokeLineCap(StrokeLineCap.ROUND);
                 ring2.setStrokeLineCap(StrokeLineCap.ROUND);
 
@@ -435,6 +544,15 @@ public class StudentAttendancePage {
                 dot.setFill(stroke);
                 return dot;
             }
+        }
+    }
+
+    private String msg(String key, String fallback) {
+        try {
+            String value = helper.getMessage(key);
+            return value == null || value.isBlank() ? fallback : value;
+        } catch (Exception ex) {
+            return fallback;
         }
     }
 }

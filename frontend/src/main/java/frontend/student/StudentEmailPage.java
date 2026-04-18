@@ -1,91 +1,100 @@
 package frontend.student;
 
-import frontend.AppLayout;
 import frontend.TeacherRow;
 import frontend.api.StudentTeacherApi;
 import frontend.auth.AppRouter;
 import frontend.auth.AuthState;
 import frontend.auth.JwtStore;
+import frontend.ui.HelperClass;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.concurrent.Task;
-import javafx.geometry.Insets;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.Label;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
+import javafx.scene.control.ScrollPane;
 import javafx.scene.layout.VBox;
 
 import java.util.List;
 import java.util.Map;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class StudentEmailPage {
 
-    //private static final String BASE_URL = "http://localhost:8081";
     private static final String BASE_URL =
             System.getenv().getOrDefault("BACKEND_URL", "http://localhost:8081");
 
-    // ✅ now real data, starts empty
+    private static final Logger LOGGER = Logger.getLogger(StudentEmailPage.class.getName());
+
     private final ObservableList<TeacherRow> rows = FXCollections.observableArrayList();
+    private final HelperClass helper = new HelperClass();
 
     public Parent build(Scene scene, AppRouter router, JwtStore jwtStore, AuthState state) {
+        String studentName = StudentPageSupport.resolveStudentName(state, helper);
 
-        String studentName = (state.getName() == null || state.getName().isBlank())
-                ? "Name"
-                : state.getName();
+        VBox page = StudentPageSupport.buildPageContainer();
+        page.setSpacing(14);
 
-        VBox page = new VBox(14);
-        page.setPadding(new Insets(22));
-        page.getStyleClass().add("page");
+        Label title = buildTitle();
+        Label subtitle = buildSubtitle();
+        Label statusLabel = buildStatusLabel();
+        TableView<TeacherRow> table = buildTeacherTable();
 
-        Label title = new Label("Email");
+        page.getChildren().addAll(title, subtitle, statusLabel, table);
+
+        loadTeachers(jwtStore, state, statusLabel);
+
+        ScrollPane scroll = new ScrollPane(page);
+        scroll.setFitToWidth(true);
+        scroll.getStyleClass().add("scroll");
+
+        return StudentPageSupport.wrapWithSidebar(
+                studentName,
+                helper,
+                scroll,
+                "fourth",
+                router,
+                jwtStore
+        );
+    }
+
+    private Label buildTitle() {
+        Label title = new Label(helper.getMessage("student.email.title"));
         title.getStyleClass().add("title");
+        return title;
+    }
 
-        Label info = new Label("Your teacher emails.");
-        info.getStyleClass().add("subtitle");
+    private Label buildSubtitle() {
+        Label subtitle = new Label(helper.getMessage("student.email.subtitle"));
+        subtitle.getStyleClass().add("subtitle");
+        return subtitle;
+    }
 
-        Label status = new Label("Loading…");
+    private Label buildStatusLabel() {
+        Label status = new Label(helper.getMessage("student.email.status.loading"));
         status.getStyleClass().add("subtitle");
+        return status;
+    }
 
+    private TableView<TeacherRow> buildTeacherTable() {
         TableView<TeacherRow> table = new TableView<>(rows);
         table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
         table.setPrefHeight(320);
 
-        TableColumn<TeacherRow, String> colName = new TableColumn<>("Teacher");
-        colName.setCellValueFactory(d -> d.getValue().teacherNameProperty());
+        TableColumn<TeacherRow, String> nameColumn =
+                new TableColumn<>(helper.getMessage("student.email.table.teacher"));
+        nameColumn.setCellValueFactory(data -> data.getValue().teacherNameProperty());
 
-        TableColumn<TeacherRow, String> colEmail = new TableColumn<>("Email");
-        colEmail.setCellValueFactory(d -> d.getValue().emailProperty());
+        TableColumn<TeacherRow, String> emailColumn =
+                new TableColumn<>(helper.getMessage("student.email.table.email"));
+        emailColumn.setCellValueFactory(data -> data.getValue().emailProperty());
 
-        table.getColumns().addAll(colName, colEmail);
-
-        page.getChildren().addAll(title, info, status, table);
-
-        // ✅ fetch from backend
-        loadTeachers(jwtStore, state, status);
-
-        return AppLayout.wrapWithSidebar(
-                studentName,
-                "Student Panel",
-                "Dashboard",
-                "Mark Attendance",
-                "My Attendance",
-                "Email",
-                page,
-                "fourth",
-                new AppLayout.Navigator() {
-                    @Override public void goDashboard() { router.go("student-dashboard"); }
-                    @Override public void goTakeAttendance() { router.go("student-mark"); }
-                    @Override public void goReports() { router.go("student-attendance"); }
-                    @Override public void goEmail() { router.go("student-email"); }
-                    @Override public void logout() {
-                        jwtStore.clear();
-                        router.go("login");
-                    }
-                }
-        );
+        table.getColumns().addAll(nameColumn, emailColumn);
+        return table;
     }
 
     private void loadTeachers(JwtStore jwtStore, AuthState state, Label statusLabel) {
@@ -99,30 +108,45 @@ public class StudentEmailPage {
 
             @Override
             protected void succeeded() {
-                List<Map<String, Object>> list = getValue();
+                List<Map<String, Object>> teachers = getValue();
 
                 Platform.runLater(() -> {
                     rows.clear();
-                    for (Map<String, Object> t : list) {
-                        String name = String.valueOf(t.getOrDefault("teacherName", ""));
-                        String email = String.valueOf(t.getOrDefault("email", ""));
-                        rows.add(new TeacherRow(name, email));
+
+                    for (Map<String, Object> teacher : teachers) {
+                        rows.add(mapTeacherRow(teacher));
                     }
+
+                    statusLabel.setText("");
+                    statusLabel.setManaged(false);
+                    statusLabel.setVisible(false);
                 });
             }
 
             @Override
             protected void failed() {
-                Throwable e = getException();
+                Throwable exception = getException();
+
                 Platform.runLater(() -> statusLabel.setText(
-                        "Failed to load teachers: " + (e == null ? "" : e.getMessage())
+                        helper.getMessage("student.email.status.error")
+                                + " "
+                                + (exception == null ? "" : exception.getMessage())
                 ));
-                if (e != null) e.printStackTrace();
+
+                if (exception != null) {
+                    LOGGER.log(Level.WARNING, "Failed to load teacher email list", exception);
+                }
             }
         };
 
-        Thread th = new Thread(task);
-        th.setDaemon(true);
-        th.start();
+        Thread thread = new Thread(task);
+        thread.setDaemon(true);
+        thread.start();
+    }
+
+    TeacherRow mapTeacherRow(Map<String, Object> teacherData) {
+        String name = String.valueOf(teacherData.getOrDefault("teacherName", ""));
+        String email = String.valueOf(teacherData.getOrDefault("email", ""));
+        return new TeacherRow(name, email);
     }
 }

@@ -1,41 +1,94 @@
 package frontend.student;
 
-import frontend.AppLayout;
 import frontend.api.StudentAttendanceApi;
 import frontend.auth.AppRouter;
 import frontend.auth.AuthState;
 import frontend.auth.JwtStore;
+import frontend.ui.HelperClass;
+import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
-import javafx.scene.control.*;
-import javafx.scene.layout.*;
+import javafx.scene.control.Alert;
+import javafx.scene.control.Button;
+import javafx.scene.control.ButtonType;
+import javafx.scene.control.Label;
+import javafx.scene.control.ScrollPane;
+import javafx.scene.control.TextField;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.StackPane;
+import javafx.scene.layout.VBox;
 import javafx.scene.text.Font;
 
 public class StudentMarkAttendancePage {
 
+    private static final String BASE_URL =
+            System.getenv().getOrDefault("BACKEND_URL", "http://localhost:8081");
+
+    private final HelperClass helper = new HelperClass();
+
     public Parent build(Scene scene, AppRouter router, JwtStore jwtStore, AuthState state) {
+        String studentName = StudentPageSupport.resolveStudentName(state, helper);
 
-        String studentName = (state.getName() == null || state.getName().isBlank())
-                ? "Name"
-                : state.getName();
+        VBox page = StudentPageSupport.buildPageContainer();
+        page.setPadding(new Insets(26, 26, 40, 26));
 
-        VBox page = new VBox(16);
-        page.setPadding(new Insets(26));
-        page.getStyleClass().add("page");
+        Button backButton = buildBackButton(router);
+        Label title = buildTitle();
+        Label subtitle = buildSubtitle();
 
-        Button back = new Button("← Back to Dashboard");
+        VBox qrCard = buildQrCard();
+        TextField codeField = buildCodeField();
+        Button submitButton = buildSubmitButton(codeField, jwtStore, state);
+        VBox manualCard = buildManualCard(codeField, submitButton);
+        VBox howCard = buildHowCard();
+
+        page.getChildren().addAll(
+                backButton,
+                title,
+                subtitle,
+                qrCard,
+                manualCard,
+                howCard
+        );
+
+        ScrollPane scroll = new ScrollPane(page);
+        scroll.setFitToWidth(true);
+        scroll.setFitToHeight(false);
+        scroll.setPannable(true);
+        scroll.getStyleClass().add("scroll");
+
+        return StudentPageSupport.wrapWithSidebar(
+                studentName,
+                helper,
+                scroll,
+                "second",
+                router,
+                jwtStore
+        );
+    }
+
+    private Button buildBackButton(AppRouter router) {
+        Button back = new Button(helper.getMessage("student.mark.back"));
         back.getStyleClass().add("back-link");
         back.setOnAction(e -> router.go("student-dashboard"));
+        return back;
+    }
 
-        Label title = new Label("Scan QR Code");
+    private Label buildTitle() {
+        Label title = new Label(helper.getMessage("student.mark.title"));
         title.getStyleClass().add("dash-title");
+        return title;
+    }
 
-        Label subtitle = new Label("Mark your attendance by scanning the class QR code");
+    private Label buildSubtitle() {
+        Label subtitle = new Label(helper.getMessage("student.mark.subtitle"));
         subtitle.getStyleClass().add("dash-subtitle");
+        return subtitle;
+    }
 
-        // QR placeholder card
+    private VBox buildQrCard() {
         VBox qrCard = new VBox();
         qrCard.getStyleClass().add("qr-card");
         qrCard.setMinHeight(200);
@@ -47,11 +100,29 @@ public class StudentMarkAttendancePage {
         Label cameraIcon = new Label("📷");
         cameraIcon.setFont(Font.font("Segoe UI Emoji", 34));
         cameraIcon.getStyleClass().add("camera-icon");
-        cameraBox.getChildren().add(cameraIcon);
 
+        cameraBox.getChildren().add(cameraIcon);
         qrCard.getChildren().add(cameraBox);
 
-        // Manual entry
+        return qrCard;
+    }
+
+    private TextField buildCodeField() {
+        TextField codeField = new TextField();
+        codeField.setPromptText(helper.getMessage("student.mark.code.placeholder"));
+        codeField.getStyleClass().add("code-field");
+        return codeField;
+    }
+
+    private Button buildSubmitButton(TextField codeField, JwtStore jwtStore, AuthState state) {
+        Button submit = new Button(helper.getMessage("student.mark.submit"));
+        submit.getStyleClass().add("submit-button");
+        submit.setMaxWidth(Double.MAX_VALUE);
+        submit.setOnAction(e -> handleSubmit(codeField, jwtStore, state));
+        return submit;
+    }
+
+    private VBox buildManualCard(TextField codeField, Button submitButton) {
         VBox manualCard = new VBox(10);
         manualCard.getStyleClass().add("manual-card");
 
@@ -61,106 +132,89 @@ public class StudentMarkAttendancePage {
         Label manualIcon = new Label("⌨");
         manualIcon.getStyleClass().add("manual-icon");
 
-        Label manualTitle = new Label("Manual Code Entry");
+        Label manualTitle = new Label(helper.getMessage("student.mark.manual.title"));
         manualTitle.getStyleClass().add("manual-title");
 
         manualHeader.getChildren().addAll(manualIcon, manualTitle);
 
-        Label manualSub = new Label("Enter the attendance code provided by your teacher");
-        manualSub.getStyleClass().add("manual-subtitle");
+        Label manualSubtitle = new Label(helper.getMessage("student.mark.manual.subtitle"));
+        manualSubtitle.getStyleClass().add("manual-subtitle");
 
-        Label codeLabel = new Label("Attendance Code");
+        Label codeLabel = new Label(helper.getMessage("student.mark.code.label"));
         codeLabel.getStyleClass().add("field-label");
-
-        TextField codeField = new TextField();
-        codeField.setPromptText("Enter code");
-        codeField.getStyleClass().add("code-field");
-
-        Button submit = new Button("Submit");
-        submit.getStyleClass().add("submit-button");
-        submit.setMaxWidth(Double.MAX_VALUE);
-
-        submit.setOnAction(e -> {
-            String code = codeField.getText().trim();
-            if (code.isBlank()) {
-                new Alert(Alert.AlertType.WARNING, "Enter attendance code first.").show();
-                return;
-            }
-
-            String backendUrl = System.getenv().getOrDefault("BACKEND_URL", "http://localhost:8081");
-
-            StudentAttendanceApi api = new StudentAttendanceApi(backendUrl);
-
-            new Thread(() -> {
-                try {
-                    api.submitCode(code, jwtStore, state);
-
-                    javafx.application.Platform.runLater(() -> {
-                        codeField.clear();
-                        new Alert(Alert.AlertType.INFORMATION, "Attendance marked!").show();
-                    });
-
-                } catch (Exception exx) {
-                    javafx.application.Platform.runLater(() ->
-                            new Alert(Alert.AlertType.ERROR, exx.getMessage()).show()
-                    );
-                }
-            }).start();
-        });
 
         manualCard.getChildren().addAll(
                 manualHeader,
-                manualSub,
+                manualSubtitle,
                 codeLabel,
                 codeField,
-                submit
+                submitButton
         );
 
-        // How it works
+        return manualCard;
+    }
+
+    private VBox buildHowCard() {
         VBox howCard = new VBox(8);
         howCard.getStyleClass().add("how-card");
 
-        Label howTitle = new Label("How it works:");
+        Label howTitle = new Label(helper.getMessage("student.mark.how.title"));
         howTitle.getStyleClass().add("how-title");
 
-        Label step1 = new Label("1. Get the attendance code from your teacher");
-        Label step2 = new Label("2. Enter the code in the field above");
-        Label step3 = new Label("3. Click submit to mark your attendance");
-
-        step1.getStyleClass().add("how-step");
-        step2.getStyleClass().add("how-step");
-        step3.getStyleClass().add("how-step");
+        Label step1 = buildHowStep(helper.getMessage("student.mark.how.step1"));
+        Label step2 = buildHowStep(helper.getMessage("student.mark.how.step2"));
+        Label step3 = buildHowStep(helper.getMessage("student.mark.how.step3"));
 
         howCard.getChildren().addAll(howTitle, step1, step2, step3);
+        return howCard;
+    }
 
-        page.getChildren().addAll(
-                back,
-                title,
-                subtitle,
-                qrCard,
-                manualCard,
-                howCard
-        );
+    private Label buildHowStep(String text) {
+        Label step = new Label(text);
+        step.getStyleClass().add("how-step");
+        return step;
+    }
 
-        return AppLayout.wrapWithSidebar(
-                studentName,
-                "Student Panel",
-                "Dashboard",
-                "Mark Attendance",
-                "My Attendance",
-                "Email",
-                page,
-                "second", // ✅ active = Mark Attendance
-                new AppLayout.Navigator() {
-                    @Override public void goDashboard() { router.go("student-dashboard"); }
-                    @Override public void goTakeAttendance() { router.go("student-mark"); }
-                    @Override public void goReports() { router.go("student-attendance"); }
-                    @Override public void goEmail() { router.go("student-email"); }
-                    @Override public void logout() {
-                        jwtStore.clear();
-                        router.go("login");
-                    }
-                }
-        );
+    private void handleSubmit(TextField codeField, JwtStore jwtStore, AuthState state) {
+        String code = codeField.getText().trim();
+
+        if (code.isBlank()) {
+            showWarning(helper.getMessage("student.mark.warning.empty"));
+            return;
+        }
+
+        StudentAttendanceApi api = new StudentAttendanceApi(BASE_URL);
+
+        new Thread(() -> {
+            try {
+                api.submitCode(code, jwtStore, state);
+
+                Platform.runLater(() -> {
+                    codeField.clear();
+                    showInfo(helper.getMessage("student.mark.success"));
+                });
+            } catch (Exception ex) {
+                Platform.runLater(() -> showError(safeMessage(ex)));
+            }
+        }).start();
+    }
+
+    String safeMessage(Throwable throwable) {
+        if (throwable == null || throwable.getMessage() == null || throwable.getMessage().isBlank()) {
+            return "Unknown error";
+        }
+        return throwable.getMessage();
+    }
+
+    private void showWarning(String message) {
+        new Alert(Alert.AlertType.WARNING, message, ButtonType.OK).show();
+    }
+
+    private void showInfo(String message) {
+        new Alert(Alert.AlertType.INFORMATION, message, ButtonType.OK).show();
+    }
+
+    private void showError(String message) {
+        new Alert(Alert.AlertType.ERROR, message, ButtonType.OK).show();
     }
 }

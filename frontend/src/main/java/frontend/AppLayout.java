@@ -1,17 +1,37 @@
 package frontend;
 
+import frontend.ui.HelperClass;
+import frontend.ui.UiPreferences;
 import javafx.geometry.Insets;
+import javafx.geometry.NodeOrientation;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.Parent;
 import javafx.scene.control.Label;
+import javafx.scene.control.MenuButton;
+import javafx.scene.control.MenuItem;
 import javafx.scene.control.Separator;
 import javafx.scene.layout.BorderPane;
+import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
 
-public class AppLayout {
+public final class AppLayout {
+
+    private static final String KEY_DASHBOARD = "dashboard";
+    private static final String KEY_SECOND = "second";
+    private static final String KEY_THIRD = "third";
+    private static final String KEY_FOURTH = "fourth";
+
+    private static final double SIDEBAR_WIDTH = 260.0;
+    private static final Insets TOP_BAR_PADDING = new Insets(10);
+    private static final Insets SIDEBAR_SECTION_PADDING = new Insets(18);
+    private static final Insets LOGOUT_MARGIN = new Insets(0, 18, 18, 18);
+
+    private AppLayout() {
+        // Utility class
+    }
 
     public interface Navigator {
         void goDashboard();
@@ -21,26 +41,6 @@ public class AppLayout {
         void logout();
     }
 
-    /**
-     * Default Teacher sidebar.
-     */
-    public static Parent wrapWithSidebar(String name, Node content, String activeKey, Navigator nav) {
-        return wrapWithSidebar(
-                name,
-                "Teacher Panel",
-                "Dashboard",
-                "Take Attendance",
-                "Reports",
-                "Email",
-                content,
-                activeKey,
-                nav
-        );
-    }
-
-    /**
-     * Custom labels (Teacher/Student/etc.)
-     */
     public static Parent wrapWithSidebar(
             String name,
             String roleLabel,
@@ -52,71 +52,224 @@ public class AppLayout {
             String activeKey,
             Navigator nav
     ) {
+        HelperClass helper = new HelperClass();
+        boolean rtl = isRtl();
 
         BorderPane root = new BorderPane();
         root.getStyleClass().add("app-root");
 
-        // ===== SIDEBAR =====
-        VBox sidebar = new VBox(14);
-        sidebar.getStyleClass().add("sidebar");
-        sidebar.setPadding(new Insets(18));
-        sidebar.setPrefWidth(260);
+        HBox topBar = buildTopBar(helper, rtl, root, activeKey, nav);
+        BorderPane sidebar = buildSidebar(
+                helper,
+                rtl,
+                name,
+                roleLabel,
+                dashboardLabel,
+                secondLabel,
+                thirdLabel,
+                fourthLabel,
+                activeKey,
+                nav
+        );
+        VBox center = buildCenter(content, topBar, rtl);
 
-        Label nameLbl = new Label(name);
-        nameLbl.getStyleClass().add("sidebar-name");
-
-        Label role = new Label(roleLabel);
-        role.getStyleClass().add("sidebar-role");
-
-        Separator sep = new Separator();
-
-        VBox navBox = new VBox(10);
-        navBox.getStyleClass().add("sidebar-nav");
-
-        Label dash   = navLabel(dashboardLabel, "dashboard", activeKey, nav::goDashboard);
-        Label second = navLabel(secondLabel, "second", activeKey, nav::goTakeAttendance);
-        Label third  = navLabel(thirdLabel, "third", activeKey, nav::goReports);
-        Label fourth = navLabel(fourthLabel, "fourth", activeKey, nav::goEmail);
-
-        navBox.getChildren().addAll(dash, second, third, fourth);
-
-        Region spacer = new Region();
-        VBox.setVgrow(spacer, Priority.ALWAYS);
-
-        Label logout = new Label("Logout");
-        logout.getStyleClass().add("logout-link");
-        logout.setOnMouseClicked(e -> nav.logout());
-
-        sidebar.getChildren().addAll(nameLbl, role, sep, navBox, spacer, logout);
-
-        // ===== CENTER CONTENT =====
-        VBox centerWrap = new VBox();
-        centerWrap.getStyleClass().add("content-wrap");
-        centerWrap.setFillWidth(true);
-
-        centerWrap.getChildren().add(content);
-
-        if (content instanceof Region r) {
-            r.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE);
-            VBox.setVgrow(r, Priority.ALWAYS);
+        if (rtl) {
+            root.setRight(sidebar);
+        } else {
+            root.setLeft(sidebar);
         }
 
-        root.setLeft(sidebar);
-        root.setCenter(centerWrap);
-
+        root.setCenter(center);
         return root;
     }
 
-    private static Label navLabel(String text, String key, String activeKey, Runnable action) {
-        Label l = new Label(text);
-        l.getStyleClass().add("nav-item");
+    static boolean isRtl() {
+        String lang = UiPreferences.getLanguage();
+        return lang != null && lang.toLowerCase().startsWith("ar");
+    }
 
-        if (key.equals(activeKey)) {
-            l.getStyleClass().add("nav-item-active");
+    private static HBox buildTopBar(
+            HelperClass helper,
+            boolean rtl,
+            BorderPane root,
+            String activeKey,
+            Navigator nav
+    ) {
+        MenuButton languageMenu = buildLanguageMenu(helper, activeKey, nav);
+        MenuButton settingsMenu = buildSettingsMenu(helper, root);
+
+        Region spacer = growRegion();
+
+        HBox topBar = rtl
+                ? new HBox(10, languageMenu, settingsMenu, spacer)
+                : new HBox(10, spacer, languageMenu, settingsMenu);
+
+        topBar.setAlignment(rtl ? Pos.CENTER_LEFT : Pos.CENTER_RIGHT);
+        topBar.setPadding(TOP_BAR_PADDING);
+        topBar.getStyleClass().add("top-utility-bar");
+        topBar.setNodeOrientation(toOrientation(rtl));
+
+        return topBar;
+    }
+
+    private static MenuButton buildLanguageMenu(HelperClass helper, String activeKey, Navigator nav) {
+        MenuButton menu = new MenuButton("🌐");
+        menu.getStyleClass().add("utility-menu");
+
+        menu.getItems().addAll(
+                languageItem(helper.getMessage("language.english"), "en", activeKey, nav),
+                languageItem(helper.getMessage("language.finnish"), "fi", activeKey, nav),
+                languageItem(helper.getMessage("language.arabic"), "ar", activeKey, nav),
+                languageItem(helper.getMessage("language.amharic"), "am", activeKey, nav),
+                languageItem(helper.getMessage("language.nepali"), "ne", activeKey, nav)
+        );
+
+        return menu;
+    }
+
+    private static MenuItem languageItem(String label, String languageCode, String activeKey, Navigator nav) {
+        MenuItem item = new MenuItem(label);
+        item.setOnAction(event -> {
+            UiPreferences.setLanguage(languageCode);
+            refreshCurrentPage(nav, activeKey);
+        });
+        return item;
+    }
+
+    private static MenuButton buildSettingsMenu(HelperClass helper, BorderPane root) {
+        MenuButton menu = new MenuButton("⚙");
+        menu.getStyleClass().add("utility-menu");
+
+        MenuItem light = new MenuItem(helper.getMessage("settingsThemeLight"));
+        light.setOnAction(event -> applyTheme(root, UiPreferences.Theme.LIGHT));
+
+        MenuItem dark = new MenuItem(helper.getMessage("settingsThemeDark"));
+        dark.setOnAction(event -> applyTheme(root, UiPreferences.Theme.DARK));
+
+        menu.getItems().addAll(light, dark);
+        return menu;
+    }
+
+    private static void applyTheme(BorderPane root, UiPreferences.Theme theme) {
+        UiPreferences.setTheme(theme);
+        if (root.getScene() != null) {
+            UiPreferences.applyTheme(root.getScene());
+        }
+    }
+
+    private static BorderPane buildSidebar(
+            HelperClass helper,
+            boolean rtl,
+            String name,
+            String roleLabel,
+            String dashboardLabel,
+            String secondLabel,
+            String thirdLabel,
+            String fourthLabel,
+            String activeKey,
+            Navigator nav
+    ) {
+        VBox topSection = new VBox(14);
+        topSection.setPadding(SIDEBAR_SECTION_PADDING);
+        topSection.setNodeOrientation(toOrientation(rtl));
+
+        Label nameLabel = sidebarText(name, "sidebar-name", rtl);
+        Label role = sidebarText(roleLabel, "sidebar-role", rtl);
+
+        VBox navBox = new VBox(10);
+        navBox.getStyleClass().add("sidebar-nav");
+        navBox.setNodeOrientation(toOrientation(rtl));
+        navBox.getChildren().addAll(
+                navLabel(dashboardLabel, KEY_DASHBOARD, activeKey, nav::goDashboard, rtl),
+                navLabel(secondLabel, KEY_SECOND, activeKey, nav::goTakeAttendance, rtl),
+                navLabel(thirdLabel, KEY_THIRD, activeKey, nav::goReports, rtl),
+                navLabel(fourthLabel, KEY_FOURTH, activeKey, nav::goEmail, rtl)
+        );
+
+        topSection.getChildren().addAll(
+                nameLabel,
+                role,
+                new Separator(),
+                navBox
+        );
+
+        Label logout = sidebarText(helper.getMessage("teacher.sidebar.logout"), "logout-link", rtl);
+        logout.setOnMouseClicked(event -> nav.logout());
+
+        BorderPane sidebar = new BorderPane();
+        sidebar.getStyleClass().add("sidebar");
+        sidebar.setPrefWidth(SIDEBAR_WIDTH);
+        sidebar.setMinWidth(SIDEBAR_WIDTH);
+        sidebar.setMaxWidth(SIDEBAR_WIDTH);
+        sidebar.setNodeOrientation(toOrientation(rtl));
+
+        sidebar.setTop(topSection);
+        sidebar.setBottom(logout);
+
+        BorderPane.setMargin(logout, LOGOUT_MARGIN);
+        return sidebar;
+    }
+
+    private static VBox buildCenter(Node content, HBox topBar, boolean rtl) {
+        VBox center = new VBox(topBar, content);
+        center.getStyleClass().add("content-wrap");
+        center.setNodeOrientation(toOrientation(rtl));
+
+        if (content instanceof Region region) {
+            region.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE);
+            VBox.setVgrow(region, Priority.ALWAYS);
         }
 
-        l.setOnMouseClicked(e -> action.run());
-        l.setAlignment(Pos.CENTER_LEFT);
-        return l;
+        return center;
+    }
+
+    private static Label sidebarText(String text, String styleClass, boolean rtl) {
+        Label label = new Label(text);
+        label.getStyleClass().add(styleClass);
+        label.setMaxWidth(Double.MAX_VALUE);
+        label.setAlignment(rtl ? Pos.CENTER_RIGHT : Pos.CENTER_LEFT);
+        label.setNodeOrientation(toOrientation(rtl));
+        return label;
+    }
+
+    private static Label navLabel(
+            String text,
+            String key,
+            String activeKey,
+            Runnable action,
+            boolean rtl
+    ) {
+        Label label = new Label(text);
+        label.getStyleClass().add("nav-item");
+
+        if (key.equals(activeKey)) {
+            label.getStyleClass().add("nav-item-active");
+        }
+
+        label.setOnMouseClicked(event -> action.run());
+        label.setMaxWidth(Double.MAX_VALUE);
+        label.setAlignment(rtl ? Pos.CENTER_RIGHT : Pos.CENTER_LEFT);
+        label.setNodeOrientation(toOrientation(rtl));
+        return label;
+    }
+
+    static void refreshCurrentPage(Navigator nav, String activeKey) {
+        switch (activeKey) {
+            case KEY_DASHBOARD -> nav.goDashboard();
+            case KEY_SECOND -> nav.goTakeAttendance();
+            case KEY_THIRD -> nav.goReports();
+            case KEY_FOURTH -> nav.goEmail();
+            default -> nav.goDashboard();
+        }
+    }
+
+    static NodeOrientation toOrientation(boolean rtl) {
+        return rtl ? NodeOrientation.RIGHT_TO_LEFT : NodeOrientation.LEFT_TO_RIGHT;
+    }
+
+    private static Region growRegion() {
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+        return spacer;
     }
 }

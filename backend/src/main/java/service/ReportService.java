@@ -3,6 +3,7 @@ package service;
 import config.AttendanceSQL;
 import dto.*;
 
+import java.time.Year;
 import java.util.List;
 
 public class ReportService {
@@ -15,8 +16,8 @@ public class ReportService {
         return attendanceSQL.getStudentYearlyReport(studentId, year);
     }
 
-    public List<TeacherStudentReportRow> teacherClassReport(Long teacherId, Long classId) {
-        return attendanceSQL.getTeacherClassReport(teacherId, classId);
+    public List<TeacherStudentReportRow> teacherClassReport(Long teacherId, Long classId, int year) {
+        return attendanceSQL.getTeacherClassReport(teacherId, classId, year);
     }
 
     public List<AttendanceReportRow> getAllStudents(){

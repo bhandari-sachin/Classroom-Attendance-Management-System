@@ -32,7 +32,26 @@ This project demonstrates the use of **Java backend architecture, database integ
 - Download attendance reports
 
 ---
+🌍 UI Localization (New Feature)
 
+The system now includes UI Localization support, allowing the application interface to adapt to multiple languages and improve accessibility for a diverse set of users.
+
+### Key Localization Features
+Multi-language support integrated into the frontend
+Dynamic language switching within the application
+Centralized language resource files for easier management
+Consistent translation across dashboards (Admin, Teacher, Student)
+### Implementation Details
+UI text is mapped using translation keys instead of hardcoded strings
+Language resources are stored in structured files for scalability
+The UI updates dynamically based on selected language without requiring a restart
+Designed to be easily extendable for additional languages in the future
+### Benefits
+
+Improves usability for non-English users
+Enhances system accessibility and inclusivity
+Prepares the application for international deployment
+---
 ## System Architecture
 
 The system follows a **layered architecture** consisting of:  

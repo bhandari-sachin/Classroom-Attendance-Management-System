@@ -1,11 +1,12 @@
 package frontend.ui;
 
 import frontend.auth.*;
+import frontend.i18n.FrontendI18n;
 import javafx.application.Platform;
-import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.*;
-import javafx.scene.layout.*;
+import javafx.scene.layout.StackPane;
+import javafx.scene.layout.VBox;
 
 import java.util.Optional;
 
@@ -16,38 +17,65 @@ public class SignupPage extends StackPane {
         VBox card = new VBox(10);
         card.getStyleClass().add("card");
         card.setMaxWidth(420);
-        card.setPadding(new Insets(22));
+        card.setPadding(new javafx.geometry.Insets(22));
 
-        Label title = new Label("Create account");
+        Label title = new Label(t("signup.title", "Create Account"));
         title.getStyleClass().add("title");
 
-        Label sub = new Label("Sign up to start using the system");
+        Label sub = new Label(t("signup.subtitle", "Sign up to continue"));
         sub.getStyleClass().add("subtitle");
 
         TextField firstName = new TextField();
-        firstName.setPromptText("First name");
+        firstName.setPromptText(t("signup.firstname.placeholder", "First name"));
 
         TextField lastName = new TextField();
-        lastName.setPromptText("Last name");
+        lastName.setPromptText(t("signup.lastname.placeholder", "Last name"));
 
         TextField email = new TextField();
-        email.setPromptText("Email");
+        email.setPromptText(t("signup.email.placeholder", "Email"));
 
         PasswordField password = new PasswordField();
-        password.setPromptText("Password");
+        password.setPromptText(t("signup.password.placeholder", "Password"));
 
         ComboBox<Role> role = new ComboBox<>();
         role.getItems().addAll(Role.STUDENT, Role.TEACHER);
         role.setValue(Role.STUDENT);
         role.setMaxWidth(Double.MAX_VALUE);
 
-        Label studentCodeLabel = new Label("Student code");
+        role.setCellFactory(listView -> new ListCell<>() {
+            @Override
+            protected void updateItem(Role item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                } else {
+                    setText(item == Role.STUDENT
+                            ? t("signup.role.student", "Student")
+                            : t("signup.role.teacher", "Teacher"));
+                }
+            }
+        });
+
+        role.setButtonCell(new ListCell<>() {
+            @Override
+            protected void updateItem(Role item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                } else {
+                    setText(item == Role.STUDENT
+                            ? t("signup.role.student", "Student")
+                            : t("signup.role.teacher", "Teacher"));
+                }
+            }
+        });
+
+        Label studentCodeLabel = new Label(t("signup.studentcode.label", "Student Code"));
         studentCodeLabel.getStyleClass().add("field-label");
 
         TextField studentCode = new TextField();
-        studentCode.setPromptText("e.g. 123456");
+        studentCode.setPromptText(t("signup.studentcode.placeholder", "Enter student code"));
 
-        // Only show studentCode for STUDENT
         studentCodeLabel.visibleProperty().bind(role.valueProperty().isEqualTo(Role.STUDENT));
         studentCode.visibleProperty().bind(role.valueProperty().isEqualTo(Role.STUDENT));
         studentCodeLabel.managedProperty().bind(studentCodeLabel.visibleProperty());
@@ -63,11 +91,11 @@ public class SignupPage extends StackPane {
         info.setVisible(false);
         info.setManaged(false);
 
-        Button signupBtn = new Button("Sign up");
+        Button signupBtn = new Button(t("signup.button.submit", "Sign Up"));
         signupBtn.getStyleClass().add("primary-btn");
         signupBtn.setMaxWidth(Double.MAX_VALUE);
 
-        Button goLogin = new Button("I already have an account");
+        Button goLogin = new Button(t("signup.button.login", "Back to Login"));
         goLogin.getStyleClass().add("link-button");
         goLogin.setOnAction(e -> router.go("login"));
 
@@ -83,19 +111,19 @@ public class SignupPage extends StackPane {
             String sc = studentCode.getText().trim();
 
             if (fn.isBlank() || ln.isBlank() || em.isBlank() || pw.isBlank()) {
-                showMsg(error, "Please fill in all required fields.");
+                showMsg(error, t("signup.error.required_fields", "Please fill in all required fields."));
                 return;
             }
             if (!em.contains("@")) {
-                showMsg(error, "Please enter a valid email.");
+                showMsg(error, t("signup.error.invalid_email", "Please enter a valid email address."));
                 return;
             }
             if (pw.length() < 6) {
-                showMsg(error, "Password must be at least 6 characters.");
+                showMsg(error, t("signup.error.password_short", "Password must be at least 6 characters."));
                 return;
             }
             if (r == Role.STUDENT && sc.isBlank()) {
-                showMsg(error, "Student code is required for students.");
+                showMsg(error, t("signup.error.student_code_required", "Student code is required."));
                 return;
             }
 
@@ -107,13 +135,13 @@ public class SignupPage extends StackPane {
 
                     Platform.runLater(() -> {
                         signupBtn.setDisable(false);
-                        showMsg(info, "Account created. Please login.");
+                        showMsg(info, t("signup.success.created", "Account created successfully."));
                         router.go("login");
                     });
                 } catch (Exception ex) {
                     Platform.runLater(() -> {
                         signupBtn.setDisable(false);
-                        showMsg(error, "Signup failed: " + ex.getMessage());
+                        showMsg(error, t("signup.error.failed", "Signup failed:") + " " + ex.getMessage());
                     });
                 }
             }).start();
@@ -121,11 +149,11 @@ public class SignupPage extends StackPane {
 
         card.getChildren().addAll(
                 title, sub,
-                field("First name", firstName),
-                field("Last name", lastName),
-                field("Email", email),
-                field("Password", password),
-                field("Role", role),
+                field(t("signup.firstname.label", "First Name"), firstName),
+                field(t("signup.lastname.label", "Last Name"), lastName),
+                field(t("signup.email.label", "Email"), email),
+                field(t("signup.password.label", "Password"), password),
+                field(t("signup.role.label", "Role"), role),
                 studentCodeLabel, studentCode,
                 error,
                 info,
@@ -136,7 +164,6 @@ public class SignupPage extends StackPane {
         StackPane.setAlignment(card, Pos.CENTER);
         getChildren().add(card);
 
-        // Auto redirect if already logged in
         Optional<AuthState> existing = jwtStore.load();
         existing.ifPresent(state -> router.go(RoleRedirect.routeFor(state.getRole())));
     }
@@ -157,5 +184,10 @@ public class SignupPage extends StackPane {
         lbl.setVisible(false);
         lbl.setManaged(false);
         lbl.setText("");
+    }
+
+    private static String t(String key, String fallback) {
+        String value = FrontendI18n.t(key);
+        return key.equals(value) ? fallback : value;
     }
 }

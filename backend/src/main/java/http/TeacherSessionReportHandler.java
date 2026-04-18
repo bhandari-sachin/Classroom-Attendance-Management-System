@@ -62,13 +62,18 @@ public class TeacherSessionReportHandler implements HttpHandler {
                 return;
             }
 
-            var report = attendanceSQL.getSessionReport(sessionId);
+            String languageCode = Query.get(qs, "languageCode");
+            if (languageCode == null) {
+                languageCode = "en";
+            }
+            var report = attendanceSQL.getSessionReport(sessionId, languageCode);
 
             HttpUtil.json(ex, 200, Map.of(
                     "sessionId", sessionId,
                     "classId", session.getClassId(),
                     "date", session.getSessionDate().toString(),
-                    "report", report
+                    "report", report,
+                    "lang", languageCode
             ));
 
         } catch (SecurityException se) {

@@ -1,35 +1,49 @@
 package util;
 
+import config.LocalizationSQL;
 import dto.AttendanceReportRow;
 import dto.StudentClassReportRow;
 import dto.TeacherStudentReportRow;
 
 import java.io.BufferedWriter;
 import java.io.FileOutputStream;
+import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.Map;
 
 public class CSVReportExporter {
 
     public static void studentYearReport(
-            String file,
+            OutputStream os,
             int year,
-            List<StudentClassReportRow> rows
+            List<StudentClassReportRow> rows,
+            String lang
     ) throws Exception {
+        Map<String, String> labels= LocalizationSQL.getLabels(lang);
+        String rateLabel = labels.get("teacher.reports.stats.rate");
+        String rate = rateLabel.split(":")[0];
         try (BufferedWriter writer = new BufferedWriter(
-                new OutputStreamWriter(new FileOutputStream(file), StandardCharsets.UTF_8))) {
+                new OutputStreamWriter(os, StandardCharsets.UTF_8))) {
 
-            writer.write("Student Attendance Report - " + year);
+            writer.write('\uFEFF');
+            writer.write(labels.get("reports.export.studentTitle")+ " " + year);
             writer.newLine();
 
             if (rows != null && !rows.isEmpty()) {
-                writer.write("Student Code," + escape(rows.get(0).getStudentCode()));
+                writer.write(labels.get("signup.studentcode.label")+ "," + escape(rows.get(0).getStudentCode()));
                 writer.newLine();
             }
 
             writer.newLine();
-            writer.write("Class,Present,Absent,Excused,Rate");
+            writer.write(String.join(",",
+                    labels.get("common.table.column.class"),
+                    labels.get("common.attendance.present"),
+                    labels.get("common.attendance.absent"),
+                    labels.get("common.attendance.excused"),
+                    rate
+            ));
             writer.newLine();
 
             if (rows != null) {
@@ -48,28 +62,41 @@ public class CSVReportExporter {
     }
 
     public static void teacherClassReport(
-            String file,
-            List<TeacherStudentReportRow> rows
+            OutputStream os,
+            int year,
+            List<TeacherStudentReportRow> rows,
+            String lang
     ) throws Exception {
+        Map<String, String> labels= LocalizationSQL.getLabels(lang);
+        String rateLabel = labels.get("teacher.reports.stats.rate");
+        String rate = rateLabel.split(":")[0];
         try (BufferedWriter writer = new BufferedWriter(
-                new OutputStreamWriter(new FileOutputStream(file), StandardCharsets.UTF_8))) {
+                new OutputStreamWriter(os, StandardCharsets.UTF_8))) {
 
-            writer.write("Class Attendance Summary");
+            writer.write('\uFEFF');
+            writer.write(labels.get("reports.export.teacherTitle"));
             writer.newLine();
 
             if (rows != null && !rows.isEmpty()) {
-                writer.write("Class," + escape(rows.get(0).getClassName()));
+                writer.write(labels.get("common.table.column.class")+"," + escape(rows.get(0).getClassName()));
                 writer.newLine();
 
-                writer.write("Teacher," + escape(rows.get(0).getTeacherName()));
+                writer.write(labels.get("signup.role.teacher")+"," + escape(rows.get(0).getTeacherName()));
                 writer.newLine();
 
-                writer.write("Date Range,year");
+                writer.write(labels.get("reports.export.dateRange")+"," + year);
                 writer.newLine();
             }
 
             writer.newLine();
-            writer.write("Student,Present,Absent,Excused,Total,Rate");
+            writer.write(String.join(",",
+                    labels.get("signup.role.student"),
+                    labels.get("common.attendance.present"),
+                    labels.get("common.attendance.absent"),
+                    labels.get("common.attendance.excused"),
+                    labels.get("admin.reports.stats.total"),
+                    rate
+            ));
             writer.newLine();
 
             if (rows != null) {
@@ -89,17 +116,28 @@ public class CSVReportExporter {
     }
 
     public static void adminAllStudentsReport(
-            String file,
-            List<AttendanceReportRow> rows
+            OutputStream os,
+            List<AttendanceReportRow> rows,
+            String lang
     ) throws Exception {
+        Map<String, String> labels= LocalizationSQL.getLabels(lang);
+        String rateLabel = labels.get("teacher.reports.stats.rate");
+        String rate = rateLabel.split(":")[0];
         try (BufferedWriter writer = new BufferedWriter(
-                new OutputStreamWriter(new FileOutputStream(file), StandardCharsets.UTF_8))) {
+                new OutputStreamWriter(os, StandardCharsets.UTF_8))) {
 
-            writer.write("School Attendance Summary");
+            writer.write('\uFEFF');
+            writer.write(labels.get("reports.export.adminTitle"));
             writer.newLine();
             writer.newLine();
 
-            writer.write("Student,Present,Absent,Excused,Rate");
+            writer.write(String.join(",",
+                    labels.get("signup.role.student"),
+                    labels.get("common.attendance.present"),
+                    labels.get("common.attendance.absent"),
+                    labels.get("common.attendance.excused"),
+                    rate
+            ));;
             writer.newLine();
 
             if (rows != null) {
