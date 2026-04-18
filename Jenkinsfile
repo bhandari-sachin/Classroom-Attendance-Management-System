@@ -1,34 +1,26 @@
 pipeline {
     agent any
-
-    environment {
-        PATH = "C:\\Program Files\\Docker\\Docker\\resources\\bin;${env.PATH}"
-
-        DOCKERHUB_CREDENTIALS_ID = '11de06b8-c29b-4e4c-bf92-2d6a8d92868e'
-
-        BACKEND_IMAGE_REPO  = 'sachinbhandari/classroom-attendance-backend'
-        FRONTEND_IMAGE_REPO = 'sachinbhandari/classroom-attendance-frontend'
-
-        DOCKER_IMAGE_TAG_LATEST = 'latest'
-        DOCKER_IMAGE_TAG_BUILD  = "${env.BUILD_NUMBER}"
+    tools {
+        maven 'Maven3'
+        jdk   'JDK21'
     }
+    environment {
 
+        DOCKERHUB_CREDENTIALS_ID = 'Docker_Hub'
+        BACKEND_IMAGE_REPO       = 'sachinbhandari/classroom-attendance-backend'
+        FRONTEND_IMAGE_REPO      = 'sachinbhandari/classroom-attendance-frontend'
+        DOCKER_IMAGE_TAG         = "build-${env.BUILD_NUMBER}"
+        DOCKER_IMAGE_TAG_LATEST  = 'latest'
+        SONAR_PROJECT_KEY        = 'classroom_attendance_management'
+        SONAR_PROJECT_NAME       = 'Classroom Attendance Management'
+    }
     stages {
-        stage('Check Docker') {
-            steps {
-                bat 'docker --version'
-                bat 'docker info'
-            }
-        }
-
         stage('Checkout') {
             steps {
-                git branch: 'main',
-                    url: 'https://github.com/bhandari-sachin/Classroom-Attendance-Management-System.git'
+                checkout scm
             }
         }
-
-        stage('Build and Test') {
+        stage('Build & Test') {
             steps {
                 bat 'mvn -B clean verify'
             }
@@ -38,13 +30,11 @@ pipeline {
                 }
             }
         }
-
         stage('Generate Coverage Report') {
             steps {
                 bat 'mvn -B jacoco:report'
             }
         }
-
         stage('Publish Coverage Report') {
             steps {
                 recordCoverage(
@@ -55,31 +45,53 @@ pipeline {
                 )
             }
         }
-
+        stage('SonarQube Analysis') {
+            steps {
+                withSonarQubeEnv('SonarQubeServer') {
+                    bat """
+                        ${tool 'SonarScanner'}\\bin\\sonar-scanner ^
+                        -Dsonar.projectKey=${SONAR_PROJECT_KEY} ^
+                        -Dsonar.projectName="${SONAR_PROJECT_NAME}" ^
+                        -Dsonar.sources=src/main/java ^
+                        -Dsonar.tests=src/test/java ^
+                        -Dsonar.java.binaries=target/classes ^
+                        -Dsonar.java.test.binaries=target/test-classes ^
+                        -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml ^
+                        -Dsonar.sourceEncoding=UTF-8
+                    """
+                }
+            }
+        }
+        /*
+        OPTIONAL
+        stage('Quality Gate') {
+            steps {
+                timeout(time: 5, unit: 'MINUTES') {
+                    waitForQualityGate abortPipeline: true
+                }
+            }
+        }
+        */
         stage('Build Backend Docker Image') {
             steps {
                 bat """
                     docker build ^
-                      -f backend\\backend.dockerfile ^
-                      -t %BACKEND_IMAGE_REPO%:%DOCKER_IMAGE_TAG_BUILD% ^
-                      -t %BACKEND_IMAGE_REPO%:%DOCKER_IMAGE_TAG_LATEST% ^
-                      .
+                        -f backend\\backend.dockerfile ^
+                        -t %BACKEND_IMAGE_REPO%:%DOCKER_IMAGE_TAG% ^
+                        -t %BACKEND_IMAGE_REPO%:%DOCKER_IMAGE_TAG_LATEST% .
                 """
             }
         }
-
         stage('Build Frontend Docker Image') {
             steps {
                 bat """
                     docker build ^
-                      -f frontend\\frontend.dockerfile ^
-                      -t %FRONTEND_IMAGE_REPO%:%DOCKER_IMAGE_TAG_BUILD% ^
-                      -t %FRONTEND_IMAGE_REPO%:%DOCKER_IMAGE_TAG_LATEST% ^
-                      .
+                        -f frontend\\frontend.dockerfile ^
+                        -t %FRONTEND_IMAGE_REPO%:%DOCKER_IMAGE_TAG% ^
+                        -t %FRONTEND_IMAGE_REPO%:%DOCKER_IMAGE_TAG_LATEST% .
                 """
             }
         }
-
         stage('Push Docker Images to Docker Hub') {
             steps {
                 withCredentials([usernamePassword(
@@ -88,21 +100,17 @@ pipeline {
                     passwordVariable: 'DOCKER_PASS'
                 )]) {
                     bat """
-                        echo %DOCKER_PASS% | docker login -u %DOCKER_USER% --password-stdin
-
-                        docker push %BACKEND_IMAGE_REPO%:%DOCKER_IMAGE_TAG_BUILD%
+                        docker login -u %DOCKER_USER% -p %DOCKER_PASS%
+                        docker push %BACKEND_IMAGE_REPO%:%DOCKER_IMAGE_TAG%
                         docker push %BACKEND_IMAGE_REPO%:%DOCKER_IMAGE_TAG_LATEST%
-
-                        docker push %FRONTEND_IMAGE_REPO%:%DOCKER_IMAGE_TAG_BUILD%
+                        docker push %FRONTEND_IMAGE_REPO%:%DOCKER_IMAGE_TAG%
                         docker push %FRONTEND_IMAGE_REPO%:%DOCKER_IMAGE_TAG_LATEST%
-
                         docker logout
                     """
                 }
             }
         }
-
-        stage('Deploy with  Docker Compose') {
+        stage('Deploy with Docker Compose') {
             steps {
                 bat 'docker compose down'
                 bat 'docker compose pull'
@@ -110,10 +118,16 @@ pipeline {
             }
         }
     }
-
     post {
+        success {
+            echo "Pipeline succeeded! Backend: ${BACKEND_IMAGE_REPO}:${DOCKER_IMAGE_TAG}"
+            echo "Pipeline succeeded! Frontend: ${FRONTEND_IMAGE_REPO}:${DOCKER_IMAGE_TAG}"
+        }
+        failure {
+            echo "Pipeline failed. Check logs above."
+        }
         always {
-            echo "Pipeline finished: ${currentBuild.currentResult}"
+            cleanWs()
         }
     }
 }
