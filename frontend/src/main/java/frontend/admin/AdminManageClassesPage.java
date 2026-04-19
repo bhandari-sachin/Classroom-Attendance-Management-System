@@ -202,14 +202,14 @@ public class AdminManageClassesPage {
     }
 
     ClassRow mapClassRow(AdminClassDto classDto) {
-        String schedule = joinNonEmpty(classDto.semester, classDto.academicYear);
+        String schedule = joinNonEmpty(classDto.getSemester(), classDto.getAcademicYear());
 
         return new ClassRow(
-                nullToEmpty(classDto.name),
-                nullToEmpty(classDto.classCode),
-                nullToEmpty(classDto.teacherEmail),
+                nullToEmpty(classDto.getName()),
+                nullToEmpty(classDto.getClassCode()),
+                nullToEmpty(classDto.getTeacherEmail()),
                 schedule,
-                String.valueOf(classDto.students)
+                String.valueOf(classDto.getStudents())
         );
     }
 
@@ -404,8 +404,8 @@ public class AdminManageClassesPage {
                     return;
                 }
 
-                String fullName = (nullToEmpty(item.firstName) + " " + nullToEmpty(item.lastName)).trim();
-                setText(fullName + "  |  " + nullToEmpty(item.email) + "  |  " + nullToEmpty(item.studentCode));
+                String fullName = (nullToEmpty(item.getFirstName()) + " " + nullToEmpty(item.getLastName())).trim();
+                setText(fullName + "  |  " + nullToEmpty(item.getEmail()) + "  |  " + nullToEmpty(item.getStudentCode()));
             }
         });
 
@@ -429,11 +429,11 @@ public class AdminManageClassesPage {
                 return true;
             }
 
-            String fullName = (nullToEmpty(student.firstName) + " " + nullToEmpty(student.lastName)).toLowerCase();
+            String fullName = (nullToEmpty(student.getFirstName()) + " " + nullToEmpty(student.getLastName())).toLowerCase();
 
             return fullName.contains(searchValue)
-                    || safe(student.email).contains(searchValue)
-                    || safe(student.studentCode).contains(searchValue);
+                    || safe(student.getEmail()).contains(searchValue)
+                    || safe(student.getStudentCode()).contains(searchValue);
         });
     }
 
@@ -480,7 +480,7 @@ public class AdminManageClassesPage {
                 new ArrayList<>(listView.getSelectionModel().getSelectedItems());
 
         List<String> studentEmails = selectedStudents.stream()
-                .map(student -> student.email)
+                .map(student -> student.getEmail())
                 .filter(email -> email != null && !email.isBlank())
                 .collect(Collectors.toList());
 
