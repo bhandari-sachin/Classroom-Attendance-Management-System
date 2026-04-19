@@ -12,11 +12,14 @@ public class AuthService {
 
     private final UserRepository userRepository;
     private final JwtService jwtService;
-    private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
+    private final BCryptPasswordEncoder passwordEncoder;
 
-    public AuthService(UserRepository userRepository, JwtService jwtService) {
+    public AuthService(UserRepository userRepository,
+                       JwtService jwtService,
+                       BCryptPasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
         this.jwtService = jwtService;
+        this.passwordEncoder = passwordEncoder;
     }
 
     // LOGIN (email + password) -> returns JWT
