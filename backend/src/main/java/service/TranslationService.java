@@ -10,7 +10,7 @@ public class TranslationService {
     private final LocalizationSQL localizationSQL = new LocalizationSQL();
 
     public Map<String, String> getUiTranslations(String languageCode) {
-        return localizationSQL.getLabels(languageCode);
+        return LocalizationSQL.getLabels(languageCode);
     }
 
     public List<LocalizationSQL.LanguageItem> getActiveLanguages() {

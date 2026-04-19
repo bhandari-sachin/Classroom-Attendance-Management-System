@@ -15,6 +15,7 @@ public class SignupHandler implements HttpHandler {
     private final UserRepository users;
     private final ObjectMapper om = new ObjectMapper();
     private final BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
+    private static final String ERROR = "error";
 
     public SignupHandler(UserRepository users) {
         this.users = users;
@@ -31,7 +32,7 @@ public class SignupHandler implements HttpHandler {
         try {
             body = om.readValue(ex.getRequestBody(), new TypeReference<>() {});
         } catch (Exception e) {
-            HttpUtil.json(ex, 400, Map.of("error", "Invalid JSON"));
+            HttpUtil.json(ex, 400, Map.of(ERROR, "Invalid JSON"));
             return;
         }
 
@@ -44,7 +45,7 @@ public class SignupHandler implements HttpHandler {
 
         // Basic required fields
         if (email == null || password == null || firstName == null || lastName == null || role == null) {
-            HttpUtil.json(ex, 400, Map.of("error", "email, password, firstName, lastName, role are required"));
+            HttpUtil.json(ex, 400, Map.of(ERROR, "email, password, firstName, lastName, role are required"));
             return;
         }
 
@@ -53,19 +54,19 @@ public class SignupHandler implements HttpHandler {
 
         // Role validation
         if (!role.equals("STUDENT") && !role.equals("TEACHER") && !role.equals("ADMIN")) {
-            HttpUtil.json(ex, 400, Map.of("error", "role must be STUDENT or TEACHER"));
+            HttpUtil.json(ex, 400, Map.of(ERROR, "role must be STUDENT or TEACHER"));
             return;
         }
 
         if ("ADMIN".equals(role)) {
-            HttpUtil.json(ex, 403, Map.of("error", "Admin cannot self-register"));
+            HttpUtil.json(ex, 403, Map.of(ERROR, "Admin cannot self-register"));
             return;
         }
 
         // Enforce your DB chk_student_code constraint
         if ("STUDENT".equals(role)) {
             if (studentCode == null) {
-                HttpUtil.json(ex, 400, Map.of("error", "Student code required"));
+                HttpUtil.json(ex, 400, Map.of(ERROR, "Student code required"));
                 return;
             }
         } else {
@@ -74,7 +75,7 @@ public class SignupHandler implements HttpHandler {
         }
 
         if (users.existsByEmail(email)) {
-            HttpUtil.json(ex, 400, Map.of("error", "Email already exists"));
+            HttpUtil.json(ex, 400, Map.of(ERROR, "Email already exists"));
             return;
         }
 

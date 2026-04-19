@@ -7,6 +7,10 @@ public class QRCodeGenerator {
     private static final int CODE_LENGTH = 6;
     private static final SecureRandom random = new SecureRandom();
 
+    private QRCodeGenerator () {
+        // Private constructor to prevent instantiation
+    }
+
     public static String generate() {
         StringBuilder code = new StringBuilder();
 

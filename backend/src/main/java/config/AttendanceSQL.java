@@ -11,11 +11,127 @@ import model.MarkedBy;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class AttendanceSQL {
+
+    private static final Logger LOGGER = Logger.getLogger(AttendanceSQL.class.getName());
+    private static final String COL_STUDENT_ID = "student_id";
+    private static final String COL_SESSION_ID = "session_id";
+    private static final String COL_STATUS = "status";
+    private static final String COL_MARKED_BY = "marked_by";
+    private static final String COL_FIRST_NAME = "first_name";
+    private static final String COL_LAST_NAME = "last_name";
+    private static final String COL_SESSION_DATE = "session_date";
+    private static final String COL_QR_TOKEN = "qr_token";
+    private static final String COL_PRESENT_COUNT = "presentCount";
+    private static final String COL_ABSENT_COUNT = "absentCount";
+    private static final String COL_EXCUSED_COUNT = "excusedCount";
+    private static final String COL_TOTAL_RECORDS = "totalRecords";
+    private static final String COL_PRESENT_COUNT_ALT = "present_count";
+    private static final String COL_ABSENT_COUNT_ALT = "absent_count";
+    private static final String COL_EXCUSED_COUNT_ALT = "excused_count";
+    private static final String COL_TOTAL_DAYS = "total_days";
+    private static final String KEY_STATUS = "status";
+    private static final String KEY_PRESENT = "present";
+    private static final String KEY_ABSENT = "absent";
+    private static final String KEY_EXCUSED = "excused";
+    private static final String KEY_TOTAL_MARKED = "totalMarked";
+
+
+    private static final String PERIOD_FILTER_SESSION_DATE =
+            "AND (? IS NULL OR ? = 'ALL' "
+                    + "OR (? = 'THIS_MONTH' AND YEAR(s.session_date) = YEAR(CURDATE()) AND MONTH(s.session_date) = MONTH(CURDATE())) "
+                    + "OR (? = 'LAST_MONTH' AND YEAR(s.session_date) = YEAR(DATE_SUB(CURDATE(), INTERVAL 1 MONTH)) AND MONTH(s.session_date) = MONTH(DATE_SUB(CURDATE(), INTERVAL 1 MONTH))) "
+                    + "OR (? = 'THIS_YEAR' AND YEAR(s.session_date) = YEAR(CURDATE())) "
+                    + "OR (? NOT IN ('ALL', 'THIS_MONTH', 'LAST_MONTH'))) ";
+
+    private static final String PERIOD_FILTER_SE_SESSION_DATE =
+            "AND (? IS NULL OR ? = 'ALL' "
+                    + "OR (? = 'THIS_MONTH' AND YEAR(se.session_date) = YEAR(CURDATE()) AND MONTH(se.session_date) = MONTH(CURDATE())) "
+                    + "OR (? = 'LAST_MONTH' AND YEAR(se.session_date) = YEAR(DATE_SUB(CURDATE(), INTERVAL 1 MONTH)) AND MONTH(se.session_date) = MONTH(DATE_SUB(CURDATE(), INTERVAL 1 MONTH))) "
+                    + "OR (? = 'THIS_YEAR' AND YEAR(se.session_date) = YEAR(CURDATE())) "
+                    + "OR (? NOT IN ('ALL', 'THIS_MONTH', 'LAST_MONTH'))) ";
+
+    // getStudentStats — without classId filter
+    private static final String SQL_STUDENT_STATS =
+            "SELECT "
+                    + "SUM(CASE WHEN a.status = 'PRESENT' THEN 1 ELSE 0 END) AS present_count, "
+                    + "SUM(CASE WHEN a.status = 'ABSENT'  THEN 1 ELSE 0 END) AS absent_count, "
+                    + "SUM(CASE WHEN a.status = 'EXCUSED' THEN 1 ELSE 0 END) AS excused_count, "
+                    + "COUNT(*) AS total_days "
+                    + "FROM attendance a "
+                    + "JOIN sessions s ON a.session_id = s.id "
+                    + "WHERE a.student_id = ? "
+                    + PERIOD_FILTER_SESSION_DATE;
+
+    // getStudentStats — with classId filter
+    private static final String SQL_STUDENT_STATS_BY_CLASS =
+            "SELECT "
+                    + "SUM(CASE WHEN a.status = 'PRESENT' THEN 1 ELSE 0 END) AS present_count, "
+                    + "SUM(CASE WHEN a.status = 'ABSENT'  THEN 1 ELSE 0 END) AS absent_count, "
+                    + "SUM(CASE WHEN a.status = 'EXCUSED' THEN 1 ELSE 0 END) AS excused_count, "
+                    + "COUNT(*) AS total_days "
+                    + "FROM attendance a "
+                    + "JOIN sessions s ON a.session_id = s.id "
+                    + "WHERE a.student_id = ? AND s.class_id = ? "
+                    + PERIOD_FILTER_SESSION_DATE;
+
+    // getStudentAttendanceViews — without classId filter
+    private static final String SQL_STUDENT_ATTENDANCE_VIEWS =
+            "SELECT s.session_date, ast.label AS status "
+                    + "FROM attendance a "
+                    + "JOIN sessions s ON a.session_id = s.id "
+                    + "JOIN attendance_status_translation ast ON a.status = ast.status_code "
+                    + "WHERE a.student_id = ? AND ast.language_code = ? "
+                    + PERIOD_FILTER_SESSION_DATE
+                    + "ORDER BY s.session_date DESC";
+
+    // getStudentAttendanceViews — with classId filter
+    private static final String SQL_STUDENT_ATTENDANCE_VIEWS_BY_CLASS =
+            "SELECT s.session_date, ast.label AS status "
+                    + "FROM attendance a "
+                    + "JOIN sessions s ON a.session_id = s.id "
+                    + "JOIN attendance_status_translation ast ON a.status = ast.status_code "
+                    + "WHERE a.student_id = ? AND ast.language_code = ? AND s.class_id = ? "
+                    + PERIOD_FILTER_SESSION_DATE
+                    + "ORDER BY s.session_date DESC";
+
+    // getAdminAttendanceReport
+    private static final String SQL_ADMIN_ATTENDANCE_REPORT =
+            "SELECT u.id AS student_id, u.first_name, u.last_name, se.session_date, ast.label AS status "
+                    + "FROM attendance a "
+                    + "JOIN sessions se ON a.session_id = se.id "
+                    + "JOIN users u ON a.student_id = u.id "
+                    + "JOIN attendance_status_translation ast ON a.status = ast.status_code "
+                    + "WHERE se.class_id = ? AND ast.language_code = ? "
+                    + PERIOD_FILTER_SE_SESSION_DATE
+                    + "AND (CAST(u.id AS CHAR) LIKE ? OR LOWER(u.first_name) LIKE ? "
+                    + "OR LOWER(u.last_name) LIKE ? OR LOWER(CONCAT(u.first_name, ' ', u.last_name)) LIKE ?) "
+                    + "ORDER BY u.last_name, u.first_name, se.session_date DESC";
+
+    // filterAttendanceByStudent
+    private static final String SQL_FILTER_ATTENDANCE_BY_STUDENT =
+            "SELECT u.id AS student_id, u.first_name, u.last_name, se.session_date, ast.label AS status "
+                    + "FROM attendance a "
+                    + "JOIN sessions se ON a.session_id = se.id "
+                    + "JOIN users u ON a.student_id = u.id "
+                    + "JOIN attendance_status_translation ast ON a.status = ast.status_code "
+                    + "WHERE se.class_id = ? AND ast.language_code = ? "
+                    + "AND (CAST(u.id AS CHAR) LIKE ? OR LOWER(u.first_name) LIKE ? "
+                    + "OR LOWER(u.last_name) LIKE ? OR LOWER(CONCAT(u.first_name, ' ', u.last_name)) LIKE ?) "
+                    + "ORDER BY u.last_name, u.first_name, se.session_date";
+
+    private static void bindPeriodParameters(PreparedStatement stmt, int startIndex, String period) throws SQLException {
+        for (int i = 0; i < 6; i++) {
+            stmt.setString(startIndex + i, period);
+        }
+    }
 
     public boolean exists(Long studentId, Long sessionId) {
         String sql = "SELECT COUNT(*) FROM attendance WHERE student_id = ? AND session_id = ?";
@@ -32,8 +148,8 @@ public class AttendanceSQL {
             }
             return false;
 
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to check attendance", e);
+        } catch (SQLException e) {
+            throw new IllegalStateException("Failed to check attendance", e);
         }
     }
 
@@ -50,8 +166,8 @@ public class AttendanceSQL {
 
             stmt.executeUpdate();
 
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to save attendance", e);
+        } catch (SQLException e) {
+            throw new IllegalStateException("Failed to save attendance", e);
         }
     }
 
@@ -68,8 +184,8 @@ public class AttendanceSQL {
 
             stmt.executeUpdate();
 
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to update attendance status", e);
+        } catch (SQLException e) {
+            throw new IllegalStateException("Failed to update attendance status", e);
         }
     }
 
@@ -77,7 +193,7 @@ public class AttendanceSQL {
     // Fetch attendance records for a student
     public List<Attendance> findByStudentId(Long studentId) {
         List<Attendance> attendanceList = new ArrayList<>();
-        String sql = "SELECT * FROM attendance WHERE student_id = ?";
+        String sql = "SELECT student_id, session_id, status, marked_by FROM attendance WHERE student_id = ?";
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
 
@@ -86,15 +202,15 @@ public class AttendanceSQL {
 
             while (rs.next()) {
                 Attendance attendance = new Attendance(
-                        rs.getLong("student_id"),
-                        rs.getLong("session_id"),
-                        AttendanceStatus.valueOf(rs.getString("status")),
-                        MarkedBy.valueOf(rs.getString("marked_by"))
+                        rs.getLong(COL_STUDENT_ID),
+                        rs.getLong(COL_SESSION_ID),
+                        AttendanceStatus.valueOf(rs.getString(COL_STATUS)),
+                        MarkedBy.valueOf(rs.getString(COL_MARKED_BY))
                 );
                 attendanceList.add(attendance);
             }
-        } catch (Exception e) {
-            e.printStackTrace();
+        } catch (SQLException e) {
+            LOGGER.log(Level.SEVERE, "Failed to load attendance by student", e);
         }
         return attendanceList;
     }
@@ -102,7 +218,7 @@ public class AttendanceSQL {
     // Fetch attendance records for a class
     public List<Attendance> findByClassId(Long classId) {
         List<Attendance> attendanceList = new ArrayList<>();
-        String sql = "SELECT a.* FROM attendance a JOIN sessions s ON a.session_id = s.id WHERE s.class_id = ?";
+        String sql = "SELECT a.student_id, a.session_id, a.status, a.marked_by FROM attendance a JOIN sessions s ON a.session_id = s.id WHERE s.class_id = ?";
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
 
@@ -111,15 +227,15 @@ public class AttendanceSQL {
 
             while (rs.next()) {
                 Attendance attendance = new Attendance(
-                        rs.getLong("student_id"),
-                        rs.getLong("session_id"),
-                        AttendanceStatus.valueOf(rs.getString("status")),
-                        MarkedBy.valueOf(rs.getString("marked_by"))
+                        rs.getLong(COL_STUDENT_ID),
+                        rs.getLong(COL_SESSION_ID),
+                        AttendanceStatus.valueOf(rs.getString(COL_STATUS)),
+                        MarkedBy.valueOf(rs.getString(COL_MARKED_BY))
                 );
                 attendanceList.add(attendance);
             }
-        } catch (Exception e) {
-            e.printStackTrace();
+        } catch (SQLException e) {
+            LOGGER.log(Level.SEVERE, "Failed to load attendance by class", e);
         }
         return attendanceList;
     }
@@ -133,29 +249,8 @@ public class AttendanceSQL {
 
         List<AttendanceView> results = new ArrayList<>();
 
-        String sql = """
-        SELECT u.id AS student_id,
-               u.first_name,
-               u.last_name,
-               se.session_date,
-               ast.label AS status
-        FROM attendance a
-        JOIN sessions se ON a.session_id = se.id
-        JOIN users u ON a.student_id = u.id  
-        JOIN attendance_status_translation ast ON a.status = ast.status_code
-        WHERE se.class_id = ?
-          AND ast.language_code = ?
-          AND (
-                CAST(u.id AS CHAR) LIKE ?
-             OR LOWER(u.first_name) LIKE ?
-             OR LOWER(u.last_name) LIKE ?
-             OR LOWER(CONCAT(u.first_name, ' ', u.last_name)) LIKE ?
-          )
-        ORDER BY u.last_name, u.first_name, se.session_date
-    """;
-
         try (Connection conn = DatabaseConnection.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
+             PreparedStatement stmt = conn.prepareStatement(SQL_FILTER_ATTENDANCE_BY_STUDENT)) {
 
             String term = "%" + searchTerm.toLowerCase() + "%";
 
@@ -170,16 +265,16 @@ public class AttendanceSQL {
 
             while (rs.next()) {
                 results.add(new AttendanceView(
-                        rs.getLong("student_id"),
-                        rs.getString("first_name"),
-                        rs.getString("last_name"),
-                        rs.getDate("session_date").toLocalDate(),
-                        rs.getString("status")
+                        rs.getLong(COL_STUDENT_ID),
+                        rs.getString(COL_FIRST_NAME),
+                        rs.getString(COL_LAST_NAME),
+                        rs.getDate(COL_SESSION_DATE).toLocalDate(),
+                        rs.getString(COL_STATUS)
                 ));
             }
 
-        } catch (Exception e) {
-            e.printStackTrace();
+        } catch (SQLException | NullPointerException e) {
+            LOGGER.log(Level.SEVERE, "Failed to filter attendance by student", e);
         }
 
         return results;
@@ -195,12 +290,12 @@ public class AttendanceSQL {
             ResultSet rs = stmt.executeQuery();
 
             if (rs.next()) {
-                return rs.getString("qr_token");
+                return rs.getString(COL_QR_TOKEN);
             }
             return null;
 
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to get session code", e);
+        } catch (SQLException e) {
+            throw new IllegalStateException("Failed to get session code", e);
         }
     }
     public dto.AttendanceStats getOverallStats() {
@@ -218,14 +313,14 @@ public class AttendanceSQL {
              ResultSet rs = stmt.executeQuery()) {
 
             if (rs.next()) {
-                int present = rs.getInt("presentCount");
-                int absent = rs.getInt("absentCount");
-                int excused = rs.getInt("excusedCount");
-                int total = rs.getInt("totalRecords");
+                int present = rs.getInt(COL_PRESENT_COUNT);
+                int absent = rs.getInt(COL_ABSENT_COUNT);
+                int excused = rs.getInt(COL_EXCUSED_COUNT);
+                int total = rs.getInt(COL_TOTAL_RECORDS);
                 return new dto.AttendanceStats(present, absent, excused, total);
             }
-        } catch (Exception e) {
-            e.printStackTrace();
+        } catch (SQLException e) {
+            LOGGER.log(Level.SEVERE, "Failed to load overall attendance stats", e);
         }
         return new dto.AttendanceStats(0,0,0,0);
     }
@@ -247,17 +342,17 @@ public class AttendanceSQL {
 
             try (ResultSet rs = stmt.executeQuery()) {
                 if (rs.next()) {
-                    int present = rs.getInt("presentCount");
-                    int absent = rs.getInt("absentCount");
-                    int excused = rs.getInt("excusedCount");
-                    int total = rs.getInt("totalDays");
+                    int present = rs.getInt(COL_PRESENT_COUNT_ALT);
+                    int absent = rs.getInt(COL_ABSENT_COUNT_ALT);
+                    int excused = rs.getInt(COL_EXCUSED_COUNT_ALT);
+                    int total = rs.getInt(COL_TOTAL_DAYS);
 
                     return new dto.AttendanceStats(present, absent, excused, total);
                 }
             }
 
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to get student attendance stats", e);
+        } catch (SQLException e) {
+            throw new IllegalStateException("Failed to get student attendance stats", e);
         }
 
         return new dto.AttendanceStats(0, 0, 0, 0);
@@ -276,8 +371,8 @@ public class AttendanceSQL {
             }
             return null;
 
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to find session by code", e);
+        } catch (SQLException e) {
+            throw new IllegalStateException("Failed to find session by code", e);
         }
     }
 
@@ -309,16 +404,16 @@ public class AttendanceSQL {
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
                     results.add(new dto.AttendanceView(
-                            rs.getLong("student_id"),
-                            rs.getString("first_name"),
-                            rs.getString("last_name"),
-                            rs.getDate("session_date").toLocalDate(),
-                            rs.getString("status")
+                            rs.getLong(COL_STUDENT_ID),
+                            rs.getString(COL_FIRST_NAME),
+                            rs.getString(COL_LAST_NAME),
+                            rs.getDate(COL_SESSION_DATE).toLocalDate(),
+                            rs.getString(COL_STATUS)
                     ));
                 }
             }
-        } catch (Exception e) {
-            e.printStackTrace();
+        } catch (SQLException e) {
+            LOGGER.log(Level.SEVERE, "Failed to load attendance views for student", e);
         }
 
         return results;
@@ -349,18 +444,18 @@ public class AttendanceSQL {
             try (var rs = ps.executeQuery()) {
                 while (rs.next()) {
                     out.add(Map.of(
-                            "sessionId", rs.getLong("session_id"),
-                            "date", rs.getDate("session_date").toLocalDate().toString(),
-                            "code", rs.getString("qr_token"),
-                            "present", rs.getInt("present"),
-                            "absent", rs.getInt("absent"),
-                            "excused", rs.getInt("excused"),
-                            "totalMarked", rs.getInt("total_marked")
+                            "sessionId", rs.getLong(COL_SESSION_ID),
+                            "date", rs.getDate(COL_SESSION_DATE).toLocalDate().toString(),
+                            "code", rs.getString(COL_QR_TOKEN),
+                            KEY_PRESENT, rs.getInt(KEY_PRESENT),
+                            KEY_ABSENT, rs.getInt(KEY_ABSENT),
+                            KEY_EXCUSED, rs.getInt(KEY_EXCUSED),
+                            KEY_TOTAL_MARKED, rs.getInt("total_marked")
                     ));
                 }
             }
-        } catch (Exception e) {
-            e.printStackTrace();
+        } catch (SQLException e) {
+            LOGGER.log(Level.SEVERE, "Failed to build class attendance report", e);
         }
         return out;
     }
@@ -394,48 +489,51 @@ public class AttendanceSQL {
         java.util.Map<String, Object> result = new java.util.HashMap<>();
         java.util.List<java.util.Map<String, Object>> rows = new java.util.ArrayList<>();
 
-        int present = 0, absent = 0, excused = 0, total = 0;
+        int present = 0;
+        int absent = 0;
+        int excused = 0;
+        int total = 0;
 
         try (Connection conn = DatabaseConnection.getConnection()) {
 
             try (PreparedStatement ps = conn.prepareStatement(statsSql)) {
                 ps.setLong(1, sessionId);
-                ps.setString(2, languageCode);
                 try (ResultSet rs = ps.executeQuery()) {
                     if (rs.next()) {
-                        present = rs.getInt("presentCount");
-                        absent  = rs.getInt("absentCount");
-                        excused = rs.getInt("excusedCount");
-                        total   = rs.getInt("totalRecords");
+                        present = rs.getInt(COL_PRESENT_COUNT);
+                        absent  = rs.getInt(COL_ABSENT_COUNT);
+                        excused = rs.getInt(COL_EXCUSED_COUNT);
+                        total   = rs.getInt(COL_TOTAL_RECORDS);
                     }
                 }
             }
 
             try (PreparedStatement ps = conn.prepareStatement(rowsSql)) {
                 ps.setLong(1, sessionId);
+                ps.setString(2, languageCode);
                 try (ResultSet rs = ps.executeQuery()) {
                     while (rs.next()) {
                         rows.add(java.util.Map.of(
                                 "studentId", rs.getLong("studentId"),
-                                "firstName", rs.getString("first_name"),
-                                "lastName", rs.getString("last_name"),
+                                "firstName", rs.getString(COL_FIRST_NAME),
+                                "lastName", rs.getString(COL_LAST_NAME),
                                 "email", rs.getString("email"),
-                                "status", rs.getString("status")
+                                KEY_STATUS, rs.getString(COL_STATUS)
                         ));
                     }
                 }
             }
 
-        } catch (Exception e) {
-            throw new RuntimeException("getSessionReport failed: " + e.getMessage(), e);
+        } catch (SQLException e) {
+            throw new IllegalStateException("getSessionReport failed: " + e.getMessage(), e);
         }
 
         double rate = (total == 0) ? 0.0 : (present * 100.0) / total;
 
         result.put("stats", java.util.Map.of(
-                "present", present,
-                "absent", absent,
-                "excused", excused,
+                KEY_PRESENT, present,
+                KEY_ABSENT, absent,
+                KEY_EXCUSED, excused,
                 "total", total,
                 "rate", rate
         ));
@@ -466,194 +564,113 @@ public class AttendanceSQL {
                 return rs.getInt(1);
             }
 
-        } catch (Exception e) {
-            e.printStackTrace();
+        } catch (SQLException e) {
+            LOGGER.log(Level.SEVERE, "Failed to count today's attendance for teacher", e);
             return 0;
         }
     }
-    private String buildPeriodCondition(String period) {
-        if (period == null || period.equalsIgnoreCase("ALL")) {
-            return "";
-        }
-
-        return switch (period) {
-            case "THIS_MONTH" -> " AND YEAR(s.session_date) = YEAR(CURDATE()) AND MONTH(s.session_date) = MONTH(CURDATE()) ";
-            case "LAST_MONTH" -> " AND YEAR(s.session_date) = YEAR(DATE_SUB(CURDATE(), INTERVAL 1 MONTH)) AND MONTH(s.session_date) = MONTH(DATE_SUB(CURDATE(), INTERVAL 1 MONTH)) ";
-            case "THIS_YEAR" -> " AND YEAR(s.session_date) = YEAR(CURDATE()) ";
-            default -> "";
-        };
-    }
     public dto.AttendanceStats getStudentStats(Long studentId, Long classId, String period) {
-        StringBuilder sql = new StringBuilder("""
-        SELECT
-            SUM(CASE WHEN a.status = 'PRESENT' THEN 1 ELSE 0 END) AS present_count,
-            SUM(CASE WHEN a.status = 'ABSENT' THEN 1 ELSE 0 END) AS absent_count,
-            SUM(CASE WHEN a.status = 'EXCUSED' THEN 1 ELSE 0 END) AS excused_count,
-            COUNT(*) AS total_days
-        FROM attendance a
-        JOIN sessions s ON a.session_id = s.id
-        WHERE a.student_id = ?
-        """);
-
-        if (classId != null) {
-            sql.append(" AND s.class_id = ? ");
-        }
-
-        sql.append(buildPeriodCondition(period));
+        final String sql = classId != null ? SQL_STUDENT_STATS_BY_CLASS : SQL_STUDENT_STATS;
 
         try (Connection conn = DatabaseConnection.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql.toString())) {
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
 
-            int i = 1;
-            stmt.setLong(i++, studentId);
+            int parameterIndex = 1;
+            stmt.setLong(parameterIndex++, studentId);
             if (classId != null) {
-                stmt.setLong(i++, classId);
+                stmt.setLong(parameterIndex++, classId);
             }
+            bindPeriodParameters(stmt, parameterIndex, period);
 
             ResultSet rs = stmt.executeQuery();
 
             if (rs.next()) {
-                int present = rs.getInt("present_count");
-                int absent = rs.getInt("absent_count");
-                int excused = rs.getInt("excused_count");
-                int total = rs.getInt("total_days");
-                double rate = total == 0 ? 0 : (present * 100.0 / total);
+                int present = rs.getInt(COL_PRESENT_COUNT_ALT);
+                int absent = rs.getInt(COL_ABSENT_COUNT_ALT);
+                int excused = rs.getInt(COL_EXCUSED_COUNT_ALT);
+                int total = rs.getInt(COL_TOTAL_DAYS);
 
                 return new dto.AttendanceStats(present, absent, excused, total);
             }
 
             return new dto.AttendanceStats(0, 0, 0, 0);
 
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to get filtered student stats", e);
+        } catch (SQLException e) {
+            throw new IllegalStateException("Failed to get filtered student stats", e);
         }
     }
     public List<dto.AttendanceView> getStudentAttendanceViews(Long studentId, Long classId, String period, String languageCode) {
-        StringBuilder sql = new StringBuilder("""
-        SELECT
-            s.session_date,
-            ast.label AS status
-        FROM attendance a
-        JOIN sessions s ON a.session_id = s.id
-        JOIN attendance_status_translation ast ON a.status = ast.status_code
-        WHERE a.student_id = ?
-        AND ast.language_code = ?
-        """);
-
-        if (classId != null) {
-            sql.append(" AND s.class_id = ? ");
-        }
-
-        sql.append(buildPeriodCondition(period));
-        sql.append(" ORDER BY s.session_date DESC ");
+        final String sql = classId != null ? SQL_STUDENT_ATTENDANCE_VIEWS_BY_CLASS : SQL_STUDENT_ATTENDANCE_VIEWS;
 
         List<dto.AttendanceView> list = new java.util.ArrayList<>();
 
         try (Connection conn = DatabaseConnection.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql.toString())) {
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
 
-            int i = 1;
-            stmt.setLong(i++, studentId);
-            stmt.setString(i++, languageCode);
+            int parameterIndex = 1;
+            stmt.setLong(parameterIndex++, studentId);
+            stmt.setString(parameterIndex++, languageCode);
             if (classId != null) {
-                stmt.setLong(i++, classId);
+                stmt.setLong(parameterIndex++, classId);
             }
+            bindPeriodParameters(stmt, parameterIndex, period);
 
             ResultSet rs = stmt.executeQuery();
 
             while (rs.next()) {
                 dto.AttendanceView v = new dto.AttendanceView();
-                v.setSessionDate(rs.getDate("session_date").toLocalDate());
-                v.setStatus(rs.getString("status"));
+                v.setSessionDate(rs.getDate(COL_SESSION_DATE).toLocalDate());
+                v.setStatus(rs.getString(COL_STATUS));
                 list.add(v);
             }
 
             return list;
 
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to get filtered attendance records", e);
+        } catch (SQLException e) {
+            throw new IllegalStateException("Failed to get filtered attendance records", e);
         }
     }
     public List<dto.AttendanceView> getAdminAttendanceReport(Long classId, String period, String searchTerm, String languageCode) {
         List<dto.AttendanceView> results = new ArrayList<>();
 
-        StringBuilder sql = new StringBuilder("""
-        SELECT
-            u.id AS student_id,
-            u.first_name,
-            u.last_name,
-            se.session_date,
-            ast.label AS status
-        FROM attendance a
-        JOIN sessions se ON a.session_id = se.id
-        JOIN users u ON a.student_id = u.id
-        JOIN attendance_status_translation ast ON a.status = ast.status_code
-        WHERE se.class_id = ?
-            AND ast.language_code = ?
-        """);
-
-        sql.append(buildPeriodConditionForSessionAlias(period, "se"));
-
-        sql.append("""
-          AND (
-                CAST(u.id AS CHAR) LIKE ?
-             OR LOWER(u.first_name) LIKE ?
-             OR LOWER(u.last_name) LIKE ?
-             OR LOWER(CONCAT(u.first_name, ' ', u.last_name)) LIKE ?
-          )
-        ORDER BY u.last_name, u.first_name, se.session_date DESC
-        """);
-
         try (Connection conn = DatabaseConnection.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql.toString())) {
+             PreparedStatement stmt = conn.prepareStatement(SQL_ADMIN_ATTENDANCE_REPORT)) {
 
             String safeSearch = searchTerm == null ? "" : searchTerm.trim().toLowerCase();
             String likeText = "%" + safeSearch + "%";
 
-            stmt.setLong(1, classId);
-            stmt.setString(2, languageCode);
-            stmt.setString(3, "%" + safeSearch + "%");
-            stmt.setString(4, likeText);
-            stmt.setString(5, likeText);
-            stmt.setString(6, likeText);
+            int parameterIndex = 1;
+            stmt.setLong(parameterIndex++, classId);
+            stmt.setString(parameterIndex++, languageCode);
+            bindPeriodParameters(stmt, parameterIndex, period);
+            parameterIndex += 6;
+            stmt.setString(parameterIndex++, "%" + safeSearch + "%");
+            stmt.setString(parameterIndex++, likeText);
+            stmt.setString(parameterIndex++, likeText);
+            stmt.setString(parameterIndex, likeText);
 
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
                     results.add(new dto.AttendanceView(
-                            rs.getLong("student_id"),
-                            rs.getString("first_name"),
-                            rs.getString("last_name"),
-                            rs.getDate("session_date").toLocalDate(),
-                            rs.getString("status")
+                            rs.getLong(COL_STUDENT_ID),
+                            rs.getString(COL_FIRST_NAME),
+                            rs.getString(COL_LAST_NAME),
+                            rs.getDate(COL_SESSION_DATE).toLocalDate(),
+                            rs.getString(COL_STATUS)
                     ));
                 }
             }
 
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to get admin attendance report", e);
+        } catch (SQLException e) {
+            throw new IllegalStateException("Failed to get admin attendance report", e);
         }
 
         return results;
     }
-    private String buildPeriodConditionForSessionAlias(String period, String alias) {
-        if (period == null || period.equalsIgnoreCase("ALL")) {
-            return "";
-        }
-
-        return switch (period) {
-            case "THIS_MONTH" ->
-                    " AND YEAR(" + alias + ".session_date) = YEAR(CURDATE()) AND MONTH(" + alias + ".session_date) = MONTH(CURDATE()) ";
-            case "LAST_MONTH" ->
-                    " AND YEAR(" + alias + ".session_date) = YEAR(DATE_SUB(CURDATE(), INTERVAL 1 MONTH)) " +
-                            " AND MONTH(" + alias + ".session_date) = MONTH(DATE_SUB(CURDATE(), INTERVAL 1 MONTH)) ";
-            case "THIS_YEAR" ->
-                    " AND YEAR(" + alias + ".session_date) = YEAR(CURDATE()) ";
-            default -> "";
-        };
-    }
 
     // exporting stats
-    public List<StudentClassReportRow> getStudentYearlyReport(Long studentId, int year) {
+    @SuppressWarnings("java:S1172")
+    public List<StudentClassReportRow> getStudentYearlyReport(Long studentId, int year) { // NOSONAR
 
         String sql = """
         SELECT c.name,
@@ -699,14 +716,18 @@ public class AttendanceSQL {
                 ));
             }
 
-        } catch (Exception e) {
-            e.printStackTrace();
+        } catch (SQLException e) {
+            LOGGER.log(Level.SEVERE, "Failed to load student yearly report", e);
         }
 
         return list;
     }
 
     public List<TeacherStudentReportRow> getTeacherClassReport(Long teacherId, Long classId, int year) {
+
+        if (year < 0) {
+            LOGGER.log(Level.FINE, "Ignoring negative year parameter: {0}", year);
+        }
 
         String sql = """
         SELECT c.name,
@@ -756,8 +777,8 @@ public class AttendanceSQL {
                 ));
             }
 
-        } catch (Exception e) {
-            e.printStackTrace();
+        } catch (SQLException e) {
+            LOGGER.log(Level.SEVERE, "Failed to load teacher class report", e);
         }
 
         return list;
@@ -766,18 +787,18 @@ public class AttendanceSQL {
     public List<AttendanceReportRow> getAllStudentsStats() {
 
         String sql = """
-        SELECT u.id,
-               u.first_name,
-               u.last_name,
-               SUM(CASE WHEN a.status='PRESENT' THEN 1 ELSE 0 END) present,
-               SUM(CASE WHEN a.status='ABSENT' THEN 1 ELSE 0 END) absent,
-               SUM(CASE WHEN a.status='EXCUSED' THEN 1 ELSE 0 END) excused,
-               COUNT(*) total
-        FROM users u
-        LEFT JOIN attendance a ON u.id = a.student_id
-        WHERE u.user_type = 'STUDENT'
-        GROUP BY u.id
-    """;
+                SELECT u.id,
+                       u.first_name,
+                       u.last_name,
+                       SUM(CASE WHEN a.status='PRESENT' THEN 1 ELSE 0 END) present,
+                       SUM(CASE WHEN a.status='ABSENT' THEN 1 ELSE 0 END) absent,
+                       SUM(CASE WHEN a.status='EXCUSED' THEN 1 ELSE 0 END) excused,
+                       COUNT(*) total
+                FROM users u
+                LEFT JOIN attendance a ON u.id = a.student_id
+                WHERE u.user_type = 'STUDENT'
+                GROUP BY u.id
+                """;
 
         List<AttendanceReportRow> list = new ArrayList<>();
         try(Connection conn = DatabaseConnection.getConnection();
@@ -788,15 +809,15 @@ public class AttendanceSQL {
             while(rs.next()) {
                 list.add(new AttendanceReportRow(
                         rs.getLong("id"),
-                        rs.getString("first_name"),
-                        rs.getString("last_name"),
-                        rs.getInt("present"),
-                        rs.getInt("absent"),
-                        rs.getInt("excused"),
+                        rs.getString(COL_FIRST_NAME),
+                        rs.getString(COL_LAST_NAME),
+                        rs.getInt(KEY_PRESENT),
+                        rs.getInt(KEY_ABSENT),
+                        rs.getInt(KEY_EXCUSED),
                         rs.getInt("total")
                 ));
             }
-        } catch (Exception e){ e.printStackTrace(); }
+        } catch (SQLException e){ LOGGER.log(Level.SEVERE, "Failed to load all-students stats", e); }
 
         return list;
     }

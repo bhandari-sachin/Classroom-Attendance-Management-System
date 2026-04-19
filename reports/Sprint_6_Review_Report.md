@@ -108,6 +108,6 @@ The Classroom Attendance Management System is now:
 | Olga Chitembo    | Backend  | Reporting system (PDF/CSV), localization, backend refactoring | 18 hours       | submitted      |
 | Ahmad Sarfaraz   | Frontend | UI/UX improvements, frontend refactoring                      | 19 hours       | submitted      |
 | Farah El Bajta   | Frontend | Localization, frontend refactoring                            | 20 hours       | submitted      |
-| Melkamu Yehualla | Testing  | Database schema localization, test coverage                   | 14 hours       | submitted      |
+| Melkamu Yehualla | Testing  | Database schema localization, test coverage                   | 20 hours       | submitted      |
 
 ---

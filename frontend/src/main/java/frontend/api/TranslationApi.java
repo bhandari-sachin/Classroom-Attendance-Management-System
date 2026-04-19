@@ -1,5 +1,8 @@
 package frontend.api;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import java.io.IOException;
 import java.net.URI;
 import java.net.URLEncoder;
@@ -7,22 +10,40 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
-import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * API client for loading UI translations from backend.
+ *
+ * <p>This class calls the /api/i18n/ui endpoint and returns
+ * a flat map of translation keys and values for the requested language.</p>
+ */
 public class TranslationApi {
 
     private final String baseUrl;
     private final HttpClient client;
+    private final ObjectMapper objectMapper;
 
     public TranslationApi(String baseUrl) {
-        this.baseUrl = baseUrl;
-        this.client = HttpClient.newHttpClient();
+        this(baseUrl, HttpClient.newHttpClient(), new ObjectMapper());
     }
 
+    public TranslationApi(String baseUrl, HttpClient client, ObjectMapper objectMapper) {
+        this.baseUrl = stripTrailingSlash(baseUrl);
+        this.client = client;
+        this.objectMapper = objectMapper;
+    }
+
+    /**
+     * Loads UI translations for the given language code.
+     *
+     * @param languageCode language code such as "en", "fi", or "ar"
+     * @return map of translation keys and localized values
+     * @throws IOException if the request fails or the response cannot be parsed
+     * @throws InterruptedException if the request is interrupted
+     */
     public Map<String, String> getUiTranslations(String languageCode) throws IOException, InterruptedException {
-        String url = baseUrl + "/api/i18n/ui?lang=" +
-                URLEncoder.encode(languageCode, StandardCharsets.UTF_8);
+        String url = baseUrl + "/api/i18n/ui?lang=" + encode(languageCode);
 
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(url))
@@ -31,88 +52,32 @@ public class TranslationApi {
 
         HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
 
-        if (response.statusCode() != 200) {
-            throw new IOException("Failed to load translations. HTTP " + response.statusCode());
+        if (response.statusCode() >= 400) {
+            throw new IOException("Failed to load translations. HTTP "
+                    + response.statusCode() + " - " + response.body());
         }
 
-        return parseFlatJsonObject(response.body());
+        return objectMapper.readValue(
+                response.body(),
+                new TypeReference<>() {
+                }
+        );
     }
 
-    private Map<String, String> parseFlatJsonObject(String json) {
-        Map<String, String> map = new HashMap<>();
-
-        String trimmed = json == null ? "" : json.trim();
-        if (trimmed.length() < 2 || trimmed.equals("{}")) {
-            return map;
-        }
-
-        trimmed = trimmed.substring(1, trimmed.length() - 1).trim();
-
-        if (trimmed.isBlank()) return map;
-
-        String[] pairs = splitTopLevel(trimmed);
-        for (String pair : pairs) {
-            String[] kv = pair.split(":", 2);
-            if (kv.length != 2) continue;
-
-            String key = unquote(kv[0].trim());
-            String value = unquote(kv[1].trim());
-            map.put(key, value);
-        }
-
-        return map;
+    /**
+     * Encodes a query parameter safely for use in URLs.
+     */
+    private String encode(String value) {
+        return URLEncoder.encode(value == null ? "" : value, StandardCharsets.UTF_8);
     }
 
-    private String[] splitTopLevel(String s) {
-        java.util.List<String> parts = new java.util.ArrayList<>();
-        StringBuilder current = new StringBuilder();
-        boolean inQuotes = false;
-        boolean escaped = false;
-
-        for (char c : s.toCharArray()) {
-            if (escaped) {
-                current.append(c);
-                escaped = false;
-                continue;
-            }
-
-            if (c == '\\') {
-                current.append(c);
-                escaped = true;
-                continue;
-            }
-
-            if (c == '"') {
-                current.append(c);
-                inQuotes = !inQuotes;
-                continue;
-            }
-
-            if (c == ',' && !inQuotes) {
-                parts.add(current.toString());
-                current.setLength(0);
-                continue;
-            }
-
-            current.append(c);
+    /**
+     * Removes trailing slash from base URL to avoid malformed URLs.
+     */
+    private String stripTrailingSlash(String url) {
+        if (url == null || url.isBlank()) {
+            throw new IllegalArgumentException("Base URL must not be null or blank.");
         }
-
-        if (!current.isEmpty()) {
-            parts.add(current.toString());
-        }
-
-        return parts.toArray(new String[0]);
-    }
-
-    private String unquote(String s) {
-        String result = s;
-        if (result.startsWith("\"") && result.endsWith("\"") && result.length() >= 2) {
-            result = result.substring(1, result.length() - 1);
-        }
-
-        return result.replace("\\\"", "\"")
-                .replace("\\n", "\n")
-                .replace("\\r", "\r")
-                .replace("\\\\", "\\");
+        return url.endsWith("/") ? url.substring(0, url.length() - 1) : url;
     }
 }

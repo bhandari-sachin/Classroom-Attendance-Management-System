@@ -1,18 +1,24 @@
+package app;
+
 import com.sun.net.httpserver.HttpServer;
-import config.*;
+import config.AttendanceSQL;
+import config.ClassSQL;
+import config.DatabaseInitializer;
+import config.SessionSQL;
 import handler.I18nHandler;
 import http.*;
 import repository.UserRepository;
 import security.JwtService;
 import service.AttendanceService;
 import service.SessionService;
-
+import java.util.logging.Logger;
 
 import java.net.InetSocketAddress;
 import java.util.concurrent.Executors;
 
 public class BackendMain {
 
+    private static final Logger logger = Logger.getLogger(BackendMain.class.getName());
     public static void main(String[] args) throws Exception {
         DatabaseInitializer.init();
 
@@ -74,6 +80,8 @@ public class BackendMain {
         server.setExecutor(Executors.newFixedThreadPool(16));
         server.start();
 
-        System.out.println("Backend running on http://localhost:" + port);
+        if (logger.isLoggable(java.util.logging.Level.INFO)) {
+            logger.info(String.format("Backend running on http://localhost:%d", port));
+        }
     }
 }

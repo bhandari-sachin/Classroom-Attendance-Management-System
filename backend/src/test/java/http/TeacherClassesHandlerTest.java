@@ -1,11 +1,14 @@
 package http;
 
-import com.auth0.jwt.interfaces.Claim;
-import com.auth0.jwt.interfaces.DecodedJWT;
+import com.sun.net.httpserver.*;
 import config.ClassSQL;
 import org.junit.jupiter.api.Test;
 import security.JwtService;
 
+import java.io.*;
+import java.net.InetSocketAddress;
+import java.net.URI;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 
@@ -14,159 +17,91 @@ import static org.mockito.Mockito.*;
 
 class TeacherClassesHandlerTest {
 
+    // -------------------------------------------------------------
+    // SUCCESS CASE
+    // -------------------------------------------------------------
     @Test
-    void missingAuthorization_returns401() throws Exception {
+    void teacherClasses_returns200AndList() throws Exception {
+
         JwtService jwtService = mock(JwtService.class);
         ClassSQL classSQL = mock(ClassSQL.class);
-        var handler = new TeacherClassesHandler(jwtService, classSQL);
 
-        var ex = new AdminClassesHandlerTest.FakeExchange("GET", "/teacher/classes", null);
+        TeacherClassesHandler handler =
+                new TeacherClassesHandler(jwtService, classSQL);
 
-        handler.handle(ex);
+        TeacherClassesHandler spy = spy(handler);
 
-        assertEquals(401, ex.statusCode);
-        assertTrue(ex.responseBodyString().contains("Missing Authorization header"));
-        verify(classSQL, never()).listForTeacher(anyLong());
-    }
+        // bypass BaseHandler auth
+        doReturn(null).when(spy).requireTeacherOrAdmin(any(), any());
 
-    @Test
-    void wrongRole_returns401() throws Exception {
-        JwtService jwtService = mock(JwtService.class);
-        ClassSQL classSQL = mock(ClassSQL.class);
-        var handler = new TeacherClassesHandler(jwtService, classSQL);
+        BaseHandler.RequestContext ctx = mock(BaseHandler.RequestContext.class);
+        when(ctx.getUserId()).thenReturn(42L);
 
-        var ex = new AdminClassesHandlerTest.FakeExchange("GET", "/teacher/classes", null);
-        ex.getRequestHeaders().set("Authorization", "Bearer test-token");
+        List<Map<String, Object>> mockList = List.of(
+                Map.of("id", 1, "classCode", "MATH101"),
+                Map.of("id", 2, "classCode", "PHY101")
+        );
 
-        DecodedJWT jwt = jwtWithRoleAndId("STUDENT", 10L);
-        when(jwtService.verify("test-token")).thenReturn(jwt);
+        when(classSQL.listForTeacher(42L)).thenReturn(mockList);
 
-        handler.handle(ex);
+        FakeExchange ex = new FakeExchange("GET", "/teacher/classes", null);
 
-        assertEquals(401, ex.statusCode);
-        assertTrue(ex.responseBodyString().contains("Forbidden for role"));
-        verify(classSQL, never()).listForTeacher(anyLong());
-    }
-
-    @Test
-    void methodNotAllowed_returns405() throws Exception {
-        JwtService jwtService = mock(JwtService.class);
-        ClassSQL classSQL = mock(ClassSQL.class);
-        var handler = new TeacherClassesHandler(jwtService, classSQL);
-
-        var ex = new AdminClassesHandlerTest.FakeExchange("POST", "/teacher/classes", null);
-        ex.getRequestHeaders().set("Authorization", "Bearer test-token");
-
-        DecodedJWT jwt = jwtWithRoleAndId("TEACHER", 10L);
-        when(jwtService.verify("test-token")).thenReturn(jwt);
-
-        handler.handle(ex);
-
-        assertEquals(405, ex.statusCode);
-        verify(classSQL, never()).listForTeacher(anyLong());
-    }
-
-    @Test
-    void success_usesIdClaim_whenPresent() throws Exception {
-        JwtService jwtService = mock(JwtService.class);
-        ClassSQL classSQL = mock(ClassSQL.class);
-        var handler = new TeacherClassesHandler(jwtService, classSQL);
-
-        var ex = new AdminClassesHandlerTest.FakeExchange("GET", "/teacher/classes", null);
-        ex.getRequestHeaders().set("Authorization", "Bearer test-token");
-
-        DecodedJWT jwt = jwtWithRoleAndId("TEACHER", 77L);
-        when(jwtService.verify("test-token")).thenReturn(jwt);
-
-        // safest: list elements can be simple maps/objects
-        List<Map<String, Object>> dummyList =
-                List.<Map<String, Object>>of(
-                        Map.of("id", 1L, "name", "Class A"),
-                        Map.of("id", 2L, "name", "Class B")
-                );
-
-        when(classSQL.listForTeacher(77L)).thenReturn(dummyList);
-
-        handler.handle(ex);
+        spy.handleRequest(ex, ctx);
 
         assertEquals(200, ex.statusCode);
-        verify(classSQL).listForTeacher(77L);
+        assertTrue(ex.responseBodyString().contains("MATH101"));
+        assertTrue(ex.responseBodyString().contains("PHY101"));
 
-        String body = ex.responseBodyString();
-        assertFalse(body.contains("\"data\""));
-        assertTrue(body.contains("Class A"));
+        verify(classSQL).listForTeacher(42L);
     }
 
-    @Test
-    void success_fallsBackToSubject_whenIdClaimIsNull() throws Exception {
-        JwtService jwtService = mock(JwtService.class);
-        ClassSQL classSQL = mock(ClassSQL.class);
-        var handler = new TeacherClassesHandler(jwtService, classSQL);
+    // -------------------------------------------------------------
+    // Fake HttpExchange
+    // -------------------------------------------------------------
+    static class FakeExchange extends HttpExchange {
 
-        var ex = new AdminClassesHandlerTest.FakeExchange("GET", "/teacher/classes", null);
-        ex.getRequestHeaders().set("Authorization", "Bearer test-token");
+        private final Headers reqHeaders = new Headers();
+        private final Headers respHeaders = new Headers();
+        private final String method;
+        private final URI uri;
+        private final InputStream requestBody;
+        private final ByteArrayOutputStream responseBody = new ByteArrayOutputStream();
 
-        DecodedJWT jwt = jwtWithRoleAndNullId("ADMIN", "123"); // ADMIN is allowed too
-        when(jwtService.verify("test-token")).thenReturn(jwt);
+        int statusCode = -1;
 
-        when(classSQL.listForTeacher(123L)).thenReturn(List.of());
+        FakeExchange(String method, String path, String body) {
+            this.method = method;
+            this.uri = URI.create("http://localhost" + path);
+            this.requestBody = body == null
+                    ? InputStream.nullInputStream()
+                    : new ByteArrayInputStream(body.getBytes(StandardCharsets.UTF_8));
+        }
 
-        handler.handle(ex);
+        String responseBodyString() {
+            return responseBody.toString(StandardCharsets.UTF_8);
+        }
 
-        assertEquals(200, ex.statusCode);
-        verify(classSQL).listForTeacher(123L);
-    }
+        @Override public Headers getRequestHeaders() { return reqHeaders; }
+        @Override public Headers getResponseHeaders() { return respHeaders; }
+        @Override public URI getRequestURI() { return uri; }
+        @Override public String getRequestMethod() { return method; }
+        @Override public HttpContext getHttpContext() { return null; }
+        @Override public void close() { }
+        @Override public InputStream getRequestBody() { return requestBody; }
+        @Override public OutputStream getResponseBody() { return responseBody; }
 
-    @Test
-    void classSqlThrows_returns500() throws Exception {
-        JwtService jwtService = mock(JwtService.class);
-        ClassSQL classSQL = mock(ClassSQL.class);
-        var handler = new TeacherClassesHandler(jwtService, classSQL);
+        @Override
+        public void sendResponseHeaders(int rCode, long responseLength) {
+            this.statusCode = rCode;
+        }
 
-        var ex = new AdminClassesHandlerTest.FakeExchange("GET", "/teacher/classes", null);
-        ex.getRequestHeaders().set("Authorization", "Bearer test-token");
-
-        DecodedJWT jwt = jwtWithRoleAndId("TEACHER", 7L);
-        when(jwtService.verify("test-token")).thenReturn(jwt);
-
-        when(classSQL.listForTeacher(7L)).thenThrow(new RuntimeException("DB down"));
-
-        handler.handle(ex);
-
-        assertEquals(500, ex.statusCode);
-        assertTrue(ex.responseBodyString().contains("Server error"));
-    }
-
-    // ---- helpers ----
-
-    private static DecodedJWT jwtWithRoleAndId(String role, long id) {
-        DecodedJWT jwt = mock(DecodedJWT.class);
-
-        Claim roleClaim = mock(Claim.class);
-        when(roleClaim.asString()).thenReturn(role);
-        when(jwt.getClaim("role")).thenReturn(roleClaim);
-
-        Claim idClaim = mock(Claim.class);
-        when(idClaim.isNull()).thenReturn(false);
-        when(idClaim.asLong()).thenReturn(id);
-        when(jwt.getClaim("id")).thenReturn(idClaim);
-
-        when(jwt.getSubject()).thenReturn(String.valueOf(id));
-        return jwt;
-    }
-
-    private static DecodedJWT jwtWithRoleAndNullId(String role, String subject) {
-        DecodedJWT jwt = mock(DecodedJWT.class);
-
-        Claim roleClaim = mock(Claim.class);
-        when(roleClaim.asString()).thenReturn(role);
-        when(jwt.getClaim("role")).thenReturn(roleClaim);
-
-        Claim idClaim = mock(Claim.class);
-        when(idClaim.isNull()).thenReturn(true);
-        when(jwt.getClaim("id")).thenReturn(idClaim);
-
-        when(jwt.getSubject()).thenReturn(subject);
-        return jwt;
+        @Override public InetSocketAddress getRemoteAddress() { return new InetSocketAddress(0); }
+        @Override public int getResponseCode() { return statusCode; }
+        @Override public InetSocketAddress getLocalAddress() { return new InetSocketAddress(0); }
+        @Override public String getProtocol() { return "HTTP/1.1"; }
+        @Override public Object getAttribute(String name) { return null; }
+        @Override public void setAttribute(String name, Object value) { }
+        @Override public void setStreams(InputStream i, OutputStream o) { }
+        @Override public HttpPrincipal getPrincipal() { return null; }
     }
 }

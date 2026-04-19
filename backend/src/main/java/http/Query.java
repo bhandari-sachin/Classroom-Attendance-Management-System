@@ -6,6 +6,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class Query {
+    private Query() {} // prevent instantiation
 
     public static Long getLong(String queryString, String key) {
         String v = get(queryString, key);

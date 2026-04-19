@@ -1,76 +1,71 @@
 package frontend.api;
 
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import frontend.auth.AuthState;
 import frontend.auth.JwtStore;
 
-import java.net.URI;
-import java.net.http.*;
-import java.nio.charset.StandardCharsets;
+import java.io.IOException;
+import java.net.http.HttpClient;
 import java.util.List;
 import java.util.Map;
 
-public class StudentAttendanceApi {
+/**
+ * API client for student attendance operations.
+ */
+public final class StudentAttendanceApi extends BaseApiClient {
 
-    private final HttpClient client = HttpClient.newHttpClient();
-    private final ObjectMapper om = new ObjectMapper();
-    private final String baseUrl;
+    private final Paths paths;
 
     public StudentAttendanceApi(String baseUrl) {
-        this.baseUrl = baseUrl;
+        this(baseUrl, HttpClient.newHttpClient(), new ObjectMapper(), Paths.defaults());
     }
 
-    private String token(JwtStore jwtStore, AuthState state) {
-        return jwtStore.load().map(AuthState::getToken).orElse(state.getToken());
+    public StudentAttendanceApi(String baseUrl, HttpClient client, ObjectMapper objectMapper, Paths paths) {
+        super(baseUrl, client, objectMapper);
+
+        if (paths == null) {
+            throw new IllegalArgumentException("Paths must not be null.");
+        }
+        this.paths = paths;
     }
 
-    public Map<String, Object> getSummary(JwtStore jwtStore, AuthState state) throws Exception {
-        HttpRequest req = HttpRequest.newBuilder()
-                .uri(URI.create(baseUrl + "/api/student/attendance/summary"))
-                .header("Authorization", "Bearer " + token(jwtStore, state))
-                .GET()
-                .build();
-
-        HttpResponse<String> res = client.send(req, HttpResponse.BodyHandlers.ofString());
-        if (res.statusCode() >= 400) {
-            throw new RuntimeException("Summary failed: " + res.statusCode() + " " + res.body());
+    public record Paths(
+            String summaryPath,
+            String recordsPath,
+            String markAttendancePath
+    ) {
+        public Paths {
+            requirePath(summaryPath, "summaryPath");
+            requirePath(recordsPath, "recordsPath");
+            requirePath(markAttendancePath, "markAttendancePath");
         }
 
-        return om.readValue(res.body(), new TypeReference<>() {});
-    }
-
-    public List<Map<String, Object>> getRecords(JwtStore jwtStore, AuthState state) throws Exception {
-        HttpRequest req = HttpRequest.newBuilder()
-                .uri(URI.create(baseUrl + "/api/student/attendance/records"))
-                .header("Authorization", "Bearer " + token(jwtStore, state))
-                .GET()
-                .build();
-
-        HttpResponse<String> res = client.send(req, HttpResponse.BodyHandlers.ofString());
-        if (res.statusCode() >= 400) {
-            throw new RuntimeException("Records failed: " + res.statusCode() + " " + res.body());
+        public static Paths defaults() {
+            return new Paths(
+                    "/api/student/attendance/summary",
+                    "/api/student/attendance/records",
+                    "/api/attendance/mark"
+            );
         }
-
-        return om.readValue(res.body(), new TypeReference<>() {});
     }
-    public void submitCode(String code, JwtStore jwtStore, AuthState state) throws Exception {
+
+    public Map<String, Object> getSummary(JwtStore jwtStore, AuthState state)
+            throws IOException, InterruptedException {
+        return readGet(paths.summaryPath(), jwtStore, state);
+    }
+
+    public List<Map<String, Object>> getRecords(JwtStore jwtStore, AuthState state)
+            throws IOException, InterruptedException {
+        return readList(paths.recordsPath(), jwtStore, state);
+    }
+
+    public void submitCode(String code, JwtStore jwtStore, AuthState state)
+            throws IOException, InterruptedException {
+
         if (code == null || code.isBlank()) {
-            throw new IllegalArgumentException("Attendance code required");
+            throw new IllegalArgumentException("Attendance code is required.");
         }
 
-        String jsonBody = om.writeValueAsString(Map.of("code", code.trim()));
-
-        HttpRequest req = HttpRequest.newBuilder()
-                .uri(URI.create(baseUrl + "/api/attendance/mark"))
-                .header("Authorization", "Bearer " + token(jwtStore, state))
-                .header("Content-Type", "application/json")
-                .POST(HttpRequest.BodyPublishers.ofString(jsonBody, StandardCharsets.UTF_8))
-                .build();
-
-        HttpResponse<String> res = client.send(req, HttpResponse.BodyHandlers.ofString());
-        if (res.statusCode() >= 400) {
-            throw new RuntimeException("Mark failed: " + res.statusCode() + " " + res.body());
-        }
+        postJson(paths.markAttendancePath(), Map.of("code", code.trim()), jwtStore, state);
     }
 }

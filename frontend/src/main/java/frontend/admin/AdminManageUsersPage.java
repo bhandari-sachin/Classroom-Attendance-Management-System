@@ -237,19 +237,19 @@ public class AdminManageUsersPage {
         summaryRow.getChildren().setAll(
                 AdminUI.smallSummaryCard(
                         helper.getMessage("admin.users.summary.students"),
-                        String.valueOf(data.students),
+                        String.valueOf(data.getStudents()),
                         "🎓",
                         "accent-green"
                 ),
                 AdminUI.smallSummaryCard(
                         helper.getMessage("admin.users.summary.teachers"),
-                        String.valueOf(data.teachers),
+                        String.valueOf(data.getTeachers()),
                         "👥",
                         "accent-purple"
                 ),
                 AdminUI.smallSummaryCard(
                         helper.getMessage("admin.users.summary.admins"),
-                        String.valueOf(data.admins),
+                        String.valueOf(data.getAdmins()),
                         "🛡",
                         "accent-orange"
                 )
@@ -259,14 +259,14 @@ public class AdminManageUsersPage {
     ObservableList<UserRow> mapUserRows(AdminUsersResponseDto data) {
         ObservableList<UserRow> mappedRows = FXCollections.observableArrayList();
 
-        if (data.users == null) {
+        if (data.getUsers() == null) {
             return mappedRows;
         }
 
-        for (AdminUserDto user : data.users) {
-            String userCell = nullToEmpty(user.name) + "\n" + nullToEmpty(user.email);
-            String localizedRole = localizeRole(user.role);
-            String enrolledText = localizeEnrolled(user.enrolled);
+        for (AdminUserDto user : data.getUsers()) {
+            String userCell = nullToEmpty(user.getName()) + "\n" + nullToEmpty(user.getEmail());
+            String localizedRole = localizeRole(user.getRole());
+            String enrolledText = localizeEnrolled(user.getEnrolled());
 
             mappedRows.add(new UserRow(userCell, localizedRole, enrolledText));
         }

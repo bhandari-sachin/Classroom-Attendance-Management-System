@@ -3,12 +3,14 @@ package repository;
 import config.DatabaseConnection;
 import model.User;
 import model.UserRole;
+import backend.exception.DatabaseException;
 
 import java.sql.*;
 import java.util.Optional;
 
 public class UserRepository {
 
+    private static final String EMAIL = "email";
     public Optional<User> findByEmail(String email) {
         String sql = """
             SELECT id, email, password_hash, first_name, last_name, user_type, student_code
@@ -27,7 +29,7 @@ public class UserRepository {
             }
 
         } catch (SQLException e) {
-            throw new RuntimeException("Error finding user by email", e);
+            throw new DatabaseException("Error finding user by email", e);
         }
     }
 
@@ -45,7 +47,7 @@ public class UserRepository {
             }
 
         } catch (SQLException e) {
-            throw new RuntimeException("Error checking email existence", e);
+            throw new DatabaseException("Error checking email existence", e);
         }
     }
 
@@ -68,14 +70,14 @@ public class UserRepository {
             ps.executeUpdate();
 
         } catch (SQLException e) {
-            throw new RuntimeException("Error saving user", e);
+            throw new DatabaseException("Error saving user", e);
         }
     }
 
     private User mapRow(ResultSet rs) throws SQLException {
         return new User(
                 rs.getLong("id"),
-                rs.getString("email"),
+                rs.getString(EMAIL),
                 rs.getString("password_hash"),
                 rs.getString("first_name"),
                 rs.getString("last_name"),
@@ -103,7 +105,7 @@ public class UserRepository {
             ps.executeUpdate();
 
         } catch (SQLException e) {
-            throw new RuntimeException("Error inserting user", e);
+            throw new DatabaseException("Error inserting user", e);
         }
     }
     public int countByRole(UserRole role) {
@@ -117,7 +119,7 @@ public class UserRepository {
                 return rs.getInt(1);
             }
         } catch (SQLException e) {
-            throw new RuntimeException("Error counting users by role", e);
+            throw new DatabaseException("Error counting users by role", e);
         }
     }
 
@@ -138,7 +140,7 @@ public class UserRepository {
             return out;
 
         } catch (SQLException e) {
-            throw new RuntimeException("Error fetching all users", e);
+            throw new DatabaseException("Error fetching all users", e);
         }
     }
     public java.util.List<java.util.Map<String, String>> findAllTeachers() {
@@ -158,19 +160,19 @@ public class UserRepository {
             while (rs.next()) {
                 String first = rs.getString("first_name");
                 String last  = rs.getString("last_name");
-                String email = rs.getString("email");
+                String email = rs.getString(EMAIL);
 
                 String fullName = ((first == null ? "" : first) + " " + (last == null ? "" : last)).trim();
                 out.add(java.util.Map.of(
                         "teacherName", fullName.isBlank() ? "Teacher" : fullName,
-                        "email", email == null ? "" : email
+                        EMAIL, email == null ? "" : email
                 ));
             }
 
             return out;
 
         } catch (SQLException e) {
-            throw new RuntimeException("Error fetching teachers", e);
+            throw new DatabaseException("Error fetching teachers", e);
         }
     }
 
