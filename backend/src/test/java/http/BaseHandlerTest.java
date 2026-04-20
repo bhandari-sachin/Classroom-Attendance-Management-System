@@ -1,7 +1,5 @@
 package http;
 
-import com.auth0.jwt.interfaces.Claim;
-import com.auth0.jwt.interfaces.DecodedJWT;
 import com.sun.net.httpserver.*;
 import org.junit.jupiter.api.Test;
 import security.JwtService;
@@ -39,7 +37,7 @@ class BaseHandlerTest {
     // TEST: method allowed + admin access
     // -------------------------------------------------------------
     @Test
-    void handle_validRequest_callsRequireAdmin() throws Exception {
+    void handle_validRequest_callsRequireAdmin() {
 
         JwtService jwtService = mock(JwtService.class);
         TestHandler handler = new TestHandler(jwtService);
@@ -61,10 +59,8 @@ class BaseHandlerTest {
     // TEST: RequestContext parsing
     // -------------------------------------------------------------
     @Test
-    void requestContext_readsQueryParams() throws Exception {
+    void requestContext_readsQueryParams() {
 
-        JwtService jwtService = mock(JwtService.class);
-        TestHandler handler = new TestHandler(jwtService);
 
         FakeExchange ex = new FakeExchange(
                 "GET",
@@ -82,10 +78,8 @@ class BaseHandlerTest {
     // TEST: authentication state in RequestContext
     // -------------------------------------------------------------
     @Test
-    void requestContext_authenticationFlag() throws Exception {
+    void requestContext_authenticationFlag() {
 
-        JwtService jwtService = mock(JwtService.class);
-        TestHandler handler = new TestHandler(jwtService);
 
         FakeExchange ex = new FakeExchange("GET", "/test", null);
 
@@ -125,7 +119,8 @@ class BaseHandlerTest {
         @Override public URI getRequestURI() { return uri; }
         @Override public String getRequestMethod() { return method; }
         @Override public HttpContext getHttpContext() { return null; }
-        @Override public void close() { }
+        @Override public void close() {     // No-op: not needed for unit testing
+        }
         @Override public InputStream getRequestBody() { return requestBody; }
         @Override public OutputStream getResponseBody() { return responseBody; }
 
@@ -139,8 +134,10 @@ class BaseHandlerTest {
         @Override public InetSocketAddress getLocalAddress() { return new InetSocketAddress(0); }
         @Override public String getProtocol() { return "HTTP/1.1"; }
         @Override public Object getAttribute(String name) { return null; }
-        @Override public void setAttribute(String name, Object value) { }
-        @Override public void setStreams(InputStream i, OutputStream o) { }
+        @Override public void setAttribute(String name, Object value) {    // No-op: attributes not needed for testing
+        }
+        @Override public void setStreams(InputStream i, OutputStream o) {    // Not used in this fake exchange
+        }
         @Override public HttpPrincipal getPrincipal() { return null; }
     }
 }

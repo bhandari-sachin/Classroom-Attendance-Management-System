@@ -5,7 +5,7 @@ import org.junit.jupiter.api.Assertions;
 
 import java.lang.reflect.Field;
 
-public class ClassAttendanceSummaryTest {
+class ClassAttendanceSummaryTest {
 
     private void setIntField(ClassAttendanceSummary s, String fieldName, int value) throws Exception {
         Field f = ClassAttendanceSummary.class.getDeclaredField(fieldName);

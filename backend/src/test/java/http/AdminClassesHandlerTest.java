@@ -14,14 +14,15 @@ import java.net.InetSocketAddress;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
-import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 class AdminClassesHandlerTest {
 
-    private final ObjectMapper om = new ObjectMapper();
+    {
+        new ObjectMapper();
+    }
 
     // -------------------------------------------------------------
     // GET TEST
@@ -141,7 +142,8 @@ class AdminClassesHandlerTest {
         @Override public URI getRequestURI() { return uri; }
         @Override public String getRequestMethod() { return method; }
         @Override public HttpContext getHttpContext() { return null; }
-        @Override public void close() { }
+        @Override public void close() {     // No-op: not needed for unit testing
+        }
         @Override public InputStream getRequestBody() { return requestBody; }
         @Override public OutputStream getResponseBody() { return responseBody; }
 
@@ -155,8 +157,10 @@ class AdminClassesHandlerTest {
         @Override public InetSocketAddress getLocalAddress() { return new InetSocketAddress(0); }
         @Override public String getProtocol() { return "HTTP/1.1"; }
         @Override public Object getAttribute(String name) { return null; }
-        @Override public void setAttribute(String name, Object value) { }
-        @Override public void setStreams(InputStream i, OutputStream o) { }
+        @Override public void setAttribute(String name, Object value) {    // Attributes are not used in this fake implementation
+        }
+        @Override public void setStreams(InputStream i, OutputStream o) {    // Not used in this fake exchange
+        }
         @Override public HttpPrincipal getPrincipal() { return null; }
     }
 }
