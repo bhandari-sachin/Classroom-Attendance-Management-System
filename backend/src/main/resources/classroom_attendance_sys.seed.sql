@@ -4,13 +4,19 @@
 
 -- 1. LANGUAGES
 
-INSERT INTO languages (code, name, is_default, is_active) VALUES
-                                                              ('en', 'English',  TRUE,  TRUE),
-                                                              ('ne', 'Nepali',   FALSE, TRUE),
-                                                              ('fi', 'Finnish',  FALSE, TRUE),
-                                                              ('am', 'Amharic',  FALSE, TRUE),
-                                                              ('ar', 'Arabic',   FALSE, TRUE)
-    ON DUPLICATE KEY UPDATE name = VALUES(name);
+INSERT INTO languages (code, name, is_default, is_active)
+VALUES
+    ('en', 'English',  TRUE,  TRUE),
+    ('ne', 'Nepali',   FALSE, TRUE),
+    ('fi', 'Finnish',  FALSE, TRUE),
+    ('am', 'Amharic',  FALSE, TRUE),
+    ('ar', 'Arabic',   FALSE, TRUE),
+    ('sv', 'Swedish',  FALSE, TRUE)
+    AS new
+ON DUPLICATE KEY UPDATE
+                     name = new.name,
+                     is_default = new.is_default,
+                     is_active = new.is_active;
 
 
 -- 2. USER TYPE TRANSLATIONS

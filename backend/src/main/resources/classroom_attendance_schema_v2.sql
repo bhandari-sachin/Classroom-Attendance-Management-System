@@ -87,7 +87,7 @@ CREATE TABLE IF NOT EXISTS attendance
     CHECK (marked_by IN ('QR', 'TEACHER', 'STUDENT'))
     );
 
---------------------------------------------------------------------------
+-- ------------------------------------------------------------------------
 
 -- I18N TABLES
 -- 6. LANGUAGES
@@ -102,7 +102,6 @@ CREATE TABLE IF NOT EXISTS languages
 -- 7. USER TYPE TRANSLATIONS
 CREATE TABLE IF NOT EXISTS user_type_translation
 (
-    --type_code     VARCHAR(20)  NOT NULL,
     type_code     ENUM('ADMIN', 'TEACHER', 'STUDENT') NOT NULL,
     language_code VARCHAR(10)  NOT NULL,
     label         VARCHAR(100) NOT NULL,
