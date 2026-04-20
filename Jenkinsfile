@@ -60,7 +60,7 @@ pipeline {
             steps {
                 withSonarQubeEnv('SonarQubeServer') {
                     bat """
-                        mvn clean verify sonar:sonar -DskipTests ^
+                         mvn sonar:sonar ^
                         -Dsonar.projectKey=${SONAR_PROJECT_KEY} ^
                         -Dsonar.projectName="${SONAR_PROJECT_NAME}" ^
                         -Dsonar.coverage.jacoco.xmlReportPaths=backend/target/site/jacoco/jacoco.xml ^
