@@ -11,6 +11,7 @@ import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 public class CSVReportExporter {
@@ -25,12 +26,12 @@ public class CSVReportExporter {
         // Private constructor to prevent instantiation
     }
 
-        public static void studentYearReport(
-                OutputStream os,
-                int year,
-                List<StudentClassReportRow> rows,
-                String lang
-        ) throws IOException {
+    public static void studentYearReport(
+            OutputStream os,
+            int year,
+            List<StudentClassReportRow> rows,
+            String lang
+    ) throws IOException {
         Map<String, String> labels= LocalizationSQL.getLabels(lang);
         String rateLabel = labels.get(RATE_LABEL);
         String rate = rateLabel.split(":")[0];
@@ -63,7 +64,7 @@ public class CSVReportExporter {
                             String.valueOf(r.getPresent()),
                             String.valueOf(r.getAbsent()),
                             String.valueOf(r.getExcused()),
-                            String.format(DECIMAL_FORMAT, r.getRate())
+                            String.format(Locale.US, DECIMAL_FORMAT, r.getRate())
                     ));
                     writer.newLine();
                 }
@@ -117,7 +118,7 @@ public class CSVReportExporter {
                             String.valueOf(r.getAbsent()),
                             String.valueOf(r.getExcused()),
                             String.valueOf(r.getTotal()),
-                            String.format(DECIMAL_FORMAT, r.getRate())
+                            String.format(Locale.US, DECIMAL_FORMAT, r.getRate())
                     ));
                     writer.newLine();
                 }
@@ -157,7 +158,7 @@ public class CSVReportExporter {
                             String.valueOf(r.getPresent()),
                             String.valueOf(r.getAbsent()),
                             String.valueOf(r.getExcused()),
-                            String.format(DECIMAL_FORMAT    , r.getRate())
+                            String.format(Locale.US, DECIMAL_FORMAT    , r.getRate())
                     ));
                     writer.newLine();
                 }
