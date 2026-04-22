@@ -1,4 +1,4 @@
-package admin;
+package frontend.admin;
 
 import frontend.admin.AdminAttendanceReportsPage;
 import frontend.auth.AppRouter;

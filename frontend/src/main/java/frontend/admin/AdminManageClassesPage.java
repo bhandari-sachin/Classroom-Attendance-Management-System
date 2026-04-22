@@ -136,7 +136,7 @@ public class AdminManageClassesPage {
     }
 
     private Button getAddButton(HBox titleRow) {
-        return (Button) titleRow.getChildren().get(titleRow.getChildren().size() - 1);
+        return (Button) titleRow.getChildren().getLast();
     }
 
     private TextField buildSearchField() {
@@ -160,7 +160,7 @@ public class AdminManageClassesPage {
         return section;
     }
 
-    void applySearchFilter(FilteredList<ClassRow> filteredRows, String query) {
+    public void applySearchFilter(FilteredList<ClassRow> filteredRows, String query) {
         String searchValue = query == null ? "" : query.trim().toLowerCase();
 
         filteredRows.setPredicate(row -> {
@@ -418,7 +418,7 @@ public class AdminManageClassesPage {
         return selectedCount;
     }
 
-    void applyStudentFilter(FilteredList<AdminStudentDto> filteredStudents, String query) {
+    public void applyStudentFilter(FilteredList<AdminStudentDto> filteredStudents, String query) {
         String searchValue = query == null ? "" : query.trim().toLowerCase();
 
         filteredStudents.setPredicate(student -> {

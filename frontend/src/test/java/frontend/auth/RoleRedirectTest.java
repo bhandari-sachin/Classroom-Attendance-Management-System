@@ -1,4 +1,4 @@
-package auth;
+package frontend.auth;
 
 import frontend.auth.Role;
 import frontend.auth.RoleRedirect;

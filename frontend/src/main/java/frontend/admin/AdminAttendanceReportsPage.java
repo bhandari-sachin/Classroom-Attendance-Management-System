@@ -348,7 +348,7 @@ public class AdminAttendanceReportsPage {
                 Platform.runLater(() -> {
                     classFilter.getItems().setAll(items);
                     if (!items.isEmpty()) {
-                        classFilter.setValue(items.get(0));
+                        classFilter.setValue(items.getFirst());
                         loadReport.run();
                     }
                 });

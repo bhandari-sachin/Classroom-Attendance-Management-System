@@ -1,8 +1,6 @@
-package api;
+package frontend.api;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import frontend.api.AdminApi;
-import frontend.api.ApiException;
 import frontend.auth.AuthState;
 import frontend.auth.JwtStore;
 import org.junit.jupiter.api.BeforeEach;
@@ -209,9 +207,9 @@ class AdminApiTest {
     private void createPathsWithBlankClassesPath() {
         new AdminApi.Paths(
                 "",
-                "/api/admin/users",
-                "/api/admin/attendance/stats",
-                "/api/admin/attendance/report"
+                "/frontend/admin/admin/users",
+                "/frontend/admin/admin/attendance/stats",
+                "/frontend/admin/admin/attendance/report"
         );
     }
 }

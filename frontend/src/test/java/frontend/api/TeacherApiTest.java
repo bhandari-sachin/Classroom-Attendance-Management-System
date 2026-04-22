@@ -1,6 +1,5 @@
-package api;
+package frontend.api;
 
-import frontend.api.TeacherApi;
 import frontend.auth.AuthState;
 import frontend.auth.JwtStore;
 import org.junit.jupiter.api.BeforeEach;

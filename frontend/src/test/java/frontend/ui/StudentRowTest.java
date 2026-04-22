@@ -1,4 +1,4 @@
-package ui;
+package frontend.ui;
 
 import frontend.StudentRow;
 import org.junit.jupiter.api.Test;

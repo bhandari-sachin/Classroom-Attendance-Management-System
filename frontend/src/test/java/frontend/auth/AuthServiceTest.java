@@ -1,4 +1,4 @@
-package auth;
+package frontend.auth;
 
 import frontend.auth.AuthService;
 import frontend.auth.Role;
