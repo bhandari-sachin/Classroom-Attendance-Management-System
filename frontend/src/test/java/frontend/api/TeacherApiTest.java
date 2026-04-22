@@ -10,10 +10,13 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.when;
 
-public class TeacherApiTest {
+class TeacherApiTest {
 
     private TeacherApi api;
     private JwtStore jwtStore;
@@ -60,18 +63,14 @@ public class TeacherApiTest {
 
     @Test
     void extractCode_shouldReturnNullWhenResponseNull() {
-        String result = api.extractCode(null);
-
-        assertNull(result);
+        assertNull(api.extractCode(null));
     }
 
     @Test
-    void token_shouldUseJwtStoreTokenWhenPresent() throws Exception {
-
+    void token_shouldUseJwtStoreTokenWhenPresent() {
         when(authState.getToken()).thenReturn("fallback-token");
         when(jwtStore.load()).thenReturn(Optional.of(authState));
 
-        // indirectly tested by calling API method expecting HTTP failure
         Exception ex = assertThrows(Exception.class, () ->
                 api.getMyClasses(jwtStore, authState)
         );
@@ -80,8 +79,7 @@ public class TeacherApiTest {
     }
 
     @Test
-    void token_shouldFallbackToStateToken() throws Exception {
-
+    void token_shouldFallbackToStateToken() {
         when(jwtStore.load()).thenReturn(Optional.empty());
         when(authState.getToken()).thenReturn("state-token");
 
