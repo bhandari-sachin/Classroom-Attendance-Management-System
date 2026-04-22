@@ -1,7 +1,6 @@
 package frontend.admin;
 
-import frontend.AppLayout;
-import frontend.admin.AdminAppLayout;
+import frontend.app.AppLayout;
 import javafx.scene.Parent;
 import javafx.scene.layout.VBox;
 import org.junit.jupiter.api.Test;

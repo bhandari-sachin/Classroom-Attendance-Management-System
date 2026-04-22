@@ -1,4 +1,4 @@
-package frontend;
+package frontend.ui;
 
 import java.io.IOException;
 import java.io.InputStream;

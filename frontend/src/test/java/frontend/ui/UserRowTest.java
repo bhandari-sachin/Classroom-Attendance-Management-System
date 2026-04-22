@@ -1,6 +1,5 @@
 package frontend.ui;
 
-import frontend.UserRow;
 //import model.UserRole;
 import org.junit.jupiter.api.Test;
 

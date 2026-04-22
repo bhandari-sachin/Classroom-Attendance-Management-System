@@ -1,7 +1,7 @@
 package frontend.admin;
 
-import frontend.ClassRow;
-import frontend.UserRow;
+import frontend.ui.ClassRow;
+import frontend.ui.UserRow;
 import javafx.embed.swing.JFXPanel;
 import javafx.scene.Node;
 import javafx.scene.control.Button;

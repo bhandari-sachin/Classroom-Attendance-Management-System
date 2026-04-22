@@ -1,4 +1,4 @@
-package frontend;
+package frontend.app;
 
 import frontend.admin.AdminAttendanceReportsPage;
 import frontend.admin.AdminDashboardApp;

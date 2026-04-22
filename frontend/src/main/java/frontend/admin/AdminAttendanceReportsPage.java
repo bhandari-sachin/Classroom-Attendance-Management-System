@@ -1,6 +1,6 @@
 package frontend.admin;
 
-import frontend.ReportRow;
+import frontend.ui.ReportRow;
 import frontend.api.AdminApi;
 import frontend.api.ReportApi;
 import frontend.auth.AppRouter;

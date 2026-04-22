@@ -1,6 +1,6 @@
 package frontend.admin;
 
-import frontend.ClassRow;
+import frontend.ui.ClassRow;
 import frontend.dto.AdminClassDto;
 import frontend.dto.AdminStudentDto;
 import javafx.collections.FXCollections;

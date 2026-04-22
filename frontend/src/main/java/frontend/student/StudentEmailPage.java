@@ -1,6 +1,6 @@
 package frontend.student;
 
-import frontend.TeacherRow;
+import frontend.ui.TeacherRow;
 import frontend.api.StudentTeacherApi;
 import frontend.auth.AppRouter;
 import frontend.auth.AuthState;

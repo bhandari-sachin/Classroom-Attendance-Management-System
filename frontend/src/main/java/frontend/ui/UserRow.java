@@ -1,4 +1,4 @@
-package frontend;
+package frontend.ui;
 
 import javafx.beans.property.SimpleStringProperty;
 import javafx.beans.property.StringProperty;

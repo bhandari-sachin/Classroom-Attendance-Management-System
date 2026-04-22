@@ -1,7 +1,7 @@
 package frontend.admin;
 
-import frontend.ClassRow;
-import frontend.UserRow;
+import frontend.ui.ClassRow;
+import frontend.ui.UserRow;
 import frontend.ui.HelperClass;
 import javafx.geometry.Pos;
 import javafx.scene.control.Button;

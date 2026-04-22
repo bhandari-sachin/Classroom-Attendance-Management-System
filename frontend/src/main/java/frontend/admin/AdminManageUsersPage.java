@@ -1,6 +1,6 @@
 package frontend.admin;
 
-import frontend.UserRow;
+import frontend.ui.UserRow;
 import frontend.api.AdminApi;
 import frontend.auth.AppRouter;
 import frontend.auth.AuthState;

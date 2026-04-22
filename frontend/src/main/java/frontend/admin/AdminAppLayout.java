@@ -1,6 +1,6 @@
 package frontend.admin;
 
-import frontend.AppLayout;
+import frontend.app.AppLayout;
 import javafx.scene.Node;
 import javafx.scene.Parent;
 

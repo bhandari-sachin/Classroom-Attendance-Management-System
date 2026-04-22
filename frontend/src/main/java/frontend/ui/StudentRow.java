@@ -1,4 +1,4 @@
-package frontend;
+package frontend.ui;
 
 import javafx.beans.property.LongProperty;
 import javafx.beans.property.SimpleLongProperty;

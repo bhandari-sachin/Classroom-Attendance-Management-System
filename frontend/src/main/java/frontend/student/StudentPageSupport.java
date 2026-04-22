@@ -1,6 +1,6 @@
 package frontend.student;
 
-import frontend.AppLayout;
+import frontend.app.AppLayout;
 import frontend.auth.AppRouter;
 import frontend.auth.AuthState;
 import frontend.auth.JwtStore;

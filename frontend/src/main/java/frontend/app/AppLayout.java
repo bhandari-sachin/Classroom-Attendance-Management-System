@@ -1,4 +1,4 @@
-package frontend;
+package frontend.app;
 
 import frontend.ui.HelperClass;
 import frontend.ui.UiPreferences;

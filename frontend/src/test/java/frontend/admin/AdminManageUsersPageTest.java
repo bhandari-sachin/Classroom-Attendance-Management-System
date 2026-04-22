@@ -1,6 +1,6 @@
 package frontend.admin;
 
-import frontend.UserRow;
+import frontend.ui.UserRow;
 import frontend.dto.AdminUserDto;
 import frontend.dto.AdminUsersResponseDto;
 import frontend.ui.HelperClass;
