@@ -1,8 +1,8 @@
 package frontend.admin;
 
 import frontend.ui.ClassRow;
-import frontend.ui.UserRow;
 import frontend.ui.HelperClass;
+import frontend.ui.UserRow;
 import javafx.geometry.Pos;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
@@ -155,7 +155,7 @@ public final class AdminUI {
     private static <T> TableView<T> createBaseTable() {
         TableView<T> table = new TableView<>();
         table.getStyleClass().add("table");
-        table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+        table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
         return table;
     }
 

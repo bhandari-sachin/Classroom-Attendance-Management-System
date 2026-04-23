@@ -47,9 +47,20 @@ public class StudentAttendancePage {
     private static final String BASE_URL =
             System.getenv().getOrDefault("BACKEND_URL", "http://localhost:8081");
 
+    private static final String EMPTY_SUBTITLE_STYLE = "empty-subtitle";
+
     private static final Logger LOGGER = Logger.getLogger(StudentAttendancePage.class.getName());
 
     private final HelperClass helper = new HelperClass();
+
+    private record AttendanceStatsLabels(
+            Label rateValue,
+            Label presentValue,
+            Label absentValue,
+            Label excusedValue,
+            Label totalDaysValue
+    ) {
+    }
 
     public Parent build(Scene scene, AppRouter router, JwtStore jwtStore, AuthState state) {
         String studentName = StudentPageSupport.resolveStudentName(state, helper);
@@ -205,7 +216,7 @@ public class StudentAttendancePage {
         recordsCard.setMinHeight(160);
 
         Label loadingRecords = new Label(msg("student.attendance.records.loading", "Loading attendance records..."));
-        loadingRecords.getStyleClass().add("empty-subtitle");
+        loadingRecords.getStyleClass().add(EMPTY_SUBTITLE_STYLE);
         recordsCard.setAlignment(Pos.CENTER);
         recordsCard.getChildren().add(loadingRecords);
 
@@ -223,11 +234,13 @@ public class StudentAttendancePage {
         loadAttendance(
                 jwtStore,
                 state,
-                rateValue,
-                presentValue,
-                absentValue,
-                excusedValue,
-                totalDaysValue,
+                new AttendanceStatsLabels(
+                        rateValue,
+                        presentValue,
+                        absentValue,
+                        excusedValue,
+                        totalDaysValue
+                ),
                 recordsCard
         );
 
@@ -248,11 +261,7 @@ public class StudentAttendancePage {
     private void loadAttendance(
             JwtStore jwtStore,
             AuthState state,
-            Label rateValue,
-            Label presentValue,
-            Label absentValue,
-            Label excusedValue,
-            Label totalDaysValue,
+            AttendanceStatsLabels statsLabels,
             VBox recordsCard
     ) {
         StudentAttendanceApi api = new StudentAttendanceApi(BASE_URL);
@@ -277,12 +286,12 @@ public class StudentAttendancePage {
                     int total = num(summary.get("totalDays"));
 
                     double rate = dbl(summary.get("attendanceRate"));
-                    rateValue.setText(((int) Math.round(rate)) + "%");
+                    statsLabels.rateValue().setText(((int) Math.round(rate)) + "%");
 
-                    presentValue.setText(String.valueOf(present));
-                    absentValue.setText(String.valueOf(absent));
-                    excusedValue.setText(String.valueOf(excused));
-                    totalDaysValue.setText(String.valueOf(total));
+                    statsLabels.presentValue().setText(String.valueOf(present));
+                    statsLabels.absentValue().setText(String.valueOf(absent));
+                    statsLabels.excusedValue().setText(String.valueOf(excused));
+                    statsLabels.totalDaysValue().setText(String.valueOf(total));
 
                     recordsCard.getChildren().clear();
                     recordsCard.setAlignment(Pos.TOP_LEFT);
@@ -314,7 +323,7 @@ public class StudentAttendancePage {
                             msg("student.attendance.error.load", "Failed to load attendance: {error}")
                                     .replace("{error}", e == null || e.getMessage() == null ? "Unknown error" : e.getMessage())
                     );
-                    err.getStyleClass().add("empty-subtitle");
+                    err.getStyleClass().add(EMPTY_SUBTITLE_STYLE);
                     recordsCard.getChildren().add(err);
                 });
             }
@@ -383,7 +392,7 @@ public class StudentAttendancePage {
         Label recS = new Label(
                 msg("student.attendance.records.empty.subtitle", "")
         );
-        recS.getStyleClass().add("empty-subtitle");
+        recS.getStyleClass().add(EMPTY_SUBTITLE_STYLE);
 
         box.getChildren().addAll(recIcon, recT);
         if (!recS.getText().isBlank()) {
@@ -413,6 +422,7 @@ public class StudentAttendancePage {
             case "ABSENT" -> chip.getStyleClass().add("record-chip-absent");
             case "EXCUSED" -> chip.getStyleClass().add("record-chip-excused");
             default -> {
+                // Keep the base chip style for unknown statuses.
             }
         }
 

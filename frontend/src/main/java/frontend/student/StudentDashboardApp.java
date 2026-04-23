@@ -33,6 +33,8 @@ public class StudentDashboardApp {
     private final HelperClass helper = new HelperClass();
 
     public Parent build(Scene scene, AppRouter router, JwtStore jwtStore, AuthState state) {
+        logIfSceneMissing(scene);
+
         String studentName = StudentPageSupport.resolveStudentName(state, helper);
 
         VBox page = StudentPageSupport.buildPageContainer();
@@ -88,6 +90,16 @@ public class StudentDashboardApp {
                 router,
                 jwtStore
         );
+    }
+
+    private void logIfSceneMissing(Scene scene) {
+        if (scene == null) {
+            LOGGER.fine("StudentDashboardApp.build called with a null scene.");
+        }
+    }
+
+    private String statsHint() {
+        return helper.getMessage("student.dashboard.stats.hint");
     }
 
     private Label buildTitle(String studentName) {
@@ -172,7 +184,7 @@ public class StudentDashboardApp {
                 statCardWithBadge(
                         helper.getMessage("student.dashboard.stats.present"),
                         presentValue,
-                        helper.getMessage("student.dashboard.stats.hint"),
+                        statsHint(),
                         "#3BAA66",
                         "✓"
                 ),
@@ -184,7 +196,7 @@ public class StudentDashboardApp {
                 statCardWithBadge(
                         helper.getMessage("student.dashboard.stats.absent"),
                         absentValue,
-                        helper.getMessage("student.dashboard.stats.hint"),
+                        statsHint(),
                         "#E05A5A",
                         "✕"
                 ),
@@ -196,7 +208,7 @@ public class StudentDashboardApp {
                 statCardWithBadge(
                         helper.getMessage("student.dashboard.stats.excused"),
                         excusedValue,
-                        helper.getMessage("student.dashboard.stats.hint"),
+                        statsHint(),
                         "#E09A3B",
                         "⏱"
                 ),
@@ -208,7 +220,7 @@ public class StudentDashboardApp {
                 statCardWithBadge(
                         helper.getMessage("student.dashboard.rate"),
                         rateValue,
-                        helper.getMessage("student.dashboard.stats.hint"),
+                        statsHint(),
                         "#5AA6E0",
                         "%"
                 ),

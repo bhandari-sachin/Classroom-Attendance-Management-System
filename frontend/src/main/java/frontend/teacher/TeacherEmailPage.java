@@ -1,11 +1,11 @@
 package frontend.teacher;
 
-import frontend.ui.StudentRow;
 import frontend.api.TeacherApi;
 import frontend.auth.AppRouter;
 import frontend.auth.AuthState;
 import frontend.auth.JwtStore;
 import frontend.ui.HelperClass;
+import frontend.ui.StudentRow;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -50,6 +50,8 @@ public class TeacherEmailPage {
     private final HelperClass helper = new HelperClass();
 
     public Parent build(Scene scene, AppRouter router, JwtStore jwtStore, AuthState state) {
+        logIfSceneMissing(scene);
+
         String teacherName = TeacherPageSupport.resolveTeacherName(state, helper);
 
         String backendUrl = System.getenv().getOrDefault("BACKEND_URL", "http://localhost:8081");
@@ -94,6 +96,12 @@ public class TeacherEmailPage {
         );
     }
 
+    private void logIfSceneMissing(Scene scene) {
+        if (scene == null) {
+            LOGGER.fine("TeacherEmailPage.build called with a null scene.");
+        }
+    }
+
     private Label buildTitle() {
         Label title = new Label(helper.getMessage("teacher.email.title"));
         title.getStyleClass().add("title");
@@ -128,7 +136,7 @@ public class TeacherEmailPage {
 
     private TableView<StudentRow> buildStudentTable() {
         TableView<StudentRow> table = new TableView<>(rows);
-        table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+        table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
         table.setPrefHeight(340);
 
         TableColumn<StudentRow, String> nameColumn =

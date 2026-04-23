@@ -1,12 +1,12 @@
 package frontend.admin;
 
-import frontend.ui.ClassRow;
 import frontend.api.AdminApi;
 import frontend.auth.AppRouter;
 import frontend.auth.AuthState;
 import frontend.auth.JwtStore;
 import frontend.dto.AdminClassDto;
 import frontend.dto.AdminStudentDto;
+import frontend.ui.ClassRow;
 import frontend.ui.HelperClass;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
@@ -45,9 +45,24 @@ public class AdminManageClassesPage {
     private static final Logger LOGGER =
             Logger.getLogger(AdminManageClassesPage.class.getName());
 
+    private static final String STYLE_SUBTITLE = "subtitle";
+    private static final String UNKNOWN_ERROR = "Unknown error";
+
     private final HelperClass helper = new HelperClass();
 
+    private record CreateClassRequest(
+            String classCode,
+            String name,
+            String teacherEmail,
+            String semester,
+            String academicYear,
+            Integer maxCapacity
+    ) {
+    }
+
     public Parent build(Scene scene, AppRouter router, JwtStore jwtStore, AuthState state) {
+        logIfSceneMissing(scene);
+
         String adminName = AdminPageSupport.resolveAdminName(state, helper);
 
         VBox content = AdminPageSupport.buildContentContainer();
@@ -104,6 +119,12 @@ public class AdminManageClassesPage {
         );
     }
 
+    private void logIfSceneMissing(Scene scene) {
+        if (scene == null) {
+            LOGGER.fine("AdminManageClassesPage.build called with a null scene.");
+        }
+    }
+
     private HBox buildTitleRow() {
         HBox titleRow = new HBox(12);
         titleRow.setAlignment(Pos.CENTER_LEFT);
@@ -114,7 +135,7 @@ public class AdminManageClassesPage {
         title.getStyleClass().add("title");
 
         Label subtitle = new Label(helper.getMessage("admin.classes.subtitle"));
-        subtitle.getStyleClass().add("subtitle");
+        subtitle.getStyleClass().add(STYLE_SUBTITLE);
 
         titleColumn.getChildren().addAll(title, subtitle);
 
@@ -136,7 +157,7 @@ public class AdminManageClassesPage {
     }
 
     private Button getAddButton(HBox titleRow) {
-        return (Button) titleRow.getChildren().getLast();
+        return (Button) titleRow.getChildren().get(titleRow.getChildren().size() - 1);
     }
 
     private TextField buildSearchField() {
@@ -148,7 +169,7 @@ public class AdminManageClassesPage {
 
     private Label buildLoadErrorLabel() {
         Label loadError = new Label();
-        loadError.getStyleClass().add("subtitle");
+        loadError.getStyleClass().add(STYLE_SUBTITLE);
         loadError.setManaged(false);
         loadError.setVisible(false);
         return loadError;
@@ -195,7 +216,7 @@ public class AdminManageClassesPage {
                         loadError,
                         helper.getMessage("admin.classes.dialog.loadStudents.failed")
                                 + " "
-                                + (ex.getMessage() == null ? "Unknown error" : ex.getMessage())
+                                + safeErrorMessage(ex)
                 ));
             }
         }).start();
@@ -255,23 +276,16 @@ public class AdminManageClassesPage {
                 return;
             }
 
-            String classCode = classCodeField.getText().trim();
-            String name = nameField.getText().trim();
-            String teacherEmail = teacherEmailField.getText().trim();
-            String semester = semesterField.getText().trim();
-            String academicYear = academicYearField.getText().trim();
-            Integer maxCapacity = parseInteger(maxCapacityField.getText().trim());
-
-            createClass(
-                    adminApi,
-                    classCode,
-                    name,
-                    teacherEmail,
-                    semester,
-                    academicYear,
-                    maxCapacity,
-                    reload
+            CreateClassRequest request = new CreateClassRequest(
+                    classCodeField.getText().trim(),
+                    nameField.getText().trim(),
+                    teacherEmailField.getText().trim(),
+                    semesterField.getText().trim(),
+                    academicYearField.getText().trim(),
+                    parseInteger(maxCapacityField.getText().trim())
             );
+
+            createClass(adminApi, request, reload);
         });
     }
 
@@ -305,24 +319,26 @@ public class AdminManageClassesPage {
 
     private void createClass(
             AdminApi adminApi,
-            String classCode,
-            String name,
-            String teacherEmail,
-            String semester,
-            String academicYear,
-            Integer maxCapacity,
+            CreateClassRequest request,
             Runnable reload
     ) {
         new Thread(() -> {
             try {
-                adminApi.createClass(classCode, name, teacherEmail, semester, academicYear, maxCapacity);
+                adminApi.createClass(
+                        request.classCode(),
+                        request.name(),
+                        request.teacherEmail(),
+                        request.semester(),
+                        request.academicYear(),
+                        request.maxCapacity()
+                );
                 Platform.runLater(reload);
             } catch (Exception ex) {
                 LOGGER.log(Level.SEVERE, "Failed to create class.", ex);
                 Platform.runLater(() -> showError(
                         helper.getMessage("admin.classes.dialog.add.error")
                                 + ":\n"
-                                + (ex.getMessage() == null ? "Unknown error" : ex.getMessage())
+                                + safeErrorMessage(ex)
                 ));
             }
         }).start();
@@ -352,7 +368,7 @@ public class AdminManageClassesPage {
         searchStudents.setPromptText(helper.getMessage("admin.classes.dialog.enroll.search.placeholder"));
 
         Label statusLabel = new Label(helper.getMessage("admin.classes.dialog.loadStudents.loading"));
-        statusLabel.getStyleClass().add("subtitle");
+        statusLabel.getStyleClass().add(STYLE_SUBTITLE);
 
         ListView<AdminStudentDto> listView = buildStudentListView();
         Label selectedCount = buildSelectedCountLabel();
@@ -414,7 +430,7 @@ public class AdminManageClassesPage {
 
     private Label buildSelectedCountLabel() {
         Label selectedCount = new Label(helper.getMessage("admin.classes.dialog.enroll.selectedCount"));
-        selectedCount.getStyleClass().add("subtitle");
+        selectedCount.getStyleClass().add(STYLE_SUBTITLE);
         return selectedCount;
     }
 
@@ -461,7 +477,7 @@ public class AdminManageClassesPage {
                         statusLabel.setText(
                                 helper.getMessage("admin.classes.dialog.loadStudents.failed")
                                         + " "
-                                        + (ex.getMessage() == null ? "Unknown error" : ex.getMessage())
+                                        + safeErrorMessage(ex)
                         )
                 );
             }
@@ -480,7 +496,7 @@ public class AdminManageClassesPage {
                 new ArrayList<>(listView.getSelectionModel().getSelectedItems());
 
         List<String> studentEmails = selectedStudents.stream()
-                .map(student -> student.getEmail())
+                .map(AdminStudentDto::getEmail)
                 .filter(email -> email != null && !email.isBlank())
                 .collect(Collectors.toList());
 
@@ -503,7 +519,7 @@ public class AdminManageClassesPage {
             } catch (Exception ex) {
                 LOGGER.log(Level.SEVERE, "Failed to enroll students into class.", ex);
                 Platform.runLater(() -> {
-                    String errorMessage = ex.getMessage() == null ? "Unknown error" : ex.getMessage();
+                    String errorMessage = safeErrorMessage(ex);
                     statusLabel.setText(
                             helper.getMessage("admin.classes.dialog.enroll.failure") + " " + errorMessage
                     );
@@ -547,6 +563,13 @@ public class AdminManageClassesPage {
 
     private void showError(String message) {
         new Alert(Alert.AlertType.ERROR, message, ButtonType.OK).showAndWait();
+    }
+
+    private String safeErrorMessage(Exception ex) {
+        if (ex == null || ex.getMessage() == null || ex.getMessage().isBlank()) {
+            return UNKNOWN_ERROR;
+        }
+        return ex.getMessage();
     }
 
     static String safe(String value) {

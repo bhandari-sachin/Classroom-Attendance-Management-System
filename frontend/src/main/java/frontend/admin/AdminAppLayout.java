@@ -18,24 +18,29 @@ public final class AdminAppLayout {
         void logout();
     }
 
-    public static Parent wrapWithSidebar(
+    public record SidebarConfig(
             String name,
             String roleLabel,
             String dashboardLabel,
             String secondLabel,
             String thirdLabel,
-            String fourthLabel,
+            String fourthLabel
+    ) {
+    }
+
+    public static Parent wrapWithSidebar(
+            SidebarConfig config,
             Node content,
             String activeKey,
             Navigator nav
     ) {
         return AppLayout.wrapWithSidebar(
-                name,
-                roleLabel,
-                dashboardLabel,
-                secondLabel,
-                thirdLabel,
-                fourthLabel,
+                config.name(),
+                config.roleLabel(),
+                config.dashboardLabel(),
+                config.secondLabel(),
+                config.thirdLabel(),
+                config.fourthLabel(),
                 content,
                 activeKey,
                 new AppLayout.Navigator() {

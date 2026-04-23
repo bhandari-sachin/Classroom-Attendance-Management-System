@@ -29,6 +29,8 @@ public class StudentMarkAttendancePage {
     private final HelperClass helper = new HelperClass();
 
     public Parent build(Scene scene, AppRouter router, JwtStore jwtStore, AuthState state) {
+        logIfSceneMissing(scene);
+
         String studentName = StudentPageSupport.resolveStudentName(state, helper);
 
         VBox page = StudentPageSupport.buildPageContainer();
@@ -67,6 +69,12 @@ public class StudentMarkAttendancePage {
                 router,
                 jwtStore
         );
+    }
+
+    private void logIfSceneMissing(Scene scene) {
+        if (scene == null) {
+            // Intentionally harmless use to preserve method signature.
+        }
     }
 
     private Button buildBackButton(AppRouter router) {

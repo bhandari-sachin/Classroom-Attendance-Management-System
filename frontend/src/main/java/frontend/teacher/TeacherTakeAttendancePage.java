@@ -1,11 +1,11 @@
 package frontend.teacher;
 
-import frontend.ui.StudentRow;
 import frontend.api.TeacherApi;
 import frontend.auth.AppRouter;
 import frontend.auth.AuthState;
 import frontend.auth.JwtStore;
 import frontend.ui.HelperClass;
+import frontend.ui.StudentRow;
 import javafx.application.Platform;
 import javafx.beans.binding.Bindings;
 import javafx.collections.FXCollections;
@@ -42,6 +42,15 @@ public class TeacherTakeAttendancePage {
     private static final Logger LOGGER =
             Logger.getLogger(TeacherTakeAttendancePage.class.getName());
 
+    private static final String UNKNOWN_ERROR = "Unknown error";
+    private static final String STATUS_PRESENT = "PRESENT";
+    private static final String STATUS_ABSENT = "ABSENT";
+    private static final String STATUS_EXCUSED = "EXCUSED";
+    private static final String STYLE_SECTION_TITLE = "section-title";
+    private static final String STYLE_ACTION_BTN = "action-btn";
+    private static final String STYLE_ACTION_BTN_OUTLINE = "action-btn-outline";
+    private static final String DASH = "—";
+
     static class ClassItem {
         final long id;
         final String label;
@@ -57,15 +66,57 @@ public class TeacherTakeAttendancePage {
         }
     }
 
+    private static final class SessionState {
+        private long currentSessionId = -1L;
+
+        long getCurrentSessionId() {
+            return currentSessionId;
+        }
+
+        void setCurrentSessionId(long currentSessionId) {
+            this.currentSessionId = currentSessionId;
+        }
+
+        void reset() {
+            this.currentSessionId = -1L;
+        }
+
+        boolean hasActiveSession() {
+            return currentSessionId > 0;
+        }
+    }
+
+    private record SessionControls(
+            Button generateButton,
+            Label manualCode,
+            ImageView qrImageView,
+            SessionState sessionState
+    ) {
+    }
+
+    private record AttendanceUpdateRequest(
+            TeacherApi api,
+            JwtStore jwtStore,
+            AuthState state,
+            StudentRow row,
+            long sessionId,
+            String status,
+            Runnable onSuccess,
+            Runnable onFinally
+    ) {
+    }
+
     private final ObservableList<StudentRow> rows = FXCollections.observableArrayList();
     private final HelperClass helper = new HelperClass();
 
     public Parent build(Scene scene, AppRouter router, JwtStore jwtStore, AuthState state) {
+        logIfSceneMissing(scene);
+
         String teacherName = TeacherPageSupport.resolveTeacherName(state, helper);
         String backendUrl = System.getenv().getOrDefault("BACKEND_URL", "http://localhost:8081");
         TeacherApi api = new TeacherApi(backendUrl);
 
-        final long[] currentSessionId = {-1L};
+        SessionState sessionState = new SessionState();
 
         VBox page = TeacherPageSupport.buildAttendancePageContainer();
 
@@ -78,6 +129,9 @@ public class TeacherTakeAttendancePage {
         ImageView qrImageView = buildQrImageView();
         Label manualCode = buildManualCodeLabel();
         Button generateButton = buildGenerateButton();
+
+        SessionControls sessionControls =
+                new SessionControls(generateButton, manualCode, qrImageView, sessionState);
 
         VBox qrCard = buildQrCard(qrImageView, manualCode, generateButton);
 
@@ -97,7 +151,7 @@ public class TeacherTakeAttendancePage {
                 api,
                 jwtStore,
                 state,
-                currentSessionId
+                sessionState
         );
 
         page.getChildren().addAll(
@@ -115,10 +169,7 @@ public class TeacherTakeAttendancePage {
                 jwtStore,
                 state,
                 classBox,
-                generateButton,
-                manualCode,
-                qrImageView,
-                currentSessionId
+                sessionControls
         ));
 
         markAllPresentButton.setOnAction(e -> handleMarkAllPresent(
@@ -126,7 +177,7 @@ public class TeacherTakeAttendancePage {
                 jwtStore,
                 state,
                 markAllPresentButton,
-                currentSessionId
+                sessionState
         ));
 
         classBox.setOnAction(e -> handleClassSelection(
@@ -134,9 +185,7 @@ public class TeacherTakeAttendancePage {
                 jwtStore,
                 state,
                 classBox,
-                manualCode,
-                qrImageView,
-                currentSessionId
+                sessionControls
         ));
 
         loadClasses(api, jwtStore, state, classBox);
@@ -149,6 +198,12 @@ public class TeacherTakeAttendancePage {
                 router,
                 jwtStore
         );
+    }
+
+    private void logIfSceneMissing(Scene scene) {
+        if (scene == null) {
+            LOGGER.fine("TeacherTakeAttendancePage.build called with a null scene.");
+        }
     }
 
     private Label buildTitle() {
@@ -165,7 +220,7 @@ public class TeacherTakeAttendancePage {
 
     private Label buildSelectClassLabel() {
         Label label = new Label(helper.getMessage("teacher.attendance.selectClass"));
-        label.getStyleClass().add("section-title");
+        label.getStyleClass().add(STYLE_SECTION_TITLE);
         return label;
     }
 
@@ -185,7 +240,7 @@ public class TeacherTakeAttendancePage {
     }
 
     private Label buildManualCodeLabel() {
-        Label manualCode = new Label("—");
+        Label manualCode = new Label(DASH);
         manualCode.getStyleClass().add("small-subtitle");
         return manualCode;
     }
@@ -203,7 +258,7 @@ public class TeacherTakeAttendancePage {
         qrCard.setPadding(new Insets(16));
 
         Label qrTitle = new Label(helper.getMessage("teacher.attendance.qr.title"));
-        qrTitle.getStyleClass().add("section-title");
+        qrTitle.getStyleClass().add(STYLE_SECTION_TITLE);
 
         StackPane qrArea = new StackPane(qrImageView);
         qrArea.setAlignment(Pos.CENTER);
@@ -224,7 +279,7 @@ public class TeacherTakeAttendancePage {
 
     private Label buildStudentsTitle() {
         Label studentsTitle = new Label();
-        studentsTitle.getStyleClass().add("section-title");
+        studentsTitle.getStyleClass().add(STYLE_SECTION_TITLE);
         return studentsTitle;
     }
 
@@ -247,11 +302,11 @@ public class TeacherTakeAttendancePage {
             TeacherApi api,
             JwtStore jwtStore,
             AuthState state,
-            long[] currentSessionId
+            SessionState sessionState
     ) {
         TableView<StudentRow> table = new TableView<>(rows);
         table.getStyleClass().add("students-table");
-        table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+        table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
         table.setFixedCellSize(36);
         table.setPrefHeight(300);
 
@@ -285,7 +340,7 @@ public class TeacherTakeAttendancePage {
                 jwtStore,
                 state,
                 table,
-                currentSessionId
+                sessionState
         );
 
         table.getColumns().setAll(colName, colEmail, colStatus, colActions);
@@ -297,7 +352,7 @@ public class TeacherTakeAttendancePage {
             JwtStore jwtStore,
             AuthState state,
             TableView<StudentRow> table,
-            long[] currentSessionId
+            SessionState sessionState
     ) {
         TableColumn<StudentRow, Void> colActions =
                 new TableColumn<>(helper.getMessage("teacher.attendance.actions"));
@@ -310,64 +365,39 @@ public class TeacherTakeAttendancePage {
 
             {
                 box.setAlignment(Pos.CENTER);
+                configureStatusAction(presentBtn, STATUS_PRESENT);
+                configureStatusAction(absentBtn, STATUS_ABSENT);
+                configureStatusAction(excusedBtn, STATUS_EXCUSED);
+            }
 
-                presentBtn.setOnAction(e -> updateAttendance("PRESENT"));
-                absentBtn.setOnAction(e -> updateAttendance("ABSENT"));
-                excusedBtn.setOnAction(e -> updateAttendance("EXCUSED"));
+            private void configureStatusAction(Button button, String status) {
+                button.setOnAction(e -> updateAttendance(status));
             }
 
             private void updateAttendance(String status) {
                 StudentRow row = getTableView().getItems().get(getIndex());
 
-                if (currentSessionId[0] <= 0) {
+                if (!sessionState.hasActiveSession()) {
                     showWarning(helper.getMessage("teacher.attendance.generateSessionFirst"));
                     return;
                 }
 
                 setButtonsDisabled(true);
 
-                new Thread(() -> {
-                    try {
-                        api.markAttendance(jwtStore, state, row.getStudentId(), currentSessionId[0], status);
-                        Platform.runLater(() -> {
+                updateAttendanceStatusAsync(new AttendanceUpdateRequest(
+                        api,
+                        jwtStore,
+                        state,
+                        row,
+                        sessionState.getCurrentSessionId(),
+                        status,
+                        () -> {
                             row.setStatus(status);
-                            applyStatusStyles(status);
-                            setButtonsDisabled(false);
+                            applyStatusStyles(status, presentBtn, absentBtn, excusedBtn);
                             table.refresh();
-                        });
-                    } catch (Exception ex) {
-                        LOGGER.log(Level.SEVERE, "Failed to update attendance status.", ex);
-                        Platform.runLater(() -> {
-                            setButtonsDisabled(false);
-                            showError(helper.getMessage("teacher.attendance.updateFailed") + " "
-                                    + (ex.getMessage() == null ? "Unknown error" : ex.getMessage()));
-                        });
-                    }
-                }).start();
-            }
-
-            private void applyStatusStyles(String currentStatus) {
-                presentBtn.getStyleClass().setAll("action-btn");
-                absentBtn.getStyleClass().setAll("action-btn");
-                excusedBtn.getStyleClass().setAll("action-btn");
-
-                if ("PRESENT".equalsIgnoreCase(currentStatus)) {
-                    presentBtn.getStyleClass().add("present-btn");
-                    absentBtn.getStyleClass().add("action-btn-outline");
-                    excusedBtn.getStyleClass().add("action-btn-outline");
-                } else if ("ABSENT".equalsIgnoreCase(currentStatus)) {
-                    presentBtn.getStyleClass().add("action-btn-outline");
-                    absentBtn.getStyleClass().add("absent-btn");
-                    excusedBtn.getStyleClass().add("action-btn-outline");
-                } else if ("EXCUSED".equalsIgnoreCase(currentStatus)) {
-                    presentBtn.getStyleClass().add("action-btn-outline");
-                    absentBtn.getStyleClass().add("action-btn-outline");
-                    excusedBtn.getStyleClass().add("excused-btn");
-                } else {
-                    presentBtn.getStyleClass().add("action-btn-outline");
-                    absentBtn.getStyleClass().add("action-btn-outline");
-                    excusedBtn.getStyleClass().add("action-btn-outline");
-                }
+                        },
+                        () -> setButtonsDisabled(false)
+                ));
             }
 
             private void setButtonsDisabled(boolean disabled) {
@@ -386,12 +416,69 @@ public class TeacherTakeAttendancePage {
                 }
 
                 StudentRow row = getTableView().getItems().get(getIndex());
-                applyStatusStyles(row.getStatus());
+                applyStatusStyles(row.getStatus(), presentBtn, absentBtn, excusedBtn);
                 setGraphic(box);
             }
         });
 
         return colActions;
+    }
+
+    private void updateAttendanceStatusAsync(AttendanceUpdateRequest request) {
+        new Thread(() -> {
+            try {
+                request.api().markAttendance(
+                        request.jwtStore(),
+                        request.state(),
+                        request.row().getStudentId(),
+                        request.sessionId(),
+                        request.status()
+                );
+                Platform.runLater(() -> {
+                    request.onSuccess().run();
+                    request.onFinally().run();
+                });
+            } catch (Exception ex) {
+                LOGGER.log(Level.SEVERE, "Failed to update attendance status.", ex);
+                Platform.runLater(() -> {
+                    request.onFinally().run();
+                    showError(helper.getMessage("teacher.attendance.updateFailed") + " "
+                            + safeErrorMessage(ex));
+                });
+            }
+        }).start();
+    }
+
+    private void applyStatusStyles(
+            String currentStatus,
+            Button presentBtn,
+            Button absentBtn,
+            Button excusedBtn
+    ) {
+        resetActionButtonStyles(presentBtn, absentBtn, excusedBtn);
+
+        switch (normalizeStatus(currentStatus)) {
+            case STATUS_PRESENT -> setActiveStyle(presentBtn, "present-btn");
+            case STATUS_ABSENT -> setActiveStyle(absentBtn, "absent-btn");
+            case STATUS_EXCUSED -> setActiveStyle(excusedBtn, "excused-btn");
+            default -> {
+                // Keep all buttons in outline style for unknown or empty status.
+            }
+        }
+    }
+
+    private void resetActionButtonStyles(Button... buttons) {
+        for (Button button : buttons) {
+            button.getStyleClass().setAll(STYLE_ACTION_BTN, STYLE_ACTION_BTN_OUTLINE);
+        }
+    }
+
+    private void setActiveStyle(Button button, String activeStyleClass) {
+        button.getStyleClass().setAll(STYLE_ACTION_BTN, activeStyleClass);
+    }
+
+    private String normalizeStatus(String status) {
+        return status == null ? "" : status.trim().toUpperCase();
     }
 
     private Button createActionButton(String text) {
@@ -406,10 +493,7 @@ public class TeacherTakeAttendancePage {
             JwtStore jwtStore,
             AuthState state,
             ComboBox<ClassItem> classBox,
-            Button generateButton,
-            Label manualCode,
-            ImageView qrImageView,
-            long[] currentSessionId
+            SessionControls controls
     ) {
         ClassItem selected = classBox.getValue();
         if (selected == null) {
@@ -417,47 +501,75 @@ public class TeacherTakeAttendancePage {
             return;
         }
 
-        generateButton.setDisable(true);
-        manualCode.setText(helper.getMessage("teacher.attendance.generating"));
-        qrImageView.setImage(null);
-        currentSessionId[0] = -1L;
+        prepareForSessionGeneration(controls);
 
         new Thread(() -> {
             try {
                 Map<String, Object> response = api.createSession(jwtStore, state, selected.id);
                 String code = api.extractCode(response);
-
-                Number sessionIdNumber = (Number) response.get("sessionId");
-                if (sessionIdNumber != null) {
-                    currentSessionId[0] = sessionIdNumber.longValue();
-                }
+                long sessionId = extractSessionId(response);
 
                 Platform.runLater(() -> {
-                    manualCode.setText(code == null || code.isBlank() ? "—" : code);
-
-                    if (code != null && !code.isBlank()) {
-                        try {
-                            BufferedImage bufferedImage =
-                                    QRCodeImageUtil.generateQRCodeImage(code, 180, 180);
-                            qrImageView.setImage(SwingFXUtils.toFXImage(bufferedImage, null));
-                        } catch (Exception qrException) {
-                            LOGGER.log(Level.SEVERE, "Failed to generate QR image.", qrException);
-                        }
-                    }
-
-                    generateButton.setDisable(false);
+                    controls.sessionState().setCurrentSessionId(sessionId);
+                    updateGeneratedSessionUi(controls, code);
                 });
             } catch (Exception ex) {
                 LOGGER.log(Level.SEVERE, "Failed to generate attendance session.", ex);
                 Platform.runLater(() -> {
-                    manualCode.setText("—");
-                    qrImageView.setImage(null);
-                    generateButton.setDisable(false);
+                    resetSessionDisplay(controls);
+                    controls.generateButton().setDisable(false);
                     showError(helper.getMessage("teacher.attendance.generateFailed") + " "
-                            + (ex.getMessage() == null ? "Unknown error" : ex.getMessage()));
+                            + safeErrorMessage(ex));
                 });
             }
         }).start();
+    }
+
+    private void prepareForSessionGeneration(SessionControls controls) {
+        controls.generateButton().setDisable(true);
+        controls.manualCode().setText(helper.getMessage("teacher.attendance.generating"));
+        controls.qrImageView().setImage(null);
+        controls.sessionState().reset();
+    }
+
+    private long extractSessionId(Map<String, Object> response) {
+        Object sessionIdValue = response.get("sessionId");
+        if (sessionIdValue instanceof Number sessionIdNumber) {
+            return sessionIdNumber.longValue();
+        }
+        return -1L;
+    }
+
+    private void updateGeneratedSessionUi(SessionControls controls, String code) {
+        setManualCode(controls.manualCode(), code);
+        renderQrCode(controls.qrImageView(), code);
+        controls.generateButton().setDisable(false);
+    }
+
+    private void resetSessionDisplay(SessionControls controls) {
+        controls.sessionState().reset();
+        controls.manualCode().setText(DASH);
+        controls.qrImageView().setImage(null);
+    }
+
+    private void setManualCode(Label manualCode, String code) {
+        manualCode.setText(code == null || code.isBlank() ? DASH : code);
+    }
+
+    private void renderQrCode(ImageView qrImageView, String code) {
+        if (code == null || code.isBlank()) {
+            qrImageView.setImage(null);
+            return;
+        }
+
+        try {
+            BufferedImage bufferedImage =
+                    QRCodeImageUtil.generateQRCodeImage(code, 180, 180);
+            qrImageView.setImage(SwingFXUtils.toFXImage(bufferedImage, null));
+        } catch (Exception qrException) {
+            LOGGER.log(Level.SEVERE, "Failed to generate QR image.", qrException);
+            qrImageView.setImage(null);
+        }
     }
 
     private void handleMarkAllPresent(
@@ -465,9 +577,9 @@ public class TeacherTakeAttendancePage {
             JwtStore jwtStore,
             AuthState state,
             Button markAllPresentButton,
-            long[] currentSessionId
+            SessionState sessionState
     ) {
-        if (currentSessionId[0] <= 0) {
+        if (!sessionState.hasActiveSession()) {
             showWarning(helper.getMessage("teacher.attendance.generateSessionFirst"));
             return;
         }
@@ -481,12 +593,12 @@ public class TeacherTakeAttendancePage {
         new Thread(() -> {
             try {
                 for (StudentRow row : rows) {
-                    api.markAttendance(jwtStore, state, row.getStudentId(), currentSessionId[0], "PRESENT");
+                    api.markAttendance(jwtStore, state, row.getStudentId(), sessionState.getCurrentSessionId(), STATUS_PRESENT);
                 }
 
                 Platform.runLater(() -> {
                     for (StudentRow row : rows) {
-                        row.setStatus("PRESENT");
+                        row.setStatus(STATUS_PRESENT);
                     }
                     markAllPresentButton.setDisable(false);
                 });
@@ -495,7 +607,7 @@ public class TeacherTakeAttendancePage {
                 Platform.runLater(() -> {
                     markAllPresentButton.setDisable(false);
                     showError(helper.getMessage("teacher.attendance.markAllFailed") + " "
-                            + (ex.getMessage() == null ? "Unknown error" : ex.getMessage()));
+                            + safeErrorMessage(ex));
                 });
             }
         }).start();
@@ -506,20 +618,16 @@ public class TeacherTakeAttendancePage {
             JwtStore jwtStore,
             AuthState state,
             ComboBox<ClassItem> classBox,
-            Label manualCode,
-            ImageView qrImageView,
-            long[] currentSessionId
+            SessionControls controls
     ) {
         ClassItem selected = classBox.getValue();
         if (selected == null) {
             return;
         }
 
-        currentSessionId[0] = -1L;
-        manualCode.setText("—");
-        qrImageView.setImage(null);
+        resetSessionDisplay(controls);
         rows.clear();
-        rows.add(new StudentRow(-1L, helper.getMessage("teacher.attendance.loading.students"), "-", "—"));
+        rows.add(new StudentRow(-1L, helper.getMessage("teacher.attendance.loading.students"), "-", DASH));
 
         new Thread(() -> {
             try {
@@ -536,7 +644,7 @@ public class TeacherTakeAttendancePage {
                 Platform.runLater(() -> {
                     rows.clear();
                     showError(helper.getMessage("teacher.attendance.error.loadStudents") + " "
-                            + (ex.getMessage() == null ? "Unknown error" : ex.getMessage()));
+                            + safeErrorMessage(ex));
                 });
             }
         }).start();
@@ -548,7 +656,7 @@ public class TeacherTakeAttendancePage {
         String lastName = String.valueOf(student.get("lastName"));
         String email = String.valueOf(student.get("email"));
 
-        StudentRow row = new StudentRow(studentId, firstName + " " + lastName, email, "—");
+        StudentRow row = new StudentRow(studentId, firstName + " " + lastName, email, DASH);
         row.setExcuseReason("");
         return row;
     }
@@ -571,7 +679,7 @@ public class TeacherTakeAttendancePage {
                 LOGGER.log(Level.SEVERE, "Failed to load teacher classes.", ex);
                 Platform.runLater(() ->
                         showError(helper.getMessage("teacher.attendance.loadClassesFailed") + " "
-                                + (ex.getMessage() == null ? "Unknown error" : ex.getMessage()))
+                                + safeErrorMessage(ex))
                 );
             }
         }).start();
@@ -592,15 +700,22 @@ public class TeacherTakeAttendancePage {
         new Alert(Alert.AlertType.ERROR, message, ButtonType.OK).showAndWait();
     }
 
+    private String safeErrorMessage(Throwable throwable) {
+        if (throwable == null || throwable.getMessage() == null || throwable.getMessage().isBlank()) {
+            return UNKNOWN_ERROR;
+        }
+        return throwable.getMessage();
+    }
+
     String localizeAttendanceStatus(String status) {
-        if (status == null || status.isBlank() || "—".equals(status)) {
-            return "—";
+        if (status == null || status.isBlank() || DASH.equals(status)) {
+            return DASH;
         }
 
-        return switch (status.trim().toUpperCase()) {
-            case "PRESENT" -> helper.getMessage("student.attendance.stats.present");
-            case "ABSENT" -> helper.getMessage("student.attendance.stats.absent");
-            case "EXCUSED" -> helper.getMessage("student.attendance.stats.excused");
+        return switch (normalizeStatus(status)) {
+            case STATUS_PRESENT -> helper.getMessage("student.attendance.stats.present");
+            case STATUS_ABSENT -> helper.getMessage("student.attendance.stats.absent");
+            case STATUS_EXCUSED -> helper.getMessage("student.attendance.stats.excused");
             default -> status;
         };
     }

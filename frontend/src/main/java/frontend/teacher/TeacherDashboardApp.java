@@ -33,9 +33,13 @@ public class TeacherDashboardApp {
     private static final Logger LOGGER =
             Logger.getLogger(TeacherDashboardApp.class.getName());
 
+    private static final String EMPTY_SUBTITLE_STYLE = "empty-subtitle";
+
     private final HelperClass helper = new HelperClass();
 
     public Parent build(Scene scene, AppRouter router, JwtStore jwtStore, AuthState state) {
+        logIfSceneMissing(scene);
+
         String teacherName = TeacherPageSupport.resolveTeacherName(state, helper);
 
         String backendUrl = System.getenv().getOrDefault("BACKEND_URL", "http://localhost:8081");
@@ -97,6 +101,12 @@ public class TeacherDashboardApp {
                 router,
                 jwtStore
         );
+    }
+
+    private void logIfSceneMissing(Scene scene) {
+        if (scene == null) {
+            LOGGER.fine("TeacherDashboardApp.build called with a null scene.");
+        }
     }
 
     private Label buildGreetingLabel(String teacherName) {
@@ -184,7 +194,7 @@ public class TeacherDashboardApp {
         classesContainer.setAlignment(Pos.CENTER);
 
         Label loading = new Label(helper.getMessage("teacher.dashboard.classes.loading"));
-        loading.getStyleClass().add("empty-subtitle");
+        loading.getStyleClass().add(EMPTY_SUBTITLE_STYLE);
 
         classesContainer.getChildren().add(loading);
         return classesContainer;
@@ -257,7 +267,8 @@ public class TeacherDashboardApp {
         classesContainer.setAlignment(Pos.TOP_LEFT);
 
         for (Map<String, Object> classData : classes) {
-            System.out.println(classData.keySet());
+            LOGGER.fine(() -> "Teacher dashboard class fields: " + classData.keySet());
+
             String classCode = valueOr(classData.get("classCode"), "—");
             String name = valueOr(
                     classData.get("name"),
@@ -283,7 +294,7 @@ public class TeacherDashboardApp {
         title.getStyleClass().add("empty-title");
 
         Label subtitle = new Label(helper.getMessage("teacher.dashboard.classes.empty.subtitle"));
-        subtitle.getStyleClass().add("empty-subtitle");
+        subtitle.getStyleClass().add(EMPTY_SUBTITLE_STYLE);
 
         classesContainer.getChildren().addAll(icon, title, subtitle);
     }
@@ -296,7 +307,7 @@ public class TeacherDashboardApp {
                 helper.getMessage("teacher.dashboard.error.classes")
                         .replace("{error}", errorMessage)
         );
-        error.getStyleClass().add("empty-subtitle");
+        error.getStyleClass().add(EMPTY_SUBTITLE_STYLE);
 
         classesContainer.getChildren().add(error);
     }

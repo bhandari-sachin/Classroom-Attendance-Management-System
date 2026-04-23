@@ -1,6 +1,5 @@
 package frontend.admin;
 
-import frontend.ui.UserRow;
 import frontend.api.AdminApi;
 import frontend.auth.AppRouter;
 import frontend.auth.AuthState;
@@ -8,6 +7,7 @@ import frontend.auth.JwtStore;
 import frontend.dto.AdminUserDto;
 import frontend.dto.AdminUsersResponseDto;
 import frontend.ui.HelperClass;
+import frontend.ui.UserRow;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -32,9 +32,15 @@ public class AdminManageUsersPage {
     private static final Logger LOGGER =
             Logger.getLogger(AdminManageUsersPage.class.getName());
 
+    private static final String FILTER_STUDENT_KEY = "admin.users.filter.student";
+    private static final String FILTER_TEACHER_KEY = "admin.users.filter.teacher";
+    private static final String FILTER_ADMIN_KEY = "admin.users.filter.admin";
+
     private final HelperClass helper = new HelperClass();
 
     public Parent build(Scene scene, AppRouter router, JwtStore jwtStore, AuthState state) {
+        logIfSceneMissing(scene);
+
         String adminName = AdminPageSupport.resolveAdminName(state, helper);
 
         VBox content = AdminPageSupport.buildContentContainer();
@@ -56,9 +62,9 @@ public class AdminManageUsersPage {
         FilteredList<UserRow> filteredRows = new FilteredList<>(rows, row -> true);
         table.setItems(filteredRows);
 
-        String studentLabel = helper.getMessage("admin.users.filter.student");
-        String teacherLabel = helper.getMessage("admin.users.filter.teacher");
-        String adminLabel = helper.getMessage("admin.users.filter.admin");
+        String studentLabel = roleLabel(FILTER_STUDENT_KEY);
+        String teacherLabel = roleLabel(FILTER_TEACHER_KEY);
+        String adminLabel = roleLabel(FILTER_ADMIN_KEY);
 
         Runnable applyFilter = () -> applyFilter(
                 filteredRows,
@@ -107,6 +113,16 @@ public class AdminManageUsersPage {
         );
     }
 
+    private void logIfSceneMissing(Scene scene) {
+        if (scene == null) {
+            LOGGER.fine("AdminManageUsersPage.build called with a null scene.");
+        }
+    }
+
+    private String roleLabel(String key) {
+        return helper.getMessage(key);
+    }
+
     private Label buildTitle() {
         Label title = new Label(helper.getMessage("admin.users.title"));
         title.getStyleClass().add("title");
@@ -135,9 +151,9 @@ public class AdminManageUsersPage {
 
     private ComboBox<String> buildTypeFilter() {
         String allTypesLabel = helper.getMessage("admin.users.filter.allTypes");
-        String studentLabel = helper.getMessage("admin.users.filter.student");
-        String teacherLabel = helper.getMessage("admin.users.filter.teacher");
-        String adminLabel = helper.getMessage("admin.users.filter.admin");
+        String studentLabel = roleLabel(FILTER_STUDENT_KEY);
+        String teacherLabel = roleLabel(FILTER_TEACHER_KEY);
+        String adminLabel = roleLabel(FILTER_ADMIN_KEY);
 
         ComboBox<String> type = new ComboBox<>();
         type.getItems().addAll(
@@ -280,9 +296,9 @@ public class AdminManageUsersPage {
         }
 
         return switch (role.trim().toUpperCase()) {
-            case "STUDENT" -> helper.getMessage("admin.users.filter.student");
-            case "TEACHER" -> helper.getMessage("admin.users.filter.teacher");
-            case "ADMIN" -> helper.getMessage("admin.users.filter.admin");
+            case "STUDENT" -> roleLabel(FILTER_STUDENT_KEY);
+            case "TEACHER" -> roleLabel(FILTER_TEACHER_KEY);
+            case "ADMIN" -> roleLabel(FILTER_ADMIN_KEY);
             default -> role;
         };
     }

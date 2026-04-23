@@ -1,12 +1,12 @@
 package frontend.admin;
 
-import frontend.ui.ReportRow;
 import frontend.api.AdminApi;
 import frontend.api.ReportApi;
 import frontend.auth.AppRouter;
 import frontend.auth.AuthState;
 import frontend.auth.JwtStore;
 import frontend.ui.HelperClass;
+import frontend.ui.ReportRow;
 import javafx.application.Platform;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
@@ -38,13 +38,17 @@ public class AdminAttendanceReportsPage {
     private static final Logger LOGGER =
             Logger.getLogger(AdminAttendanceReportsPage.class.getName());
 
-    static class ClassItem {
-        final Long id;
-        final String label;
+    static final class ClassItem {
+        private final Long id;
+        private final String label;
 
         ClassItem(Long id, String label) {
             this.id = id;
             this.label = label;
+        }
+
+        Long getId() {
+            return id;
         }
 
         @Override
@@ -53,13 +57,13 @@ public class AdminAttendanceReportsPage {
         }
     }
 
-    static class ReportSummary {
-        final List<ReportRow> rows;
-        final int present;
-        final int absent;
-        final int excused;
-        final int total;
-        final double rate;
+    static final class ReportSummary {
+        private final List<ReportRow> rows;
+        private final int present;
+        private final int absent;
+        private final int excused;
+        private final int total;
+        private final double rate;
 
         ReportSummary(List<ReportRow> rows, int present, int absent, int excused, int total, double rate) {
             this.rows = rows;
@@ -69,6 +73,51 @@ public class AdminAttendanceReportsPage {
             this.total = total;
             this.rate = rate;
         }
+
+        List<ReportRow> getRows() {
+            return rows;
+        }
+
+        int getPresent() {
+            return present;
+        }
+
+        int getAbsent() {
+            return absent;
+        }
+
+        int getExcused() {
+            return excused;
+        }
+
+        int getTotal() {
+            return total;
+        }
+
+        double getRate() {
+            return rate;
+        }
+    }
+
+    private record ReportFilters(
+            ComboBox<ClassItem> classFilter,
+            ComboBox<String> timeFilter,
+            TextField studentSearch
+    ) {
+    }
+
+    private record ReportView(
+            GridPane statsGrid,
+            TableView<ReportRow> table,
+            Label errorLabel
+    ) {
+    }
+
+    private record ExportRequest(
+            String format,
+            String chooserTitle,
+            String initialFileName
+    ) {
     }
 
     public Parent build(Scene scene, AppRouter router, JwtStore jwtStore, AuthState state) {
@@ -98,16 +147,10 @@ public class AdminAttendanceReportsPage {
 
         addExportActions(exportButton, scene, helper, reportApi, jwtStore, state);
 
-        Runnable loadReport = () -> loadReport(
-                adminApi,
-                helper,
-                classFilter,
-                timeFilter,
-                studentSearch,
-                statsGrid,
-                table,
-                errorLabel
-        );
+        ReportFilters reportFilters = new ReportFilters(classFilter, timeFilter, studentSearch);
+        ReportView reportView = new ReportView(statsGrid, table, errorLabel);
+
+        Runnable loadReport = () -> loadReport(adminApi, helper, reportFilters, reportView);
 
         classFilter.setOnAction(e -> loadReport.run());
         timeFilter.setOnAction(e -> loadReport.run());
@@ -227,7 +270,7 @@ public class AdminAttendanceReportsPage {
     private TableView<ReportRow> buildReportTable(HelperClass helper) {
         TableView<ReportRow> table = new TableView<>();
         table.getStyleClass().add("table");
-        table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+        table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
 
         TableColumn<ReportRow, String> studentColumn =
                 new TableColumn<>(helper.getMessage("admin.reports.table.student"));
@@ -262,15 +305,25 @@ public class AdminAttendanceReportsPage {
         MenuItem exportPdf = new MenuItem(helper.getMessage("common.export.pdf"));
         MenuItem exportCsv = new MenuItem(helper.getMessage("common.export.csv"));
 
+        ExportRequest pdfRequest = new ExportRequest(
+                "pdf",
+                helper.getMessage("admin.reports.export.pdf.title"),
+                helper.getMessage("admin.reports.export.pdf.filename")
+        );
+
+        ExportRequest csvRequest = new ExportRequest(
+                "csv",
+                helper.getMessage("admin.reports.export.csv.title"),
+                helper.getMessage("admin.reports.export.csv.filename")
+        );
+
         exportPdf.setOnAction(e -> exportAdminReport(
                 scene,
                 helper,
                 reportApi,
                 jwtStore,
                 state,
-                "pdf",
-                helper.getMessage("admin.reports.export.pdf.title"),
-                helper.getMessage("admin.reports.export.pdf.filename")
+                pdfRequest
         ));
 
         exportCsv.setOnAction(e -> exportAdminReport(
@@ -279,9 +332,7 @@ public class AdminAttendanceReportsPage {
                 reportApi,
                 jwtStore,
                 state,
-                "csv",
-                helper.getMessage("admin.reports.export.csv.title"),
-                helper.getMessage("admin.reports.export.csv.filename")
+                csvRequest
         ));
 
         exportButton.getItems().addAll(exportPdf, exportCsv);
@@ -293,17 +344,15 @@ public class AdminAttendanceReportsPage {
             ReportApi reportApi,
             JwtStore jwtStore,
             AuthState state,
-            String format,
-            String chooserTitle,
-            String initialFileName
+            ExportRequest request
     ) {
         FileChooser chooser = new FileChooser();
-        chooser.setTitle(chooserTitle);
-        chooser.setInitialFileName(initialFileName);
+        chooser.setTitle(request.chooserTitle());
+        chooser.setInitialFileName(request.initialFileName());
         chooser.getExtensionFilters().add(
                 new FileChooser.ExtensionFilter(
-                        "pdf".equalsIgnoreCase(format) ? "PDF Files" : "CSV Files",
-                        "pdf".equalsIgnoreCase(format) ? "*.pdf" : "*.csv"
+                        "pdf".equalsIgnoreCase(request.format()) ? "PDF Files" : "CSV Files",
+                        "pdf".equalsIgnoreCase(request.format()) ? "*.pdf" : "*.csv"
                 )
         );
 
@@ -314,11 +363,11 @@ public class AdminAttendanceReportsPage {
 
         new Thread(() -> {
             try {
-                reportApi.exportAdminReport(jwtStore, state, format, destination.getAbsolutePath());
+                reportApi.exportAdminReport(jwtStore, state, request.format(), destination.getAbsolutePath());
 
                 Platform.runLater(() -> showInfo(
                         helper.getMessage(
-                                "pdf".equalsIgnoreCase(format)
+                                "pdf".equalsIgnoreCase(request.format())
                                         ? "admin.reports.export.success.pdf"
                                         : "admin.reports.export.success.csv"
                         ).replace("{path}", destination.getAbsolutePath())
@@ -348,7 +397,7 @@ public class AdminAttendanceReportsPage {
                 Platform.runLater(() -> {
                     classFilter.getItems().setAll(items);
                     if (!items.isEmpty()) {
-                        classFilter.setValue(items.getFirst());
+                        classFilter.setValue(items.get(0));
                         loadReport.run();
                     }
                 });
@@ -381,27 +430,23 @@ public class AdminAttendanceReportsPage {
     private void loadReport(
             AdminApi adminApi,
             HelperClass helper,
-            ComboBox<ClassItem> classFilter,
-            ComboBox<String> timeFilter,
-            TextField studentSearch,
-            GridPane statsGrid,
-            TableView<ReportRow> table,
-            Label errorLabel
+            ReportFilters filters,
+            ReportView view
     ) {
-        ClassItem selectedClass = classFilter.getValue();
-        if (selectedClass == null || selectedClass.id == null) {
-            statsGrid.getChildren().clear();
-            table.getItems().clear();
+        ClassItem selectedClass = filters.classFilter().getValue();
+        if (selectedClass == null || selectedClass.getId() == null) {
+            view.statsGrid().getChildren().clear();
+            view.table().getItems().clear();
             return;
         }
 
-        String period = timeFilter.getValue();
-        String searchText = studentSearch.getText();
+        String period = filters.timeFilter().getValue();
+        String searchText = filters.studentSearch().getText();
 
         new Thread(() -> {
             try {
                 List<Map<String, Object>> rows = adminApi.getAttendanceReport(
-                        selectedClass.id,
+                        selectedClass.getId(),
                         period,
                         searchText
                 );
@@ -409,14 +454,14 @@ public class AdminAttendanceReportsPage {
                 ReportSummary summary = mapReportSummary(rows);
 
                 Platform.runLater(() -> {
-                    hideInlineError(errorLabel);
-                    renderStats(statsGrid, helper, summary);
-                    table.getItems().setAll(summary.rows);
+                    hideInlineError(view.errorLabel());
+                    renderStats(view.statsGrid(), helper, summary);
+                    view.table().getItems().setAll(summary.getRows());
                 });
             } catch (Exception ex) {
                 LOGGER.log(Level.SEVERE, "Failed to load attendance report.", ex);
                 Platform.runLater(() ->
-                        showInlineError(errorLabel, helper.getMessage("admin.reports.error.loadReport"))
+                        showInlineError(view.errorLabel(), helper.getMessage("admin.reports.error.loadReport"))
                 );
             }
         }).start();
@@ -441,6 +486,9 @@ public class AdminAttendanceReportsPage {
                 case "PRESENT" -> present++;
                 case "ABSENT" -> absent++;
                 case "EXCUSED" -> excused++;
+                default -> {
+                    // No counter update for unknown status values
+                }
             }
         }
 
@@ -456,7 +504,7 @@ public class AdminAttendanceReportsPage {
         statsGrid.add(
                 AdminUI.makeStatCard(
                         helper.getMessage("admin.reports.stats.rate"),
-                        formatOneDecimal(summary.rate) + "%",
+                        formatOneDecimal(summary.getRate()) + "%",
                         "📈",
                         "accent-green"
                 ),
@@ -467,7 +515,7 @@ public class AdminAttendanceReportsPage {
         statsGrid.add(
                 AdminUI.makeStatCard(
                         helper.getMessage("admin.reports.stats.present"),
-                        String.valueOf(summary.present),
+                        String.valueOf(summary.getPresent()),
                         "🟢",
                         "accent-green"
                 ),
@@ -478,7 +526,7 @@ public class AdminAttendanceReportsPage {
         statsGrid.add(
                 AdminUI.makeStatCard(
                         helper.getMessage("admin.reports.stats.absent"),
-                        String.valueOf(summary.absent),
+                        String.valueOf(summary.getAbsent()),
                         "🔴",
                         "accent-orange"
                 ),
@@ -489,7 +537,7 @@ public class AdminAttendanceReportsPage {
         statsGrid.add(
                 AdminUI.makeStatCard(
                         helper.getMessage("admin.reports.stats.excused"),
-                        String.valueOf(summary.excused),
+                        String.valueOf(summary.getExcused()),
                         "🟠",
                         "accent-purple"
                 ),
@@ -500,7 +548,7 @@ public class AdminAttendanceReportsPage {
         statsGrid.add(
                 AdminUI.makeStatCard(
                         helper.getMessage("admin.reports.stats.total"),
-                        String.valueOf(summary.total),
+                        String.valueOf(summary.getTotal()),
                         "📄",
                         "accent-purple"
                 ),

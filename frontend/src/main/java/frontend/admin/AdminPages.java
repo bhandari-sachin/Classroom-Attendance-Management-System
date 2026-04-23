@@ -22,11 +22,21 @@ import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-public class AdminPages {
+public final class AdminPages {
 
     private static final Logger LOGGER = Logger.getLogger(AdminPages.class.getName());
 
+    private static final String STATUS_LOADING_KEY = "common.status.loading";
+    private static final String STATUS_FAILED_KEY = "common.status.failed";
+    private static final String STYLE_SUBTITLE = "subtitle";
+
+    private AdminPages() {
+        // Utility class
+    }
+
     public static Parent dashboardPage(Scene scene, AppRouter router, JwtStore jwtStore, AuthState state) {
+        logIfInputsMissing(scene, state);
+
         HelperClass helper = new HelperClass();
 
         VBox content = AdminPageSupport.buildContentContainer();
@@ -37,28 +47,28 @@ public class AdminPages {
 
         Pane totalClassesCard = AdminUI.makeStatCard(
                 helper.getMessage("admin.dashboard.stats.totalClasses"),
-                helper.getMessage("common.status.loading"),
+                helper.getMessage(STATUS_LOADING_KEY),
                 "📘",
                 "accent-purple"
         );
 
         Pane studentsCard = AdminUI.makeStatCard(
                 helper.getMessage("admin.dashboard.stats.students"),
-                helper.getMessage("common.status.loading"),
+                helper.getMessage(STATUS_LOADING_KEY),
                 "🎓",
                 "accent-green"
         );
 
         Pane teachersCard = AdminUI.makeStatCard(
                 helper.getMessage("admin.dashboard.stats.teachers"),
-                helper.getMessage("common.status.loading"),
+                helper.getMessage(STATUS_LOADING_KEY),
                 "👥",
                 "accent-orange"
         );
 
         Pane rateCard = AdminUI.makeStatCard(
                 helper.getMessage("admin.dashboard.stats.monthlyRate"),
-                helper.getMessage("common.status.loading"),
+                helper.getMessage(STATUS_LOADING_KEY),
                 "📈",
                 "accent-green"
         );
@@ -100,6 +110,15 @@ public class AdminPages {
         return scroll;
     }
 
+    private static void logIfInputsMissing(Scene scene, AuthState state) {
+        if (scene == null) {
+            LOGGER.fine("AdminPages.dashboardPage called with a null scene.");
+        }
+        if (state == null) {
+            LOGGER.fine("AdminPages.dashboardPage called with a null auth state.");
+        }
+    }
+
     private static Label buildTitle(HelperClass helper) {
         Label title = new Label(helper.getMessage("admin.dashboard.title"));
         title.getStyleClass().add("title");
@@ -108,7 +127,7 @@ public class AdminPages {
 
     private static Label buildSubtitle(HelperClass helper) {
         Label subtitle = new Label(helper.getMessage("admin.dashboard.subtitle"));
-        subtitle.getStyleClass().add("subtitle");
+        subtitle.getStyleClass().add(STYLE_SUBTITLE);
         return subtitle;
     }
 
@@ -201,7 +220,7 @@ public class AdminPages {
         recentGrid.getColumnConstraints().addAll(firstColumn, secondColumn);
 
         Label loadingClasses = new Label(helper.getMessage("admin.dashboard.recentClasses.loading"));
-        loadingClasses.getStyleClass().add("subtitle");
+        loadingClasses.getStyleClass().add(STYLE_SUBTITLE);
         recentGrid.add(loadingClasses, 0, 0);
 
         return recentGrid;
@@ -259,7 +278,7 @@ public class AdminPages {
 
         if (classes == null || classes.isEmpty()) {
             Label empty = new Label(helper.getMessage("admin.dashboard.recentClasses.none"));
-            empty.getStyleClass().add("subtitle");
+            empty.getStyleClass().add(STYLE_SUBTITLE);
             recentGrid.add(empty, 0, 0);
             return;
         }
@@ -294,17 +313,17 @@ public class AdminPages {
             GridPane recentGrid,
             String errorMessage
     ) {
-        setStatCardValue(totalClassesCard, helper.getMessage("common.status.failed"));
-        setStatCardValue(studentsCard, helper.getMessage("common.status.failed"));
-        setStatCardValue(teachersCard, helper.getMessage("common.status.failed"));
-        setStatCardValue(rateCard, helper.getMessage("common.status.failed"));
+        setStatCardValue(totalClassesCard, helper.getMessage(STATUS_FAILED_KEY));
+        setStatCardValue(studentsCard, helper.getMessage(STATUS_FAILED_KEY));
+        setStatCardValue(teachersCard, helper.getMessage(STATUS_FAILED_KEY));
+        setStatCardValue(rateCard, helper.getMessage(STATUS_FAILED_KEY));
 
         recentGrid.getChildren().clear();
 
         Label error = new Label(
                 helper.getMessage("admin.dashboard.recentClasses.error") + " " + errorMessage
         );
-        error.getStyleClass().add("subtitle");
+        error.getStyleClass().add(STYLE_SUBTITLE);
         recentGrid.add(error, 0, 0);
     }
 
