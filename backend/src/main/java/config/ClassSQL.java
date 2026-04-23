@@ -131,7 +131,8 @@ public class ClassSQL {
     // ===== TEACHER: list my classes =====
     public List<java.util.Map<String, Object>> listForTeacher(long teacherId) {
         String sql = """
-        SELECT c.id, c.class_code, c.name
+        SELECT c.id, c.class_code, c.name, semester, academic_year,
+               (SELECT COUNT(*) FROM enrollments e WHERE e.class_id = c.id) AS students_count
         FROM classes c
         WHERE c.teacher_id = ?
         ORDER BY c.created_at DESC
@@ -148,7 +149,10 @@ public class ClassSQL {
                     out.add(java.util.Map.of(
                             "id", rs.getLong(COL_ID),
                             "classCode", rs.getString(COL_CLASS_CODE),
-                            "name", rs.getString(COL_NAME)
+                            "name", rs.getString(COL_NAME),
+                            COL_SEMESTER, rs.getString(COL_SEMESTER),
+                            "academicYear", rs.getString(COL_ACADEMIC_YEAR),
+                            "studentsCount", rs.getInt(COL_STUDENTS_COUNT)
                     ));
                 }
             }
