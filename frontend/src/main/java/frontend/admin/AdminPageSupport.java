@@ -16,9 +16,9 @@ public final class AdminPageSupport {
     }
 
     public static String resolveAdminName(AuthState state, HelperClass helper) {
-        return (state.getName() == null || state.getName().isBlank())
+        return (state.name() == null || state.name().isBlank())
                 ? helper.getMessage("teacher.fallback.name")
-                : state.getName();
+                : state.name();
     }
 
     public static VBox buildContentContainer() {

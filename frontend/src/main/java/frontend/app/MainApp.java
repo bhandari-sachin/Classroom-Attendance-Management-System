@@ -88,7 +88,7 @@ public class MainApp extends Application {
         if (state == null) {
             router.go(LOGIN_PAGE);
         } else {
-            switch (state.getRole()) {
+            switch (state.role()) {
                 case STUDENT -> router.go("student-dashboard");
                 case TEACHER -> router.go("teacher-dashboard");
                 case ADMIN -> router.go("admin-dashboard");
@@ -116,7 +116,7 @@ public class MainApp extends Application {
                 return new StackPane();
             }
 
-            if (!allowedRoles.contains(state.getRole())) {
+            if (!allowedRoles.contains(state.role())) {
                 return new StackPane();
             }
 

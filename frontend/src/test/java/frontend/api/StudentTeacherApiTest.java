@@ -83,7 +83,7 @@ class StudentTeacherApiTest {
     @Test
     void getTeachers_shouldReturnParsedList() throws IOException, InterruptedException {
         when(jwtStore.load()).thenReturn(Optional.of(authState));
-        when(authState.getToken()).thenReturn("student-token");
+        when(authState.token()).thenReturn("student-token");
 
         HttpResponse<String> response = mockStringResponse(
                 200,

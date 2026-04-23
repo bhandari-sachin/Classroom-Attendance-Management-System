@@ -324,7 +324,7 @@ class StudentAttendancePageTest {
         JwtStore jwtStore = Mockito.mock(JwtStore.class);
         AuthState state = Mockito.mock(AuthState.class);
 
-        Mockito.when(state.getName()).thenReturn("Student User");
+        Mockito.when(state.name()).thenReturn("Student User");
 
         Parent result = page.build(scene, router, jwtStore, state);
 

@@ -167,4 +167,59 @@ class AdminUITest {
         assertInstanceOf(HBox.class, teacherRow);
         assertInstanceOf(HBox.class, scheduleRow);
     }
+    @Test
+    void usersTableActionsCellShouldHandleEmptyAndNonEmptyRows() throws Exception {
+        TableView<UserRow> table = AdminUI.buildUsersTable();
+
+        @SuppressWarnings("unchecked")
+        TableColumn<UserRow, Void> actionsColumn =
+                (TableColumn<UserRow, Void>) table.getColumns().get(3);
+
+        assertNotNull(actionsColumn.getCellFactory());
+
+        var cell = actionsColumn.getCellFactory().call(actionsColumn);
+
+        var updateItem = cell.getClass().getDeclaredMethod("updateItem", Object.class, boolean.class);
+        updateItem.setAccessible(true);
+
+        updateItem.invoke(cell, null, true);
+        assertNull(cell.getGraphic());
+
+        UserRow row = new UserRow("Oscar\noscar@example.com", "Student", "2 classes");
+        table.getItems().setAll(row);
+
+        cell.updateTableView(table);
+        cell.updateIndex(0);
+
+        updateItem.invoke(cell, null, false);
+        assertNotNull(cell.getGraphic());
+        assertInstanceOf(HBox.class, cell.getGraphic());
+    }
+    @Test
+    void usersTableActionsCellShouldContainButtons() throws Exception {
+        TableView<UserRow> table = AdminUI.buildUsersTable();
+
+        @SuppressWarnings("unchecked")
+        TableColumn<UserRow, Void> actionsColumn =
+                (TableColumn<UserRow, Void>) table.getColumns().get(3);
+
+        var cell = actionsColumn.getCellFactory().call(actionsColumn);
+
+        var updateItem = cell.getClass().getDeclaredMethod("updateItem", Object.class, boolean.class);
+        updateItem.setAccessible(true);
+
+        UserRow row = new UserRow("Anna\nanna@example.com", "Teacher", "5 classes");
+        table.getItems().setAll(row);
+
+        cell.updateTableView(table);
+        cell.updateIndex(0);
+
+        updateItem.invoke(cell, null, false);
+
+        assertInstanceOf(HBox.class, cell.getGraphic());
+        HBox actions = (HBox) cell.getGraphic();
+        assertFalse(actions.getChildren().isEmpty());
+        assertTrue(actions.getChildren().stream().allMatch(Button.class::isInstance));
+    }
+
 }

@@ -1,10 +1,16 @@
 package frontend.student;
 
 import frontend.auth.AppRouter;
+import frontend.auth.AuthState;
+import frontend.auth.JwtStore;
+import frontend.auth.Role;
 import javafx.application.Platform;
+import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
+import javafx.scene.control.ScrollPane;
+import javafx.scene.control.Separator;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.StackPane;
@@ -78,35 +84,30 @@ class StudentDashboardAppTest {
     @Test
     void resolveSummaryValueShouldReturnNumericStringForNonPercentage() {
         StudentDashboardApp app = new StudentDashboardApp();
-
         assertEquals("5", app.resolveSummaryValue(Map.of("presentCount", 5), "presentCount", false));
     }
 
     @Test
     void resolveSummaryValueShouldReturnZeroForMissingNonPercentageKey() {
         StudentDashboardApp app = new StudentDashboardApp();
-
         assertEquals("0", app.resolveSummaryValue(Map.of(), "presentCount", false));
     }
 
     @Test
     void resolveSummaryValueShouldReturnPercentForPercentageKey() {
         StudentDashboardApp app = new StudentDashboardApp();
-
         assertEquals("88%", app.resolveSummaryValue(Map.of("attendanceRate", 87.6), "attendanceRate", true));
     }
 
     @Test
     void resolveSummaryValueShouldReturnZeroPercentForMissingPercentageKey() {
         StudentDashboardApp app = new StudentDashboardApp();
-
         assertEquals("0%", app.resolveSummaryValue(Map.of(), "attendanceRate", true));
     }
 
     @Test
     void resolveSummaryValueShouldHandleNullSummary() {
         StudentDashboardApp app = new StudentDashboardApp();
-
         assertEquals("0", app.resolveSummaryValue(null, "presentCount", false));
         assertEquals("0%", app.resolveSummaryValue(null, "attendanceRate", true));
     }
@@ -114,28 +115,24 @@ class StudentDashboardAppTest {
     @Test
     void safeErrorMessageShouldReturnUnknownErrorForNullThrowable() {
         StudentDashboardApp app = new StudentDashboardApp();
-
         assertEquals("Unknown error", app.safeErrorMessage(null));
     }
 
     @Test
     void safeErrorMessageShouldReturnUnknownErrorForNullMessage() {
         StudentDashboardApp app = new StudentDashboardApp();
-
         assertEquals("Unknown error", app.safeErrorMessage(new RuntimeException((String) null)));
     }
 
     @Test
     void safeErrorMessageShouldReturnUnknownErrorForBlankMessage() {
         StudentDashboardApp app = new StudentDashboardApp();
-
         assertEquals("Unknown error", app.safeErrorMessage(new RuntimeException("   ")));
     }
 
     @Test
     void safeErrorMessageShouldReturnActualMessage() {
         StudentDashboardApp app = new StudentDashboardApp();
-
         assertEquals("Boom", app.safeErrorMessage(new RuntimeException("Boom")));
     }
 
@@ -275,6 +272,105 @@ class StudentDashboardAppTest {
         assertEquals(4, grid.getChildren().size());
     }
 
+    @Test
+    void buildShouldReturnSidebarWrappedContent() throws Exception {
+        StudentDashboardApp app = new StudentDashboardApp();
+        TestRouter router = new TestRouter();
+        JwtStore jwtStore = new JwtStore();
+        AuthState state = new AuthState("dummy-token", Role.STUDENT, "Test Student");
+
+        Parent root = runOnFxThread(() ->
+                app.build(new Scene(new StackPane()), router, jwtStore, state)
+        );
+
+        assertNotNull(root);
+
+        ScrollPane scrollPane = findFirstNodeOfType(root, ScrollPane.class);
+        assertNotNull(scrollPane);
+
+        VBox content = (VBox) scrollPane.getContent();
+        assertNotNull(content);
+        assertTrue(content.getChildren().size() >= 7);
+
+        assertInstanceOf(Label.class, content.getChildren().get(0));
+        assertInstanceOf(Label.class, content.getChildren().get(1));
+        assertInstanceOf(Button.class, content.getChildren().get(2));
+        assertInstanceOf(GridPane.class, content.getChildren().get(3));
+        assertInstanceOf(Separator.class, content.getChildren().get(4));
+        assertInstanceOf(HBox.class, content.getChildren().get(5));
+        assertInstanceOf(VBox.class, content.getChildren().get(6));
+    }
+
+    @Test
+    void buildShouldCreateTitleAndSubtitleWithExpectedStyles() throws Exception {
+        StudentDashboardApp app = new StudentDashboardApp();
+        TestRouter router = new TestRouter();
+        JwtStore jwtStore = new JwtStore();
+        AuthState state = new AuthState("dummy-token", Role.STUDENT, "Test Student");
+
+        Parent root = runOnFxThread(() ->
+                app.build(new Scene(new StackPane()), router, jwtStore, state)
+        );
+
+        ScrollPane scrollPane = findFirstNodeOfType(root, ScrollPane.class);
+        assertNotNull(scrollPane);
+
+        VBox content = (VBox) scrollPane.getContent();
+        Label title = (Label) content.getChildren().get(0);
+        Label subtitle = (Label) content.getChildren().get(1);
+
+        assertNotNull(title.getText());
+        assertFalse(title.getText().isBlank());
+        assertTrue(title.getStyleClass().contains("dash-title"));
+
+        assertNotNull(subtitle.getText());
+        assertFalse(subtitle.getText().isBlank());
+        assertTrue(subtitle.getStyleClass().contains("dash-subtitle"));
+    }
+
+    @Test
+    void loadStudentSummaryShouldSetFallbackValuesWhenApiFails() throws Exception {
+        StudentDashboardApp app = new StudentDashboardApp();
+
+        Label present = new Label("x");
+        Label absent = new Label("x");
+        Label excused = new Label("x");
+        Label rate = new Label("x");
+
+        JwtStore jwtStore = new JwtStore();
+        AuthState state = new AuthState("dummy-token", Role.STUDENT, "Test Student");
+
+        runOnFxThread(() -> {
+            invokePrivate(
+                    app,
+                    "loadStudentSummary",
+                    new Class[]{JwtStore.class, AuthState.class, Label.class, Label.class, Label.class, Label.class},
+                    jwtStore,
+                    state,
+                    present,
+                    absent,
+                    excused,
+                    rate
+            );
+            return null;
+        });
+
+        waitForFxUpdates();
+
+        assertEquals("0", present.getText());
+        assertEquals("0", absent.getText());
+        assertEquals("0", excused.getText());
+        assertEquals("0%", rate.getText());
+    }
+
+    private static void waitForFxUpdates() throws Exception {
+        Thread.sleep(800);
+
+        CountDownLatch latch = new CountDownLatch(1);
+        Platform.runLater(latch::countDown);
+        assertTrue(latch.await(5, TimeUnit.SECONDS), "FX updates did not complete");
+    }
+
     private static Object invokePrivate(
             Object target,
             String methodName,
@@ -293,6 +389,25 @@ class StudentDashboardAppTest {
             }
             if (child instanceof javafx.scene.Parent nested) {
                 Button found = findFirstButton(nested);
+                if (found != null) {
+                    return found;
+                }
+            }
+        }
+        return null;
+    }
+
+    private static <T extends javafx.scene.Node> T findFirstNodeOfType(Parent parent, Class<T> type) {
+        if (type.isInstance(parent)) {
+            return type.cast(parent);
+        }
+
+        for (javafx.scene.Node child : parent.getChildrenUnmodifiable()) {
+            if (type.isInstance(child)) {
+                return type.cast(child);
+            }
+            if (child instanceof Parent nested) {
+                T found = findFirstNodeOfType(nested, type);
                 if (found != null) {
                     return found;
                 }

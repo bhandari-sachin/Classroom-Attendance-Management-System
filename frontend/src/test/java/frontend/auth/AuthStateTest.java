@@ -10,18 +10,18 @@ class AuthStateTest {
     void constructor_shouldCreateValidState() {
         AuthState state = new AuthState("token123", Role.ADMIN, "Farah");
 
-        assertEquals("token123", state.getToken());
-        assertEquals(Role.ADMIN, state.getRole());
-        assertEquals("Farah", state.getName());
+        assertEquals("token123", state.token());
+        assertEquals(Role.ADMIN, state.role());
+        assertEquals("Farah", state.name());
     }
 
     @Test
     void constructor_shouldAllowNullName() {
         AuthState state = new AuthState("token123", Role.STUDENT, null);
 
-        assertEquals("token123", state.getToken());
-        assertEquals(Role.STUDENT, state.getRole());
-        assertNull(state.getName());
+        assertEquals("token123", state.token());
+        assertEquals(Role.STUDENT, state.role());
+        assertNull(state.name());
     }
 
     @Test
@@ -58,8 +58,8 @@ class AuthStateTest {
     void getters_shouldReturnCorrectValues() {
         AuthState state = new AuthState("abc", Role.TEACHER, "John");
 
-        assertEquals("abc", state.getToken());
-        assertEquals(Role.TEACHER, state.getRole());
-        assertEquals("John", state.getName());
+        assertEquals("abc", state.token());
+        assertEquals(Role.TEACHER, state.role());
+        assertEquals("John", state.name());
     }
 }

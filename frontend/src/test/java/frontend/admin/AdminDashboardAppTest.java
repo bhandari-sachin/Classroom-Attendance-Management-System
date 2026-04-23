@@ -46,7 +46,7 @@ class AdminDashboardAppTest {
         JwtStore jwtStore = Mockito.mock(JwtStore.class);
         AuthState state = Mockito.mock(AuthState.class);
 
-        Mockito.when(state.getName()).thenReturn(adminName);
+        Mockito.when(state.name()).thenReturn(adminName);
 
         Parent result = app.build(scene, router, jwtStore, state);
 

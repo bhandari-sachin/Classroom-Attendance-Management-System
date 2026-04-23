@@ -101,7 +101,7 @@ public record AdminApi(
         AuthState authState = store.load()
                 .orElseThrow(() -> new IllegalStateException("No authentication state found. Please log in first."));
 
-        String token = authState.getToken();
+        String token = authState.token();
         if (token == null || token.isBlank()) {
             throw new IllegalStateException("JWT token is missing or empty. Please log in again.");
         }

@@ -89,7 +89,7 @@ class BaseApiClientTest {
     @Test
     void authorizedRequest_shouldBuildUriAndAuthorizationHeader() {
         when(jwtStore.load()).thenReturn(Optional.of(authState));
-        when(authState.getToken()).thenReturn("stored-token");
+        when(authState.token()).thenReturn("stored-token");
 
         HttpRequest.Builder builder = api.authorizedRequestPublic(jwtStore, authState);
         HttpRequest request = builder.GET().build();
@@ -101,7 +101,7 @@ class BaseApiClientTest {
     @Test
     void resolveToken_shouldUseTokenFromStoreWhenPresent() {
         when(jwtStore.load()).thenReturn(Optional.of(authState));
-        when(authState.getToken()).thenReturn("store-token");
+        when(authState.token()).thenReturn("store-token");
 
         String token = api.resolveTokenPublic(jwtStore, authState);
 
@@ -111,7 +111,7 @@ class BaseApiClientTest {
     @Test
     void resolveToken_shouldFallbackToStateTokenWhenStoreEmpty() {
         when(jwtStore.load()).thenReturn(Optional.empty());
-        when(authState.getToken()).thenReturn("state-token");
+        when(authState.token()).thenReturn("state-token");
 
         String token = api.resolveTokenPublic(jwtStore, authState);
 
@@ -121,7 +121,7 @@ class BaseApiClientTest {
     @Test
     void resolveToken_shouldThrowWhenTokenMissing() {
         when(jwtStore.load()).thenReturn(Optional.empty());
-        when(authState.getToken()).thenReturn(null);
+        when(authState.token()).thenReturn(null);
 
         IllegalStateException ex = assertThrows(
                 IllegalStateException.class,
@@ -134,7 +134,7 @@ class BaseApiClientTest {
     @Test
     void resolveToken_shouldThrowWhenTokenBlank() {
         when(jwtStore.load()).thenReturn(Optional.of(authState));
-        when(authState.getToken()).thenReturn("   ");
+        when(authState.token()).thenReturn("   ");
 
         IllegalStateException ex = assertThrows(
                 IllegalStateException.class,
@@ -177,7 +177,7 @@ class BaseApiClientTest {
     @Test
     void get_shouldSendAuthenticatedGetRequest() throws IOException, InterruptedException {
         when(jwtStore.load()).thenReturn(Optional.of(authState));
-        when(authState.getToken()).thenReturn("abc123");
+        when(authState.token()).thenReturn("abc123");
 
         HttpResponse<String> response = mockStringResponse(200, "{\"status\":\"ok\"}");
         when(client.send(any(HttpRequest.class), anyStringBodyHandler())).thenReturn(response);
@@ -190,7 +190,7 @@ class BaseApiClientTest {
     @Test
     void postJson_shouldSendJsonRequest() throws IOException, InterruptedException {
         when(jwtStore.load()).thenReturn(Optional.of(authState));
-        when(authState.getToken()).thenReturn("abc123");
+        when(authState.token()).thenReturn("abc123");
 
         HttpResponse<String> response = mockStringResponse(200, "{\"saved\":true}");
         when(client.send(any(HttpRequest.class), anyStringBodyHandler())).thenReturn(response);
@@ -203,7 +203,7 @@ class BaseApiClientTest {
     @Test
     void readGet_shouldParseMapResponse() throws IOException, InterruptedException {
         when(jwtStore.load()).thenReturn(Optional.of(authState));
-        when(authState.getToken()).thenReturn("abc123");
+        when(authState.token()).thenReturn("abc123");
 
         HttpResponse<String> response = mockStringResponse(200, "{\"name\":\"Math\",\"students\":12}");
         when(client.send(any(HttpRequest.class), anyStringBodyHandler())).thenReturn(response);
@@ -217,7 +217,7 @@ class BaseApiClientTest {
     @Test
     void readPost_shouldParseMapResponse() throws IOException, InterruptedException {
         when(jwtStore.load()).thenReturn(Optional.of(authState));
-        when(authState.getToken()).thenReturn("abc123");
+        when(authState.token()).thenReturn("abc123");
 
         HttpResponse<String> response = mockStringResponse(200, "{\"status\":\"created\",\"id\":7}");
         when(client.send(any(HttpRequest.class), anyStringBodyHandler())).thenReturn(response);
@@ -235,7 +235,7 @@ class BaseApiClientTest {
     @Test
     void readList_shouldParseListResponse() throws IOException, InterruptedException {
         when(jwtStore.load()).thenReturn(Optional.of(authState));
-        when(authState.getToken()).thenReturn("abc123");
+        when(authState.token()).thenReturn("abc123");
 
         HttpResponse<String> response = mockStringResponse(200, "[{\"id\":1},{\"id\":2}]");
         when(client.send(any(HttpRequest.class), anyStringBodyHandler())).thenReturn(response);
@@ -250,7 +250,7 @@ class BaseApiClientTest {
     @Test
     void readWrappedList_shouldParseRawArrayResponse() throws IOException, InterruptedException {
         when(jwtStore.load()).thenReturn(Optional.of(authState));
-        when(authState.getToken()).thenReturn("abc123");
+        when(authState.token()).thenReturn("abc123");
 
         HttpResponse<String> response = mockStringResponse(200, "[{\"code\":\"A1\"},{\"code\":\"B2\"}]");
         when(client.send(any(HttpRequest.class), anyStringBodyHandler())).thenReturn(response);
@@ -265,7 +265,7 @@ class BaseApiClientTest {
     @Test
     void readWrappedList_shouldParseWrappedDataResponse() throws IOException, InterruptedException {
         when(jwtStore.load()).thenReturn(Optional.of(authState));
-        when(authState.getToken()).thenReturn("abc123");
+        when(authState.token()).thenReturn("abc123");
 
         HttpResponse<String> response = mockStringResponse(200, "{\"data\":[{\"code\":\"A1\"},{\"code\":\"B2\"}]}");
         when(client.send(any(HttpRequest.class), anyStringBodyHandler())).thenReturn(response);
@@ -280,7 +280,7 @@ class BaseApiClientTest {
     @Test
     void readWrappedList_shouldReturnEmptyListWhenDataMissing() throws IOException, InterruptedException {
         when(jwtStore.load()).thenReturn(Optional.of(authState));
-        when(authState.getToken()).thenReturn("abc123");
+        when(authState.token()).thenReturn("abc123");
 
         HttpResponse<String> response = mockStringResponse(200, "{\"status\":\"ok\"}");
         when(client.send(any(HttpRequest.class), anyStringBodyHandler())).thenReturn(response);

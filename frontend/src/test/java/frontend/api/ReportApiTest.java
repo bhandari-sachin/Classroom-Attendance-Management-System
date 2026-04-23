@@ -68,7 +68,7 @@ class ReportApiTest {
         byte[] expectedBytes = "student-report".getBytes();
 
         when(jwtStore.load()).thenReturn(Optional.of(authState));
-        when(authState.getToken()).thenReturn("store-token");
+        when(authState.token()).thenReturn("store-token");
 
         HttpResponse<InputStream> response = mockInputStreamResponse(200, expectedBytes);
         when(client.send(any(HttpRequest.class), anyInputStreamBodyHandler()))
@@ -99,7 +99,7 @@ class ReportApiTest {
         byte[] expectedBytes = "teacher-report".getBytes();
 
         when(jwtStore.load()).thenReturn(Optional.empty());
-        when(authState.getToken()).thenReturn("state-token");
+        when(authState.token()).thenReturn("state-token");
 
         HttpResponse<InputStream> response = mockInputStreamResponse(200, expectedBytes);
         when(client.send(any(HttpRequest.class), anyInputStreamBodyHandler()))
@@ -130,7 +130,7 @@ class ReportApiTest {
         ReportApi api = new ReportApi("http://localhost:8081", client);
 
         when(jwtStore.load()).thenReturn(Optional.empty());
-        when(authState.getToken()).thenReturn(null);
+        when(authState.token()).thenReturn(null);
 
         Path destination = tempDir.resolve("admin-report.pdf");
         String destinationPath = destination.toString();
@@ -148,7 +148,7 @@ class ReportApiTest {
         ReportApi api = new ReportApi("http://localhost:8081", client);
 
         when(jwtStore.load()).thenReturn(Optional.of(authState));
-        when(authState.getToken()).thenReturn("admin-token");
+        when(authState.token()).thenReturn("admin-token");
 
         HttpResponse<InputStream> response = mockInputStreamResponse(500, "{\"error\":\"failed\"}".getBytes());
         when(client.send(any(HttpRequest.class), anyInputStreamBodyHandler()))

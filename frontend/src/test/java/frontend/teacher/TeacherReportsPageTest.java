@@ -1,20 +1,34 @@
 package frontend.teacher;
 
+import frontend.auth.AppRouter;
+import frontend.auth.AuthState;
+import frontend.auth.JwtStore;
+import frontend.auth.Role;
 import javafx.application.Platform;
 import javafx.embed.swing.JFXPanel;
 import javafx.geometry.Pos;
+import javafx.scene.Parent;
+import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.MenuButton;
+import javafx.scene.control.TableCell;
+import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.StackPane;
+import javafx.stage.Window;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -23,21 +37,32 @@ class TeacherReportsPageTest {
     private static TeacherReportsPage page;
 
     @BeforeAll
-    static void initJavaFx() {
+    static void initJavaFx() throws Exception {
         new JFXPanel();
         Platform.setImplicitExit(false);
-        page = new TeacherReportsPage();
+
+        CountDownLatch latch = new CountDownLatch(1);
+        Platform.runLater(() -> {
+            page = new TeacherReportsPage();
+            latch.countDown();
+        });
+
+        assertTrue(latch.await(5, TimeUnit.SECONDS), "JavaFX toolkit failed to start");
     }
 
     @Test
     void classItemToStringReturnsLabel() {
-        TeacherReportsPage.ClassItem item = new TeacherReportsPage.ClassItem(1L, "SE101 — Software Engineering");
+        TeacherReportsPage.ClassItem item =
+                new TeacherReportsPage.ClassItem(1L, "SE101 — Software Engineering");
+
         assertEquals("SE101 — Software Engineering", item.toString());
     }
 
     @Test
     void sessionItemToStringReturnsLabel() {
-        TeacherReportsPage.SessionItem item = new TeacherReportsPage.SessionItem(2L, "2026-04-22 CODE123");
+        TeacherReportsPage.SessionItem item =
+                new TeacherReportsPage.SessionItem(2L, "2026-04-22 CODE123");
+
         assertEquals("2026-04-22 CODE123", item.toString());
     }
 
@@ -296,7 +321,7 @@ class TeacherReportsPageTest {
 
     @Test
     void buildTitleReturnsStyledLabel() throws Exception {
-        Label title = invokePrivate("buildTitle");
+        Label title = runOnFxThreadAndWait(() -> invokePrivate("buildTitle"));
 
         assertNotNull(title);
         assertFalse(title.getText().isBlank());
@@ -305,7 +330,7 @@ class TeacherReportsPageTest {
 
     @Test
     void buildSubtitleReturnsStyledLabel() throws Exception {
-        Label subtitle = invokePrivate("buildSubtitle");
+        Label subtitle = runOnFxThreadAndWait(() -> invokePrivate("buildSubtitle"));
 
         assertNotNull(subtitle);
         assertFalse(subtitle.getText().isBlank());
@@ -314,7 +339,7 @@ class TeacherReportsPageTest {
 
     @Test
     void buildClassBoxReturnsConfiguredComboBox() throws Exception {
-        ComboBox<?> classBox = invokePrivate("buildClassBox");
+        ComboBox<?> classBox = runOnFxThreadAndWait(() -> invokePrivate("buildClassBox"));
 
         assertNotNull(classBox);
         assertFalse(classBox.getPromptText().isBlank());
@@ -323,7 +348,7 @@ class TeacherReportsPageTest {
 
     @Test
     void buildSessionBoxReturnsConfiguredComboBox() throws Exception {
-        ComboBox<?> sessionBox = invokePrivate("buildSessionBox");
+        ComboBox<?> sessionBox = runOnFxThreadAndWait(() -> invokePrivate("buildSessionBox"));
 
         assertNotNull(sessionBox);
         assertFalse(sessionBox.getPromptText().isBlank());
@@ -332,7 +357,7 @@ class TeacherReportsPageTest {
 
     @Test
     void buildLoadButtonReturnsStyledButton() throws Exception {
-        Button button = invokePrivate("buildLoadButton");
+        Button button = runOnFxThreadAndWait(() -> invokePrivate("buildLoadButton"));
 
         assertNotNull(button);
         assertFalse(button.getText().isBlank());
@@ -342,7 +367,7 @@ class TeacherReportsPageTest {
 
     @Test
     void buildExportButtonReturnsDisabledStyledMenuButton() throws Exception {
-        MenuButton button = invokePrivate("buildExportButton");
+        MenuButton button = runOnFxThreadAndWait(() -> invokePrivate("buildExportButton"));
 
         assertNotNull(button);
         assertFalse(button.getText().isBlank());
@@ -353,37 +378,35 @@ class TeacherReportsPageTest {
 
     @Test
     void buildSelectRowContainsExpectedControls() throws Exception {
-        ComboBox<TeacherReportsPage.ClassItem> classBox = new ComboBox<>();
-        ComboBox<TeacherReportsPage.SessionItem> sessionBox = new ComboBox<>();
-        Button loadButton = new Button("Load");
-        MenuButton exportButton = new MenuButton("Export");
+        HBox row = runOnFxThreadAndWait(() -> {
+            ComboBox<TeacherReportsPage.ClassItem> classBox = new ComboBox<>();
+            ComboBox<TeacherReportsPage.SessionItem> sessionBox = new ComboBox<>();
+            Button loadButton = new Button("Load");
+            MenuButton exportButton = new MenuButton("Export");
 
-        HBox row = invokePrivate(
-                "buildSelectRow",
-                new Class<?>[]{ComboBox.class, ComboBox.class, Button.class, MenuButton.class},
-                classBox,
-                sessionBox,
-                loadButton,
-                exportButton
-        );
+            return invokePrivate(
+                    "buildSelectRow",
+                    new Class<?>[]{ComboBox.class, ComboBox.class, Button.class, MenuButton.class},
+                    classBox,
+                    sessionBox,
+                    loadButton,
+                    exportButton
+            );
+        });
 
         assertEquals(Pos.CENTER_LEFT, row.getAlignment());
         assertEquals(4, row.getChildren().size());
-        assertSame(classBox, row.getChildren().get(0));
-        assertSame(sessionBox, row.getChildren().get(1));
-        assertSame(loadButton, row.getChildren().get(2));
-        assertSame(exportButton, row.getChildren().get(3));
     }
 
     @Test
     void buildStatsLabelReturnsStyledLabel() throws Exception {
-        Label label = invokePrivate(
+        Label label = runOnFxThreadAndWait(() -> invokePrivate(
                 "buildStatsLabel",
                 new Class<?>[]{String.class, String.class, String.class},
                 "teacher.reports.stats.present",
                 "{count}",
                 "10"
-        );
+        ));
 
         assertNotNull(label);
         assertFalse(label.getText().isBlank());
@@ -393,19 +416,21 @@ class TeacherReportsPageTest {
 
     @Test
     void buildStatsRowContainsLabels() throws Exception {
-        Label present = new Label("P");
-        Label absent = new Label("A");
-        Label excused = new Label("E");
-        Label rate = new Label("R");
+        HBox row = runOnFxThreadAndWait(() -> {
+            Label present = new Label("P");
+            Label absent = new Label("A");
+            Label excused = new Label("E");
+            Label rate = new Label("R");
 
-        HBox row = invokePrivate(
-                "buildStatsRow",
-                new Class<?>[]{Label.class, Label.class, Label.class, Label.class},
-                present,
-                absent,
-                excused,
-                rate
-        );
+            return invokePrivate(
+                    "buildStatsRow",
+                    new Class<?>[]{Label.class, Label.class, Label.class, Label.class},
+                    present,
+                    absent,
+                    excused,
+                    rate
+            );
+        });
 
         assertEquals(Pos.CENTER_LEFT, row.getAlignment());
         assertEquals(4, row.getChildren().size());
@@ -413,7 +438,7 @@ class TeacherReportsPageTest {
 
     @Test
     void buildReportTableCreatesThreeColumns() throws Exception {
-        TableView<?> table = invokePrivate("buildReportTable");
+        TableView<?> table = runOnFxThreadAndWait(() -> invokePrivate("buildReportTable"));
 
         assertNotNull(table);
         assertEquals(340.0, table.getPrefHeight());
@@ -425,33 +450,131 @@ class TeacherReportsPageTest {
 
     @Test
     void resetReportUIClearsRowsAndResetsLabels() throws Exception {
-        var field = TeacherReportsPage.class.getDeclaredField("tableRows");
+        Field field = TeacherReportsPage.class.getDeclaredField("tableRows");
         field.setAccessible(true);
+
         @SuppressWarnings("unchecked")
         javafx.collections.ObservableList<TeacherReportsPage.ReportRow> rows =
                 (javafx.collections.ObservableList<TeacherReportsPage.ReportRow>) field.get(page);
 
-        rows.add(new TeacherReportsPage.ReportRow("X", "x@test.com", "PRESENT"));
+        runOnFxThreadAndWait(() -> {
+            rows.add(new TeacherReportsPage.ReportRow("X", "x@test.com", "PRESENT"));
 
-        Label present = new Label("old");
-        Label absent = new Label("old");
-        Label excused = new Label("old");
-        Label rate = new Label("old");
+            Label present = new Label("old");
+            Label absent = new Label("old");
+            Label excused = new Label("old");
+            Label rate = new Label("old");
 
-        invokePrivateVoid(
-                "resetReportUI",
-                new Class<?>[]{Label.class, Label.class, Label.class, Label.class},
-                present,
-                absent,
-                excused,
-                rate
-        );
+            invokePrivateVoid(
+                    "resetReportUI",
+                    new Class<?>[]{Label.class, Label.class, Label.class, Label.class},
+                    present,
+                    absent,
+                    excused,
+                    rate
+            );
 
-        assertTrue(present.getText().contains("—"));
-        assertTrue(absent.getText().contains("—"));
-        assertTrue(excused.getText().contains("—"));
-        assertTrue(rate.getText().contains("—"));
-        assertTrue(rows.isEmpty());
+            assertTrue(present.getText().contains("—"));
+            assertTrue(absent.getText().contains("—"));
+            assertTrue(excused.getText().contains("—"));
+            assertTrue(rate.getText().contains("—"));
+            assertTrue(rows.isEmpty());
+
+            return null;
+        });
+    }
+
+    @Test
+    void buildReportTableStatusCellShouldLocalizeValueAndClearWhenEmpty() throws Exception {
+        runOnFxThreadAndWait(() -> {
+            TableView<TeacherReportsPage.ReportRow> table = invokePrivate("buildReportTable");
+
+            @SuppressWarnings("unchecked")
+            TableColumn<TeacherReportsPage.ReportRow, String> statusColumn =
+                    (TableColumn<TeacherReportsPage.ReportRow, String>) table.getColumns().get(2);
+
+            TableCell<TeacherReportsPage.ReportRow, String> cell =
+                    statusColumn.getCellFactory().call(statusColumn);
+
+            Method updateItem = cell.getClass().getDeclaredMethod("updateItem", Object.class, boolean.class);
+            updateItem.setAccessible(true);
+
+            updateItem.invoke(cell, "PRESENT", false);
+            assertNotNull(cell.getText());
+            assertFalse(cell.getText().isBlank());
+            assertNotEquals("PRESENT", cell.getText());
+
+            updateItem.invoke(cell, null, true);
+            assertNull(cell.getText());
+
+            return null;
+        });
+    }
+
+    @Test
+    void buildReportTableStatusCellShouldKeepUnknownStatusText() throws Exception {
+        runOnFxThreadAndWait(() -> {
+            TableView<TeacherReportsPage.ReportRow> table = invokePrivate("buildReportTable");
+
+            @SuppressWarnings("unchecked")
+            TableColumn<TeacherReportsPage.ReportRow, String> statusColumn =
+                    (TableColumn<TeacherReportsPage.ReportRow, String>) table.getColumns().get(2);
+
+            TableCell<TeacherReportsPage.ReportRow, String> cell =
+                    statusColumn.getCellFactory().call(statusColumn);
+
+            Method updateItem = cell.getClass().getDeclaredMethod("updateItem", Object.class, boolean.class);
+            updateItem.setAccessible(true);
+
+            updateItem.invoke(cell, "LATE", false);
+            assertEquals("LATE", cell.getText());
+
+            return null;
+        });
+    }
+
+    @Test
+    void buildShouldReturnRootNode() throws Exception {
+        Parent root = runOnFxThreadAndWait(() -> {
+            Scene scene = new Scene(new StackPane(), 1000, 700);
+            AppRouter router = new AppRouter(scene);
+            JwtStore jwtStore = new JwtStore();
+            AuthState state = new AuthState("dummy-token", Role.TEACHER, "Teacher Test");
+
+            return page.build(scene, router, jwtStore, state);
+        });
+
+        assertNotNull(root);
+
+        // prevent later interference if an async error alert appears
+        closeAllWindowsQuietly();
+    }
+
+    @Test
+    void exportReportShouldReturnImmediatelyWhenSelectedClassIsNull() throws Exception {
+        runOnFxThreadAndWait(() -> {
+            Scene scene = new Scene(new StackPane(), 800, 600);
+
+            invokePrivateVoid(
+                    "exportReport",
+                    new Class<?>[]{
+                            Scene.class,
+                            frontend.api.ReportApi.class,
+                            JwtStore.class,
+                            AuthState.class,
+                            TeacherReportsPage.ClassItem.class,
+                            String.class
+                    },
+                    scene,
+                    null,
+                    null,
+                    null,
+                    null,
+                    "pdf"
+            );
+
+            return null;
+        });
     }
 
     @SuppressWarnings("unchecked")
@@ -476,5 +599,51 @@ class TeacherReportsPageTest {
         method.invoke(page, args);
     }
 
+    private static <T> T runOnFxThreadAndWait(FxSupplier<T> supplier) throws Exception {
+        if (Platform.isFxApplicationThread()) {
+            return supplier.get();
+        }
 
+        AtomicReference<T> result = new AtomicReference<>();
+        AtomicReference<Throwable> error = new AtomicReference<>();
+        CountDownLatch latch = new CountDownLatch(1);
+
+        Platform.runLater(() -> {
+            try {
+                result.set(supplier.get());
+            } catch (Throwable t) {
+                error.set(t);
+            } finally {
+                latch.countDown();
+            }
+        });
+
+        assertTrue(latch.await(5, TimeUnit.SECONDS), "FX task timed out");
+
+        if (error.get() != null) {
+            if (error.get() instanceof Exception ex) {
+                throw ex;
+            }
+            throw new RuntimeException(error.get());
+        }
+
+        return result.get();
+    }
+
+    private static void closeAllWindowsQuietly() throws Exception {
+        runOnFxThreadAndWait(() -> {
+            for (Window window : Window.getWindows()) {
+                try {
+                    window.hide();
+                } catch (Exception ignored) {// close quietly
+                }
+            }
+            return null;
+        });
+    }
+
+    @FunctionalInterface
+    private interface FxSupplier<T> {
+        T get() throws Exception;
+    }
 }

@@ -1,13 +1,13 @@
 package frontend.teacher;
 
+import frontend.auth.AppRouter;
 import frontend.ui.StudentRow;
 import javafx.application.Platform;
 import javafx.embed.swing.JFXPanel;
 import javafx.geometry.Pos;
-import javafx.scene.control.Button;
-import javafx.scene.control.ComboBox;
-import javafx.scene.control.Label;
-import javafx.scene.control.TableView;
+import javafx.scene.Parent;
+import javafx.scene.Scene;
+import javafx.scene.control.*;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Region;
@@ -15,6 +15,9 @@ import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import frontend.auth.AuthState;
+import frontend.auth.JwtStore;
+import frontend.api.TeacherApi;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -332,6 +335,340 @@ class TeacherTakeAttendancePageTest {
         Method method = TeacherTakeAttendancePage.class.getDeclaredMethod(methodName, parameterTypes);
         method.setAccessible(true);
         return (T) method.invoke(page, args);
+    }
+
+
+
+    @Test
+    void buildStudentsTableActionCellShouldHandleEmptyAndNonEmptyRows() throws Exception {
+        runOnFxThreadAndWait(() -> {
+            try {
+                TableView<StudentRow> table = invokePrivate(
+                        "buildStudentsTable",
+                        new Class<?>[]{TeacherApi.class, JwtStore.class, AuthState.class, long[].class},
+                        null,
+                        null,
+                        null,
+                        new long[]{-1L}
+                );
+
+                @SuppressWarnings("unchecked")
+                TableColumn<StudentRow, Void> actionColumn =
+                        (TableColumn<StudentRow, Void>) table.getColumns().get(3);
+
+                TableCell<StudentRow, Void> cell = actionColumn.getCellFactory().call(actionColumn);
+
+                TableRow<StudentRow> row = new TableRow<>();
+                cell.updateTableView(table);
+                cell.updateTableColumn(actionColumn);
+                row.updateTableView(table);
+                cell.updateTableRow(row);
+
+                Method updateItem = cell.getClass().getDeclaredMethod("updateItem", Object.class, boolean.class);
+                updateItem.setAccessible(true);
+
+                updateItem.invoke(cell, null, true);
+                assertNull(cell.getGraphic());
+
+                StudentRow studentRow = new StudentRow(1L, "Farah Smith", "farah@example.com", "—");
+                table.getItems().setAll(studentRow);
+
+                row.updateIndex(0);
+                cell.updateIndex(0);
+
+                updateItem.invoke(cell, null, false);
+                assertNotNull(cell.getGraphic());
+
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        });
+    }
+    @Test
+    void buildStudentsTableActionCellShouldApplyStatusStyles() throws Exception {
+        runOnFxThreadAndWait(() -> {
+            try {
+                TableView<StudentRow> table = invokePrivate(
+                        "buildStudentsTable",
+                        new Class<?>[]{TeacherApi.class, JwtStore.class, AuthState.class, long[].class},
+                        null,
+                        null,
+                        null,
+                        new long[]{-1L}
+                );
+
+                @SuppressWarnings("unchecked")
+                TableColumn<StudentRow, Void> actionColumn =
+                        (TableColumn<StudentRow, Void>) table.getColumns().get(3);
+
+                TableCell<StudentRow, Void> cell = actionColumn.getCellFactory().call(actionColumn);
+
+                TableRow<StudentRow> row = new TableRow<>();
+                StudentRow studentRow = new StudentRow(1L, "Farah Smith", "farah@example.com", "PRESENT");
+                table.getItems().setAll(studentRow);
+
+                cell.updateTableView(table);
+                cell.updateTableColumn(actionColumn);
+                row.updateTableView(table);
+                row.updateIndex(0);
+                cell.updateTableRow(row);
+                cell.updateIndex(0);
+
+                Method updateItem = cell.getClass().getDeclaredMethod("updateItem", Object.class, boolean.class);
+                updateItem.setAccessible(true);
+                updateItem.invoke(cell, null, false);
+
+                Method applyStatusStyles = cell.getClass().getDeclaredMethod("applyStatusStyles", String.class);
+                applyStatusStyles.setAccessible(true);
+
+                assertDoesNotThrow(() -> applyStatusStyles.invoke(cell, "PRESENT"));
+                assertDoesNotThrow(() -> applyStatusStyles.invoke(cell, "ABSENT"));
+                assertDoesNotThrow(() -> applyStatusStyles.invoke(cell, "EXCUSED"));
+                assertDoesNotThrow(() -> applyStatusStyles.invoke(cell, "LATE"));
+
+                assertNotNull(cell.getGraphic());
+
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        });
+    }
+    @Test
+    void buildStudentsTableActionCellShouldToggleButtonsDisabledState() throws Exception {
+        runOnFxThreadAndWait(() -> {
+            try {
+                TableView<StudentRow> table = invokePrivate(
+                        "buildStudentsTable",
+                        new Class<?>[]{TeacherApi.class, JwtStore.class, AuthState.class, long[].class},
+                        null,
+                        null,
+                        null,
+                        new long[]{-1L}
+                );
+
+                @SuppressWarnings("unchecked")
+                TableColumn<StudentRow, Void> actionColumn =
+                        (TableColumn<StudentRow, Void>) table.getColumns().get(3);
+
+                TableCell<StudentRow, Void> cell = actionColumn.getCellFactory().call(actionColumn);
+
+                TableRow<StudentRow> row = new TableRow<>();
+                StudentRow studentRow = new StudentRow(1L, "Farah Smith", "farah@example.com", "PRESENT");
+                table.getItems().setAll(studentRow);
+
+                cell.updateTableView(table);
+                cell.updateTableColumn(actionColumn);
+                row.updateTableView(table);
+                row.updateIndex(0);
+                cell.updateTableRow(row);
+                cell.updateIndex(0);
+
+                Method updateItem = cell.getClass().getDeclaredMethod("updateItem", Object.class, boolean.class);
+                updateItem.setAccessible(true);
+                updateItem.invoke(cell, null, false);
+
+                Method setButtonsDisabled = cell.getClass().getDeclaredMethod("setButtonsDisabled", boolean.class);
+                setButtonsDisabled.setAccessible(true);
+
+                assertDoesNotThrow(() -> setButtonsDisabled.invoke(cell, true));
+                assertDoesNotThrow(() -> setButtonsDisabled.invoke(cell, false));
+
+                assertNotNull(cell.getGraphic());
+
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        });
+    }
+    private static void runOnFxThreadAndWait(Runnable action) throws Exception {
+        if (Platform.isFxApplicationThread()) {
+            action.run();
+            return;
+        }
+
+        final java.util.concurrent.CountDownLatch latch = new java.util.concurrent.CountDownLatch(1);
+        final java.util.concurrent.atomic.AtomicReference<Throwable> error = new java.util.concurrent.atomic.AtomicReference<>();
+
+        Platform.runLater(() -> {
+            try {
+                action.run();
+            } catch (Throwable t) {
+                error.set(t);
+            } finally {
+                latch.countDown();
+            }
+        });
+
+        assertTrue(latch.await(5, java.util.concurrent.TimeUnit.SECONDS), "FX task timed out");
+
+        if (error.get() != null) {
+            if (error.get() instanceof Exception ex) {
+                throw ex;
+            }
+            throw new RuntimeException(error.get());
+        }
+    }
+
+    @Test
+    void buildShouldReturnPage() throws Exception {
+        runOnFxThreadAndWait(() -> {
+            TeacherTakeAttendancePage page = new TeacherTakeAttendancePage();
+            Scene scene = new Scene(new StackPane());
+            AppRouter router = new AppRouter(scene);
+            JwtStore jwtStore = new JwtStore();
+            AuthState state = new AuthState("dummy-token", frontend.auth.Role.TEACHER, "Teacher");
+
+            Parent root = page.build(scene, router, jwtStore, state);
+
+            assertNotNull(root);
+        });
+
+    }
+    @Test
+    void buildShouldReturnRootNode() throws Exception {
+        runOnFxThreadAndWait(() -> {
+            Scene scene = new Scene(new StackPane());
+            AppRouter router = new AppRouter(scene);
+            JwtStore jwtStore = new JwtStore();
+            AuthState state = new AuthState("dummy-token", frontend.auth.Role.TEACHER, "Teacher");
+
+            Parent root = page.build(scene, router, jwtStore, state);
+
+            assertNotNull(root);
+        });
+    }
+    @Test
+    void handleGenerateSessionShouldReturnWhenNoClassSelected() throws Exception {
+        runOnFxThreadAndWait(() -> {
+            try {
+                ComboBox<TeacherTakeAttendancePage.ClassItem> classBox = new ComboBox<>();
+                Button generateButton = new Button("Generate");
+                Label manualCode = new Label("—");
+                ImageView qrImageView = new ImageView();
+                long[] currentSessionId = {-1L};
+
+                Method method = TeacherTakeAttendancePage.class.getDeclaredMethod(
+                        "handleGenerateSession",
+                        TeacherApi.class,
+                        JwtStore.class,
+                        AuthState.class,
+                        ComboBox.class,
+                        Button.class,
+                        Label.class,
+                        ImageView.class,
+                        long[].class
+                );
+                method.setAccessible(true);
+
+                assertDoesNotThrow(() -> {
+                    try {
+                        method.invoke(
+                                page,
+                                null,
+                                null,
+                                null,
+                                classBox,
+                                generateButton,
+                                manualCode,
+                                qrImageView,
+                                currentSessionId
+                        );
+                    } catch (Exception e) {
+                        throw new RuntimeException(e);
+                    }
+                });
+
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        });
+    }
+
+    @Test
+    void handleClassSelectionShouldReturnWhenNoClassSelected() throws Exception {
+        runOnFxThreadAndWait(() -> {
+            try {
+                ComboBox<TeacherTakeAttendancePage.ClassItem> classBox = new ComboBox<>();
+                Label manualCode = new Label("OLD");
+                ImageView qrImageView = new ImageView();
+                long[] currentSessionId = {99L};
+
+                Method method = TeacherTakeAttendancePage.class.getDeclaredMethod(
+                        "handleClassSelection",
+                        TeacherApi.class,
+                        JwtStore.class,
+                        AuthState.class,
+                        ComboBox.class,
+                        Label.class,
+                        ImageView.class,
+                        long[].class
+                );
+                method.setAccessible(true);
+
+                method.invoke(
+                        page,
+                        null,
+                        null,
+                        null,
+                        classBox,
+                        manualCode,
+                        qrImageView,
+                        currentSessionId
+                );
+
+                assertEquals("OLD", manualCode.getText());
+                assertEquals(99L, currentSessionId[0]);
+
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        });
+    }
+    @Test
+    void handleClassSelectionShouldResetUiBeforeLoadingStudents() throws Exception {
+        runOnFxThreadAndWait(() -> {
+            try {
+                ComboBox<TeacherTakeAttendancePage.ClassItem> classBox = new ComboBox<>();
+                TeacherTakeAttendancePage.ClassItem item =
+                        new TeacherTakeAttendancePage.ClassItem(1L, "SE101 — Software Engineering");
+                classBox.setValue(item);
+
+                Label manualCode = new Label("ABC123");
+                ImageView qrImageView = new ImageView();
+                qrImageView.setImage(new javafx.scene.image.WritableImage(10, 10));
+                long[] currentSessionId = {55L};
+
+                Method method = TeacherTakeAttendancePage.class.getDeclaredMethod(
+                        "handleClassSelection",
+                        TeacherApi.class,
+                        JwtStore.class,
+                        AuthState.class,
+                        ComboBox.class,
+                        Label.class,
+                        ImageView.class,
+                        long[].class
+                );
+                method.setAccessible(true);
+
+                method.invoke(
+                        page,
+                        null,
+                        null,
+                        null,
+                        classBox,
+                        manualCode,
+                        qrImageView,
+                        currentSessionId
+                );
+
+                assertEquals(-1L, currentSessionId[0]);
+                assertEquals("—", manualCode.getText());
+                assertNull(qrImageView.getImage());
+
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        });
     }
 
 }

@@ -20,7 +20,7 @@ class AdminPageSupportTest {
         AuthState state = mock(AuthState.class);
         HelperClass helper = mock(HelperClass.class);
 
-        when(state.getName()).thenReturn("Oscar");
+        when(state.name()).thenReturn("Oscar");
 
         String result = AdminPageSupport.resolveAdminName(state, helper);
 
@@ -33,7 +33,7 @@ class AdminPageSupportTest {
         AuthState state = mock(AuthState.class);
         HelperClass helper = mock(HelperClass.class);
 
-        when(state.getName()).thenReturn(null);
+        when(state.name()).thenReturn(null);
         when(helper.getMessage("teacher.fallback.name")).thenReturn("Fallback Name");
 
         String result = AdminPageSupport.resolveAdminName(state, helper);
@@ -47,7 +47,7 @@ class AdminPageSupportTest {
         AuthState state = mock(AuthState.class);
         HelperClass helper = mock(HelperClass.class);
 
-        when(state.getName()).thenReturn("   ");
+        when(state.name()).thenReturn("   ");
         when(helper.getMessage("teacher.fallback.name")).thenReturn("Fallback Name");
 
         String result = AdminPageSupport.resolveAdminName(state, helper);

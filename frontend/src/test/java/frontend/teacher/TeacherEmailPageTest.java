@@ -1,22 +1,34 @@
 package frontend.teacher;
 
+import frontend.api.TeacherApi;
+import frontend.auth.AppRouter;
+import frontend.auth.AuthState;
+import frontend.auth.JwtStore;
+import frontend.auth.Role;
 import frontend.ui.StudentRow;
 import javafx.application.Platform;
 import javafx.embed.swing.JFXPanel;
-import javafx.geometry.Pos;
+import javafx.scene.Parent;
+import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.VBox;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
 
 class TeacherEmailPageTest {
 
@@ -156,7 +168,7 @@ class TeacherEmailPageTest {
         );
 
         assertNotNull(topRow);
-        assertEquals(Pos.CENTER_LEFT, topRow.getAlignment());
+        assertEquals(javafx.geometry.Pos.CENTER_LEFT, topRow.getAlignment());
         assertEquals(2, topRow.getChildren().size());
         assertSame(classBox, topRow.getChildren().get(0));
         assertSame(refreshButton, topRow.getChildren().get(1));
@@ -177,6 +189,159 @@ class TeacherEmailPageTest {
         assertFalse(secondColumn.getText().isBlank());
     }
 
+    @Test
+    void buildShouldReturnParent() throws Exception {
+        runOnFxThreadAndWait(() -> {
+            Scene scene = new Scene(new VBox());
+            AppRouter router = mock(AppRouter.class);
+            JwtStore jwtStore = mock(JwtStore.class);
+            AuthState state = new AuthState("token", Role.TEACHER, "Teacher");
+
+            Parent root = page.build(scene, router, jwtStore, state);
+
+            assertNotNull(root);
+        });
+    }
+
+    @Test
+    void loadClassesShouldPopulateComboBox() throws Exception {
+        TeacherApi api = mock(TeacherApi.class);
+        JwtStore jwtStore = mock(JwtStore.class);
+        AuthState state = new AuthState("token", Role.TEACHER, "Teacher");
+        ComboBox<TeacherEmailPage.ClassItem> classBox = new ComboBox<>();
+
+        when(api.getMyClasses(jwtStore, state)).thenReturn(List.of(
+                Map.of("id", 1, "classCode", "SE101", "name", "Software Engineering"),
+                Map.of("id", 2, "classCode", "WD202", "name", "Web Development")
+        ));
+
+        invokePrivateVoid(
+                "loadClasses",
+                new Class<?>[]{TeacherApi.class, JwtStore.class, AuthState.class, ComboBox.class},
+                api, jwtStore, state, classBox
+        );
+
+        waitForFxEvents();
+
+        assertEquals(2, classBox.getItems().size());
+        assertEquals("SE101 — Software Engineering", classBox.getItems().get(0).toString());
+        assertEquals("WD202 — Web Development", classBox.getItems().get(1).toString());
+    }
+
+    @Test
+    void loadClassesShouldHandleExceptionWithoutCrashing() throws Exception {
+        TeacherApi api = mock(TeacherApi.class);
+        JwtStore jwtStore = mock(JwtStore.class);
+        AuthState state = new AuthState("token", Role.TEACHER, "Teacher");
+        ComboBox<TeacherEmailPage.ClassItem> classBox = new ComboBox<>();
+
+        when(api.getMyClasses(jwtStore, state)).thenThrow(new RuntimeException("boom"));
+
+        assertDoesNotThrow(() ->
+                invokePrivateVoid(
+                        "loadClasses",
+                        new Class<?>[]{TeacherApi.class, JwtStore.class, AuthState.class, ComboBox.class},
+                        api, jwtStore, state, classBox
+                )
+        );
+
+        waitForFxEvents();
+        assertTrue(classBox.getItems().isEmpty());
+    }
+
+    @Test
+    void loadStudentsForSelectedClassShouldClearRowsWhenNoSelection() throws Exception {
+        TeacherApi api = mock(TeacherApi.class);
+        JwtStore jwtStore = mock(JwtStore.class);
+        AuthState state = new AuthState("token", Role.TEACHER, "Teacher");
+        ComboBox<TeacherEmailPage.ClassItem> classBox = new ComboBox<>();
+
+        ObservableRowsAccessor rowsAccessor = new ObservableRowsAccessor(page);
+        runOnFxThreadAndWait(() -> {
+            try {
+                rowsAccessor.rows().setAll(
+                        new StudentRow(1L, "Old Student", "old@example.com", "—")
+                );
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        });
+
+        invokePrivateVoid(
+                "loadStudentsForSelectedClass",
+                new Class<?>[]{TeacherApi.class, JwtStore.class, AuthState.class, ComboBox.class},
+                api, jwtStore, state, classBox
+        );
+
+        waitForFxEvents();
+        assertTrue(rowsAccessor.rows().isEmpty());
+    }
+
+    @Test
+    void loadStudentsForSelectedClassShouldPopulateRows() throws Exception {
+        TeacherApi api = mock(TeacherApi.class);
+        JwtStore jwtStore = mock(JwtStore.class);
+        AuthState state = new AuthState("token", Role.TEACHER, "Teacher");
+        ComboBox<TeacherEmailPage.ClassItem> classBox = new ComboBox<>();
+        TeacherEmailPage.ClassItem item = new TeacherEmailPage.ClassItem(5L, "SE101 — Software Engineering");
+
+        runOnFxThreadAndWait(() -> {
+            classBox.getItems().add(item);
+            classBox.setValue(item);
+        });
+
+        when(api.getStudentsForClass(jwtStore, state, 5L)).thenReturn(List.of(
+                Map.of("id", 7, "firstName", "Farah", "lastName", "Smith", "email", "farah@example.com"),
+                Map.of("id", 8, "firstName", "John", "lastName", "Doe", "email", "john@example.com")
+        ));
+
+        invokePrivateVoid(
+                "loadStudentsForSelectedClass",
+                new Class<?>[]{TeacherApi.class, JwtStore.class, AuthState.class, ComboBox.class},
+                api, jwtStore, state, classBox
+        );
+
+        waitForFxEvents();
+
+        ObservableRowsAccessor rowsAccessor = new ObservableRowsAccessor(page);
+        assertEquals(2, rowsAccessor.rows().size());
+        assertEquals("Farah Smith", rowsAccessor.rows().get(0).getStudentName());
+        assertEquals("john@example.com", rowsAccessor.rows().get(1).getEmail());
+    }
+
+    @Test
+    void loadStudentsForSelectedClassShouldClearRowsOnException() throws Exception {
+        TeacherApi api = mock(TeacherApi.class);
+        JwtStore jwtStore = mock(JwtStore.class);
+        AuthState state = new AuthState("token", Role.TEACHER, "Teacher");
+        ComboBox<TeacherEmailPage.ClassItem> classBox = new ComboBox<>();
+        TeacherEmailPage.ClassItem item = new TeacherEmailPage.ClassItem(5L, "SE101 — Software Engineering");
+        ObservableRowsAccessor rowsAccessor = new ObservableRowsAccessor(page);
+
+        runOnFxThreadAndWait(() -> {
+            classBox.getItems().add(item);
+            classBox.setValue(item);
+            try {
+                rowsAccessor.rows().setAll(new StudentRow(99L, "Before", "before@example.com", "—"));
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        });
+
+        when(api.getStudentsForClass(jwtStore, state, 5L)).thenThrow(new RuntimeException("boom"));
+
+        assertDoesNotThrow(() ->
+                invokePrivateVoid(
+                        "loadStudentsForSelectedClass",
+                        new Class<?>[]{TeacherApi.class, JwtStore.class, AuthState.class, ComboBox.class},
+                        api, jwtStore, state, classBox
+                )
+        );
+
+        waitForFxEvents();
+        assertTrue(rowsAccessor.rows().isEmpty());
+    }
+
     @SuppressWarnings("unchecked")
     private static <T> T invokePrivate(String methodName) throws Exception {
         Method method = TeacherEmailPage.class.getDeclaredMethod(methodName);
@@ -190,5 +355,74 @@ class TeacherEmailPageTest {
         Method method = TeacherEmailPage.class.getDeclaredMethod(methodName, parameterTypes);
         method.setAccessible(true);
         return (T) method.invoke(page, args);
+    }
+
+    private static void invokePrivateVoid(String methodName, Class<?>[] parameterTypes, Object... args)
+            throws Exception {
+        Method method = TeacherEmailPage.class.getDeclaredMethod(methodName, parameterTypes);
+        method.setAccessible(true);
+        method.invoke(page, args);
+    }
+
+    private static void runOnFxThreadAndWait(Runnable action) throws Exception {
+        if (Platform.isFxApplicationThread()) {
+            action.run();
+            return;
+        }
+
+        CountDownLatch latch = new CountDownLatch(1);
+        final Throwable[] error = new Throwable[1];
+
+        Platform.runLater(() -> {
+            try {
+                action.run();
+            } catch (Throwable t) {
+                error[0] = t;
+            } finally {
+                latch.countDown();
+            }
+        });
+
+        assertTrue(latch.await(5, TimeUnit.SECONDS), "FX task timed out");
+
+        if (error[0] != null) {
+            throw new RuntimeException(error[0]);
+        }
+    }
+
+    private static void waitForFxEvents() throws Exception {
+        CountDownLatch threadWait = new CountDownLatch(1);
+
+        Thread waiter = new Thread(() -> {
+            try {
+                Thread.sleep(300);
+            } catch (InterruptedException ignored) {
+                Thread.currentThread().interrupt();
+            } finally {
+                threadWait.countDown();
+            }
+        });
+        waiter.start();
+
+        assertTrue(threadWait.await(2, TimeUnit.SECONDS), "Background thread did not finish in time");
+
+        CountDownLatch fxLatch = new CountDownLatch(1);
+        Platform.runLater(fxLatch::countDown);
+        assertTrue(fxLatch.await(2, TimeUnit.SECONDS), "FX updates did not finish in time");
+    }
+
+    private static final class ObservableRowsAccessor {
+        private final TeacherEmailPage target;
+
+        private ObservableRowsAccessor(TeacherEmailPage target) {
+            this.target = target;
+        }
+
+        @SuppressWarnings("unchecked")
+        javafx.collections.ObservableList<StudentRow> rows() throws Exception {
+            Field field = TeacherEmailPage.class.getDeclaredField("rows");
+            field.setAccessible(true);
+            return (javafx.collections.ObservableList<StudentRow>) field.get(target);
+        }
     }
 }

@@ -156,7 +156,7 @@ class TeacherDashboardAppTest {
         JwtStore jwtStore = Mockito.mock(JwtStore.class);
         AuthState state = Mockito.mock(AuthState.class);
 
-        Mockito.when(state.getName()).thenReturn("Teacher User");
+        Mockito.when(state.name()).thenReturn("Teacher User");
 
         Parent result = app.build(scene, router, jwtStore, state);
 

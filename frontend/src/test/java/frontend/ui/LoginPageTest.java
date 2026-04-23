@@ -115,9 +115,9 @@ class LoginPageTest {
         waitUntil(() -> store.savedState != null);
 
         assertNotNull(store.savedState);
-        assertEquals("demo-token", store.savedState.getToken());
-        assertEquals(Role.STUDENT, store.savedState.getRole());
-        assertEquals("Demo User", store.savedState.getName());
+        assertEquals("demo-token", store.savedState.token());
+        assertEquals(Role.STUDENT, store.savedState.role());
+        assertEquals("Demo User", store.savedState.name());
         assertEquals("student-dashboard", router.lastRoute);
     }
 

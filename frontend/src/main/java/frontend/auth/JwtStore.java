@@ -22,9 +22,9 @@ public class JwtStore {
     public void save(AuthState state) {
         Objects.requireNonNull(state, "AuthState must not be null");
 
-        preferences.put(KEY_TOKEN, state.getToken());
-        preferences.put(KEY_ROLE, state.getRole().name());
-        preferences.put(KEY_NAME, state.getName() == null ? "" : state.getName());
+        preferences.put(KEY_TOKEN, state.token());
+        preferences.put(KEY_ROLE, state.role().name());
+        preferences.put(KEY_NAME, state.name() == null ? "" : state.name());
     }
 
     public Optional<AuthState> load() {

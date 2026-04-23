@@ -87,7 +87,7 @@ class StudentAttendanceApiTest {
     @Test
     void getSummary_shouldReturnParsedMap() throws IOException, InterruptedException {
         when(jwtStore.load()).thenReturn(Optional.of(authState));
-        when(authState.getToken()).thenReturn("student-token");
+        when(authState.token()).thenReturn("student-token");
 
         HttpResponse<String> response = mockStringResponse(200, "{\"present\":8,\"absent\":2}");
         when(client.send(any(HttpRequest.class), anyStringBodyHandler())).thenReturn(response);
@@ -101,7 +101,7 @@ class StudentAttendanceApiTest {
     @Test
     void getRecords_shouldReturnParsedList() throws IOException, InterruptedException {
         when(jwtStore.load()).thenReturn(Optional.of(authState));
-        when(authState.getToken()).thenReturn("student-token");
+        when(authState.token()).thenReturn("student-token");
 
         HttpResponse<String> response = mockStringResponse(
                 200,
@@ -139,7 +139,7 @@ class StudentAttendanceApiTest {
     @Test
     void submitCode_shouldSendTrimmedCode() throws IOException, InterruptedException {
         when(jwtStore.load()).thenReturn(Optional.of(authState));
-        when(authState.getToken()).thenReturn("student-token");
+        when(authState.token()).thenReturn("student-token");
 
         HttpResponse<String> response = mockStringResponse(200, "{\"status\":\"ok\"}");
         when(client.send(any(HttpRequest.class), anyStringBodyHandler())).thenReturn(response);

@@ -1,8 +1,5 @@
 package frontend.auth;
 
-import frontend.auth.AuthState;
-import frontend.auth.JwtStore;
-import frontend.auth.Role;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -30,9 +27,9 @@ public class JwtStoreTest {
         Optional<AuthState> loaded = store.load();
 
         assertTrue(loaded.isPresent());
-        assertEquals("test-token", loaded.get().getToken());
-        assertEquals(Role.ADMIN, loaded.get().getRole());
-        assertEquals("John Doe", loaded.get().getName());
+        assertEquals("test-token", loaded.get().token());
+        assertEquals(Role.ADMIN, loaded.get().role());
+        assertEquals("John Doe", loaded.get().name());
     }
 
     @Test
@@ -67,6 +64,6 @@ public class JwtStoreTest {
         Optional<AuthState> loaded = store.load();
 
         assertTrue(loaded.isPresent());
-        assertEquals("", loaded.get().getName());
+        assertEquals("", loaded.get().name());
     }
 }
