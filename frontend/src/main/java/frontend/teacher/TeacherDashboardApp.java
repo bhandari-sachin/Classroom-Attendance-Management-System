@@ -257,7 +257,6 @@ public class TeacherDashboardApp {
         classesContainer.setAlignment(Pos.TOP_LEFT);
 
         for (Map<String, Object> classData : classes) {
-            System.out.println(classData.keySet());
             String classCode = valueOr(classData.get("classCode"), "—");
             String name = valueOr(
                     classData.get("name"),

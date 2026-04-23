@@ -122,7 +122,7 @@ public class MainApp extends Application {
 
             try {
                 return page.get();
-            } catch (frontend.api.ApiException e) {
+            } catch (ApiException e) {
                 handleApiException(e, store, router);
                 return new StackPane();
             }
@@ -137,7 +137,7 @@ public class MainApp extends Application {
             store.clear();
 
             javafx.application.Platform.runLater(() -> {
-                router.go("login");
+                router.go(LOGIN_PAGE);
             });
         }
     }
