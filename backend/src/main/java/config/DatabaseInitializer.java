@@ -30,7 +30,7 @@ public class DatabaseInitializer {
 
             String sql;
             try (BufferedReader reader =
-                         new BufferedReader(new InputStreamReader(inputStream))) {
+                         new BufferedReader(new InputStreamReader(inputStream, java.nio.charset.StandardCharsets.UTF_8))) {
                 sql = reader.lines().collect(Collectors.joining("\n"));
             }
 

@@ -247,7 +247,7 @@ public record AdminApi(
                 "teacherEmail", teacherEmail,
                 "semester", semester == null ? "" : semester,
                 "academicYear", academicYear == null ? "" : academicYear,
-                "maxCapacity", maxCapacity == null ? 0 : maxCapacity
+                "maxCapacity", maxCapacity != null ? maxCapacity : Integer.valueOf(0)
         );
 
         postJson(paths.classesPath(), requestBody);

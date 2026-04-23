@@ -273,7 +273,7 @@ public class AttendanceSQL {
                 ));
             }
 
-        } catch (SQLException | NullPointerException e) {
+        } catch (SQLException e) {
             LOGGER.log(Level.SEVERE, "Failed to filter attendance by student", e);
         }
 

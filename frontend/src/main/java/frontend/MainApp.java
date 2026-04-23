@@ -4,6 +4,7 @@ import frontend.admin.AdminAttendanceReportsPage;
 import frontend.admin.AdminDashboardApp;
 import frontend.admin.AdminManageClassesPage;
 import frontend.admin.AdminManageUsersPage;
+import frontend.api.ApiException;
 import frontend.auth.AppRouter;
 import frontend.auth.AuthService;
 import frontend.auth.AuthState;
@@ -31,6 +32,8 @@ import java.util.function.Supplier;
 
 public class MainApp extends Application {
 
+    private static final String LOGIN_PAGE = "login";
+
     @Override
     public void start(Stage stage) {
         HelperClass helper = new HelperClass();
@@ -50,7 +53,7 @@ public class MainApp extends Application {
 
         AppRouter router = new AppRouter(scene);
 
-        router.register("login", () -> new LoginPage(router, auth, store));
+        router.register(LOGIN_PAGE, () -> new LoginPage(router, auth, store));
         router.register("signup", () -> new SignupPage(router, auth, store));
 
         router.register("admin-dashboard", guard(router, store, Set.of(Role.ADMIN),
@@ -80,17 +83,16 @@ public class MainApp extends Application {
         router.register("teacher-email", guard(router, store, Set.of(Role.TEACHER),
                 () -> new TeacherEmailPage().build(scene, router, store, store.load().orElseThrow())));
 
-        Role previewRole = Role.STUDENT;
-        //Role previewRole = Role.TEACHER;
-        //Role previewRole = Role.ADMIN;
+        AuthState state = store.load().orElse(null);
 
-        store.clear();
-        store.save(new AuthState("demo-token", previewRole, "Demo User"));
-
-        switch (previewRole) {
-            case STUDENT -> router.go("student-dashboard");
-            case TEACHER -> router.go("teacher-dashboard");
-            case ADMIN -> router.go("admin-dashboard");
+        if (state == null) {
+            router.go(LOGIN_PAGE);
+        } else {
+            switch (state.getRole()) {
+                case STUDENT -> router.go("student-dashboard");
+                case TEACHER -> router.go("teacher-dashboard");
+                case ADMIN -> router.go("admin-dashboard");
+            }
         }
 
         stage.setTitle(helper.getMessage("common.app.title"));
@@ -110,7 +112,7 @@ public class MainApp extends Application {
             AuthState state = store.load().orElse(null);
 
             if (state == null) {
-                router.go("login");
+                router.go(LOGIN_PAGE);
                 return new StackPane();
             }
 
@@ -118,8 +120,26 @@ public class MainApp extends Application {
                 return new StackPane();
             }
 
-            return page.get();
+            try {
+                return page.get();
+            } catch (frontend.api.ApiException e) {
+                handleApiException(e, store, router);
+                return new StackPane();
+            }
         };
+    }
+
+    private void handleApiException(ApiException e, JwtStore store, AppRouter router) {
+        String msg = e.getMessage();
+
+        if (msg != null && msg.contains("Token has expired")) {
+
+            store.clear();
+
+            javafx.application.Platform.runLater(() -> {
+                router.go("login");
+            });
+        }
     }
 
     public static void main(String[] args) {

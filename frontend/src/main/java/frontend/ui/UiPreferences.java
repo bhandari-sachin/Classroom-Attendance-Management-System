@@ -1,6 +1,5 @@
 package frontend.ui;
 
-import javafx.application.Platform;
 import javafx.scene.Scene;
 
 import java.util.prefs.Preferences;
@@ -64,19 +63,16 @@ public final class UiPreferences {
      */
     public static void applyTheme(Scene scene) {
         if (scene == null || scene.getRoot() == null) return;
+        var root = scene.getRoot();
 
-        Platform.runLater(() -> {
-            var root = scene.getRoot();
+        // Remove old theme classes
+        root.getStyleClass().removeAll("theme-light", "theme-dark");
 
-            // Remove old theme classes
-            root.getStyleClass().removeAll("theme-light", "theme-dark");
-
-            // Apply new theme
-            if (getTheme() == Theme.DARK) {
-                root.getStyleClass().add("theme-dark");
-            } else {
-                root.getStyleClass().add("theme-light");
-            }
-        });
+        // Apply new theme
+        if (getTheme() == Theme.DARK) {
+            root.getStyleClass().add("theme-dark");
+        } else {
+            root.getStyleClass().add("theme-light");
+        }
     }
 }
