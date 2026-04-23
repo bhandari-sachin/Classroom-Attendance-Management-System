@@ -1,15 +1,20 @@
 package http;
 
+import com.auth0.jwt.interfaces.Claim;
+import com.auth0.jwt.interfaces.DecodedJWT;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.sun.net.httpserver.Headers;
 import com.sun.net.httpserver.HttpExchange;
-import com.sun.net.httpserver.Request;
 import config.ClassSQL;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.MockedStatic;
+import org.mockito.Mockito;
+import security.Auth;
 import security.JwtService;
 
-import java.io.*;
-import java.net.InetSocketAddress;
+import java.io.ByteArrayOutputStream;
 import java.net.URI;
-import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 
@@ -18,98 +23,177 @@ import static org.mockito.Mockito.*;
 
 class StudentAttendanceFiltersHandlerTest {
 
-    @Test
-    void shouldReturn200_withClassesAndPeriods() throws Exception {
+    private JwtService jwtService;
+    private ClassSQL classSQL;
+    private StudentAttendanceFiltersHandler handler;
+    private HttpExchange exchange;
 
-        JwtService jwtService = mock(JwtService.class);
-        ClassSQL classSQL = mock(ClassSQL.class);
+    private ByteArrayOutputStream responseBody;
+    private final ObjectMapper om = new ObjectMapper();
 
-        StudentAttendanceFiltersHandler handler =
-                new StudentAttendanceFiltersHandler(jwtService, classSQL);
+    @BeforeEach
+    void setup() {
+        jwtService = mock(JwtService.class);
+        classSQL = mock(ClassSQL.class);
 
-        StudentAttendanceFiltersHandler spy = spy(handler);
+        handler = Mockito.spy(new StudentAttendanceFiltersHandler(jwtService, classSQL));
 
-        doReturn(null).when(spy).requireStudent(any(), any());
+        exchange = mock(HttpExchange.class);
+        responseBody = new ByteArrayOutputStream();
 
-        BaseHandler.RequestContext ctx = mock(BaseHandler.RequestContext.class);
-        when(ctx.getUserId()).thenReturn(1L);
-
-        when(classSQL.listClassesForStudent(1L))
-                .thenReturn(List.of(
-                        Map.of("id", 1, "name", "Math"),
-                        Map.of("id", 2, "name", "Science")
-                ));
-
-        FakeExchange ex = new FakeExchange("GET", "/student/filters", null);
-
-        spy.handleRequest(ex, ctx);
-
-        assertEquals(200, ex.statusCode);
-        assertTrue(ex.responseBodyString().contains("classes"));
-        assertTrue(ex.responseBodyString().contains("periods"));
-        assertTrue(ex.responseBodyString().contains("THIS_MONTH"));
+        when(exchange.getResponseBody()).thenReturn(responseBody);
+        when(exchange.getResponseHeaders()).thenReturn(new Headers());
     }
 
-    // -------------------------
-    // Fake HttpExchange
-    // -------------------------
-     static class FakeExchange extends HttpExchange {
+    // -----------------------------
+    // Helpers
+    // -----------------------------
 
-        int statusCode = -1;
-        private final String method;
-        private final URI uri;
-        private final InputStream requestBody;
-        private final ByteArrayOutputStream responseBody = new ByteArrayOutputStream();
+    private void request(String method, String path) throws Exception {
+        when(exchange.getRequestMethod()).thenReturn(method);
+        when(exchange.getRequestURI()).thenReturn(new URI(path));
+    }
 
-        FakeExchange(String method, String path, String body) {
-            this.method = method;
-            this.uri = URI.create("http://localhost" + path);
-            this.requestBody = body == null
-                    ? InputStream.nullInputStream()
-                    : new ByteArrayInputStream(body.getBytes(StandardCharsets.UTF_8));
+    private Map<?, ?> jsonResponse() throws Exception {
+        return om.readValue(responseBody.toByteArray(), Map.class);
+    }
+
+    // -----------------------------
+    // SUCCESS CASE
+    // -----------------------------
+
+    @Test
+    void success_returnsClassesAndPeriods() throws Exception {
+        request("GET", "/api/student/attendance/filters");
+
+        try (MockedStatic<Auth> auth = mockStatic(Auth.class)) {
+            DecodedJWT jwt = mockDecodedJwt(10L);
+
+            auth.when(() -> Auth.requireJwt(any(), any()))
+                    .thenReturn(jwt);
+
+            auth.when(() -> Auth.requireRole(any(), any()))
+                    .thenAnswer(inv -> null);
+            when(classSQL.listClassesForStudent(10L))
+                    .thenReturn(List.of(
+                            Map.of("id", 1, "name", "Math")
+                    ));
+
+            handler.handle(exchange);
+
+            verify(classSQL).listClassesForStudent(10L);
+            verify(exchange).sendResponseHeaders(eq(200), anyLong());
+
+            var json = jsonResponse();
+
+            assertTrue(json.containsKey("classes"));
+            assertTrue(json.containsKey("periods"));
+
+            List<?> periods = (List<?>) json.get("periods");
+            assertEquals(4, periods.size());
+        }
+    }
+
+    // -----------------------------
+    // EMPTY DATA
+    // -----------------------------
+
+    @Test
+    void emptyClasses_returnsEmptyList() throws Exception {
+        request("GET", "/api/student/attendance/filters");
+
+        try (MockedStatic<Auth> auth = mockStatic(Auth.class)) {
+            DecodedJWT jwt = mockDecodedJwt(5L);
+
+            auth.when(() -> Auth.requireJwt(any(), any()))
+                    .thenReturn(jwt);
+
+            auth.when(() -> Auth.requireRole(any(), any()))
+                    .thenAnswer(inv -> null);
+
+            when(classSQL.listClassesForStudent(5L))
+                    .thenReturn(List.of());
+
+            handler.handle(exchange);
+
+            var json = jsonResponse();
+            var classes = (List<?>) json.get("classes");
+
+            assertTrue(classes.isEmpty());
+        }
+    }
+
+    // -----------------------------
+    // METHOD NOT ALLOWED
+    // -----------------------------
+
+    @Test
+    void wrongMethod_returns405() throws Exception {
+        request("POST", "/api/student/attendance/filters");
+
+        handler.handle(exchange);
+
+        verify(exchange).sendResponseHeaders(eq(405), anyLong());
+        assertTrue(responseBody.toString().contains("Method Not Allowed"));
+    }
+
+    // -----------------------------
+    // AUTH FAILURE
+    // -----------------------------
+
+    @Test
+    void authFails_returns403() throws Exception {
+        request("GET", "/api/student/attendance/filters");
+
+        try (MockedStatic<Auth> auth = mockStatic(Auth.class)) {
+
+            auth.when(() -> Auth.requireJwt(any(), any()))
+                    .thenThrow(new SecurityException("Forbidden"));
+
+            handler.handle(exchange);
         }
 
-        String responseBodyString() {
-            return responseBody.toString(StandardCharsets.UTF_8);
+        verify(exchange).sendResponseHeaders(eq(403), anyLong());
+        assertTrue(responseBody.toString().contains("Forbidden"));
+    }
+
+    // -----------------------------
+    // SERVICE FAILURE
+    // -----------------------------
+
+    @Test
+    void serviceThrows_returns500() throws Exception {
+        request("GET", "/api/student/attendance/filters");
+
+        try (MockedStatic<Auth> auth = mockStatic(Auth.class)) {
+            DecodedJWT jwt = mockDecodedJwt(1L);
+
+            auth.when(() -> Auth.requireJwt(any(), any()))
+                    .thenReturn(jwt);
+
+            auth.when(() -> Auth.requireRole(any(), any()))
+                    .thenAnswer(inv -> null);
+
+            when(classSQL.listClassesForStudent(anyLong()))
+                    .thenThrow(new RuntimeException("DB failure"));
+
+            handler.handle(exchange);
+
+            verify(exchange).sendResponseHeaders(eq(500), anyLong());
         }
+    }
 
-        @Override public String getRequestMethod() { return method; }
-        @Override public URI getRequestURI() { return uri; }
-        @Override public InputStream getRequestBody() { return requestBody; }
-        @Override public OutputStream getResponseBody() { return responseBody; }
+    // -----------------------------
+    // Helper JWT
+    // -----------------------------
 
-        @Override
-        public void sendResponseHeaders(int rCode, long responseLength) {
-            this.statusCode = rCode;
-        }
+    private DecodedJWT mockDecodedJwt(Long id) {
+        DecodedJWT jwt = mock(DecodedJWT.class);
+        Claim claim = mock(Claim.class);
 
-        @Override public void close() {     // No-op: not needed for unit testing
-        }
+        when(jwt.getClaim("id")).thenReturn(claim);
+        when(claim.asLong()).thenReturn(id);
 
-        @Override public InetSocketAddress getRemoteAddress() { return new InetSocketAddress(0); }
-
-        @Override
-        public int getResponseCode() {
-            return 0;
-        }
-
-        @Override public InetSocketAddress getLocalAddress() { return new InetSocketAddress(0); }
-        @Override public String getProtocol() { return "HTTP/1.1"; }
-
-        @Override public Object getAttribute(String name) { return null; }
-        @Override public void setAttribute(String name, Object value) {    // No-op: attributes not needed for testing
-        }
-        @Override public void setStreams(InputStream i, OutputStream o) {     // Not used in this fake exchange
-        }
-        @Override public com.sun.net.httpserver.HttpContext getHttpContext() { return null; }
-        @Override public com.sun.net.httpserver.Headers getRequestHeaders() { return new com.sun.net.httpserver.Headers(); }
-
-        @Override
-        public Request with(String headerName, List<String> headerValues) {
-            return super.with(headerName, headerValues);
-        }
-
-        @Override public com.sun.net.httpserver.Headers getResponseHeaders() { return new com.sun.net.httpserver.Headers(); }
-        @Override public com.sun.net.httpserver.HttpPrincipal getPrincipal() { return null; }
+        return jwt;
     }
 }

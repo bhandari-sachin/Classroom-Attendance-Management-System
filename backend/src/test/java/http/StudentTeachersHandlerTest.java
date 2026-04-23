@@ -4,36 +4,36 @@ import com.auth0.jwt.interfaces.Claim;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import com.sun.net.httpserver.Headers;
 import com.sun.net.httpserver.HttpExchange;
-import dto.AttendanceView;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
+import repository.UserRepository;
 import security.Auth;
 import security.JwtService;
-import service.AttendanceService;
 
 import java.io.ByteArrayOutputStream;
 import java.net.URI;
 import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.*;
 
-class StudentAttendanceRecordsHandlerTest {
+class StudentTeachersHandlerTest {
 
     private JwtService jwtService;
-    private AttendanceService attendanceService;
-    private StudentAttendanceRecordsHandler handler;
+    private UserRepository userRepository;
+    private StudentTeachersHandler handler;
 
     private HttpExchange exchange;
     private ByteArrayOutputStream responseBody;
 
     @BeforeEach
-    void setup() throws Exception {
+    void setup() {
         jwtService = mock(JwtService.class);
-        attendanceService = mock(AttendanceService.class);
+        userRepository = mock(UserRepository.class);
 
-        handler = new StudentAttendanceRecordsHandler(jwtService, attendanceService);
+        handler = new StudentTeachersHandler(jwtService, userRepository);
 
         exchange = mock(HttpExchange.class);
         responseBody = new ByteArrayOutputStream();
@@ -62,12 +62,12 @@ class StudentAttendanceRecordsHandlerTest {
     // ---------------------------------------
 
     @Test
-    void success_returnsAttendanceRecords() throws Exception {
-        request("GET", "/api/attendance?classId=1&period=THIS_MONTH");
+    void success_returnsTeachersList() throws Exception {
+        request("GET", "/api/teachers");
 
         try (MockedStatic<Auth> auth = mockStatic(Auth.class)) {
 
-            DecodedJWT jwt = mockJwt(10L);
+            DecodedJWT jwt = mockJwt(1L);
 
             auth.when(() -> Auth.requireJwt(any(), any()))
                     .thenReturn(jwt);
@@ -75,53 +75,17 @@ class StudentAttendanceRecordsHandlerTest {
             auth.when(() -> Auth.requireRole(any(), any()))
                     .thenAnswer(inv -> null);
 
-            when(attendanceService.getStudentAttendanceViews(
-                    anyLong(), anyLong(), anyString(), anyString()
-            )).thenReturn(List.of(mock(AttendanceView.class)));
-
+            when(userRepository.findAllTeachers())
+                    .thenReturn(List.of(
+                            Map.of(
+                                    "id", "1",
+                                    "name", "John"
+                            )
+                    ));
             handler.handle(exchange);
 
-            verify(attendanceService).getStudentAttendanceViews(
-                    eq(10L),
-                    eq(1L),
-                    eq("THIS_MONTH"),
-                    eq("en")
-            );
-
+            verify(userRepository).findAllTeachers();
             verify(exchange).sendResponseHeaders(eq(200), anyLong());
-        }
-    }
-
-    // ---------------------------------------
-    // DEFAULT LANG FALLBACK
-    // ---------------------------------------
-
-    @Test
-    void missingLang_defaultsToEn() throws Exception {
-        request("GET", "/api/attendance?classId=2&period=ALL");
-
-        try (MockedStatic<Auth> auth = mockStatic(Auth.class)) {
-
-            DecodedJWT jwt = mockJwt(5L);
-
-            auth.when(() -> Auth.requireJwt(any(), any()))
-                    .thenReturn(jwt);
-
-            auth.when(() -> Auth.requireRole(any(), any()))
-                    .thenAnswer(inv -> null);
-
-            when(attendanceService.getStudentAttendanceViews(
-                    anyLong(), anyLong(), anyString(), anyString()
-            )).thenReturn(List.of());
-
-            handler.handle(exchange);
-
-            verify(attendanceService).getStudentAttendanceViews(
-                    eq(5L),
-                    eq(2L),
-                    eq("ALL"),
-                    eq("en") // default
-            );
         }
     }
 
@@ -131,7 +95,7 @@ class StudentAttendanceRecordsHandlerTest {
 
     @Test
     void authFails_returns403() throws Exception {
-        request("GET", "/api/attendance");
+        request("GET", "/api/teachers");
 
         try (MockedStatic<Auth> auth = mockStatic(Auth.class)) {
 
@@ -142,6 +106,28 @@ class StudentAttendanceRecordsHandlerTest {
 
             verify(exchange).sendResponseHeaders(eq(403), anyLong());
             assertTrue(responseBody.toString().contains("Invalid token"));
+        }
+    }
+
+    // ---------------------------------------
+    // METHOD NOT ALLOWED (from BaseHandler)
+    // ---------------------------------------
+
+    @Test
+    void wrongMethod_returns405() throws Exception {
+        request("POST", "/api/teachers");
+
+        try (MockedStatic<Auth> auth = mockStatic(Auth.class)) {
+            DecodedJWT jwt = mockJwt(5L);
+
+            auth.when(() -> Auth.requireJwt(any(), any()))
+                    .thenReturn(jwt);
+
+
+            handler.handle(exchange);
+
+            verify(exchange).sendResponseHeaders(eq(405), anyLong());
+            assertTrue(responseBody.toString().contains("Method Not Allowed"));
         }
     }
 }

@@ -1,118 +1,97 @@
 package http;
 
-import com.sun.net.httpserver.*;
+import com.sun.net.httpserver.Headers;
+import com.sun.net.httpserver.HttpExchange;
 import dto.AttendanceStats;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 import security.JwtService;
 import service.AttendanceService;
 
-import java.io.*;
-import java.net.InetSocketAddress;
+import java.io.ByteArrayOutputStream;
 import java.net.URI;
-import java.nio.charset.StandardCharsets;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 class AdminStatsHandlerTest {
 
-    @Test
-    void shouldReturn200AndStats_whenAdminAccessIsValid() throws Exception {
-        // Arrange
-        JwtService jwtService = mock(JwtService.class);
-        AttendanceService attendanceService = mock(AttendanceService.class);
+    private JwtService jwtService;
+    private AttendanceService attendanceService;
+    private AdminStatsHandler handler;
+    private HttpExchange exchange;
+    private ByteArrayOutputStream responseBody;
 
-        AdminStatsHandler handler = new AdminStatsHandler(jwtService, attendanceService);
-        AdminStatsHandler spyHandler = spy(handler);
+    @BeforeEach
+    void setup() {
+        jwtService = mock(JwtService.class);
+        attendanceService = mock(AttendanceService.class);
 
-        // ✅ FIX: requireAdmin is NOT void → use doReturn()
-        doReturn(null).when(spyHandler).requireAdmin(any(), any());
+        handler = Mockito.spy(new AdminStatsHandler(jwtService, attendanceService));
 
-        AttendanceStats stats = mock(AttendanceStats.class);
-        when(attendanceService.getOverallStats()).thenReturn(stats);
+        exchange = mock(HttpExchange.class);
+        responseBody = new ByteArrayOutputStream();
 
-        FakeExchange ex = new FakeExchange();
-        BaseHandler.RequestContext ctx = mock(BaseHandler.RequestContext.class);
-
-        // Act
-        spyHandler.handleRequest(ex, ctx);
-
-        // Assert
-        assertEquals(200, ex.statusCode);
-        assertFalse(ex.responseBodyString().isBlank());
-
-        verify(attendanceService, times(1)).getOverallStats();
+        when(exchange.getResponseBody()).thenReturn(responseBody);
+        when(exchange.getResponseHeaders()).thenReturn(new Headers());
     }
 
-    // ---------------------------------------------------------------------
-    // Sonar-compliant Fake HttpExchange
-    // ---------------------------------------------------------------------
-    static class FakeExchange extends HttpExchange {
-        private final Headers reqHeaders = new Headers();
-        private final Headers respHeaders = new Headers();
-        private final ByteArrayOutputStream responseBody = new ByteArrayOutputStream();
-        int statusCode = -1;
+    // -----------------------------------
+    // Helpers
+    // -----------------------------------
 
-        String responseBodyString() {
-            return responseBody.toString(StandardCharsets.UTF_8);
-        }
+    private void request(String method, String path) throws Exception {
+        when(exchange.getRequestMethod()).thenReturn(method);
+        when(exchange.getRequestURI()).thenReturn(new URI(path));
+    }
 
-        @Override public Headers getRequestHeaders() { return reqHeaders; }
-        @Override public Headers getResponseHeaders() { return respHeaders; }
-        @Override public URI getRequestURI() { return URI.create("http://localhost/admin/stats"); }
-        @Override public String getRequestMethod() { return "GET"; }
+    private String rawResponse() {
+        return responseBody.toString();
+    }
 
-        @Override
-        public HttpContext getHttpContext() {
-            // Not required for unit testing
-            return null;
-        }
+    // -----------------------------------
+    // SUCCESS
+    // -----------------------------------
 
-        @Override
-        public void close() {
-            // No-op: not needed for tests
-        }
+    @Test
+    void getStats_success_returns200AndStats() throws Exception {
+        AttendanceStats stats = mock(AttendanceStats.class);
 
-        @Override
-        public InputStream getRequestBody() {
-            return InputStream.nullInputStream();
-        }
+        doReturn(null).when(handler).requireAdmin(any(), any());
+        when(attendanceService.getOverallStats()).thenReturn(stats);
 
-        @Override
-        public OutputStream getResponseBody() {
-            return responseBody;
-        }
+        request("GET", "/api/admin/stats");
+        handler.handle(exchange);
+        verify(attendanceService).getOverallStats();
+        verify(exchange).sendResponseHeaders(eq(200), anyLong());
+    }
 
-        @Override
-        public void sendResponseHeaders(int rCode, long responseLength) {
-            this.statusCode = rCode;
-        }
+    // -----------------------------------
+    // METHOD VALIDATION
+    // -----------------------------------
 
-        @Override public InetSocketAddress getRemoteAddress() { return new InetSocketAddress(0); }
-        @Override public int getResponseCode() { return statusCode; }
-        @Override public InetSocketAddress getLocalAddress() { return new InetSocketAddress(0); }
-        @Override public String getProtocol() { return "HTTP/1.1"; }
+    @Test
+    void wrongMethod_returns405() throws Exception {
+        request("POST", "/api/admin/stats");
 
-        @Override
-        public Object getAttribute(String name) {
-            // Attributes not used in this test
-            return null;
-        }
+        handler.handle(exchange);
+        verify(exchange).sendResponseHeaders(eq(405), anyLong());
+        assertTrue(rawResponse().contains("Method Not Allowed"));
+    }
 
-        @Override
-        public void setAttribute(String name, Object value) {
-            // No-op: not needed
-        }
+    // -----------------------------------
+    // NULL RESPONSE EDGE CASE
+    // -----------------------------------
 
-        @Override
-        public void setStreams(InputStream i, OutputStream o) {
-            // Not used in this fake implementation
-        }
+    @Test
+    void serviceReturnsNull_stillReturns200() throws Exception {
+        doReturn(null).when(handler).requireAdmin(any(), any());
 
-        @Override
-        public HttpPrincipal getPrincipal() {
-            // Authentication handled via JwtService, not HttpExchange
-            return null;
-        }
+        when(attendanceService.getOverallStats()).thenReturn(null);
+
+        request("GET", "/api/admin/stats");
+        handler.handle(exchange);
+        verify(exchange).sendResponseHeaders(eq(200), anyLong());
     }
 }

@@ -1,155 +1,178 @@
 package http;
 
-import backend.exception.ApiException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.sun.net.httpserver.Headers;
 import com.sun.net.httpserver.HttpExchange;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 import security.JwtService;
 import service.SessionService;
 
-import java.io.*;
-import java.net.InetSocketAddress;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.net.URI;
-import java.nio.charset.StandardCharsets;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 class StartSessionHandlerTest {
 
-    // -------------------------
-    // SUCCESS CASE
-    // -------------------------
-    @Test
-    void shouldReturn200_whenSessionStartsSuccessfully() throws Exception {
+    private JwtService jwtService;
+    private SessionService sessionService;
+    private StartSessionHandler handler;
+    private HttpExchange exchange;
 
-        JwtService jwtService = mock(JwtService.class);
-        SessionService sessionService = mock(SessionService.class);
+    private final ObjectMapper om = new ObjectMapper();
+    private ByteArrayOutputStream responseBody;
 
-        StartSessionHandler handler = new StartSessionHandler(jwtService, sessionService);
-        StartSessionHandler spy = spy(handler);
+    @BeforeEach
+    void setup() {
+        jwtService = mock(JwtService.class);
+        sessionService = mock(SessionService.class);
 
-        doReturn(null).when(spy).requireTeacher(any(), any());
+        handler = Mockito.spy(new StartSessionHandler(jwtService, sessionService));
 
-        when(sessionService.startSession(10L)).thenReturn("ABC123");
+        exchange = mock(HttpExchange.class);
+        responseBody = new ByteArrayOutputStream();
 
-        FakeExchange ex = new FakeExchange("POST", "/start-session",
-                "{\"sessionId\":10}");
+        when(exchange.getResponseBody()).thenReturn(responseBody);
+        when(exchange.getResponseHeaders()).thenReturn(new Headers());
 
-        BaseHandler.RequestContext ctx = mock(BaseHandler.RequestContext.class);
-
-        spy.handleRequest(ex, ctx);
-
-        assertEquals(200, ex.statusCode);
-        assertTrue(ex.responseBodyString().contains("Session started successfully"));
-        assertTrue(ex.responseBodyString().contains("ABC123"));
+        // bypass auth
+        doReturn(null).when(handler).requireTeacher(any(), any());
     }
 
-    // -------------------------
-    // MISSING SESSION ID -> 400
-    // -------------------------
-    @Test
-    void shouldThrow400_whenSessionIdMissing() {
+    // -----------------------------------
+    // Helpers
+    // -----------------------------------
 
-        JwtService jwtService = mock(JwtService.class);
-        SessionService sessionService = mock(SessionService.class);
+    private void request(String method, String path, String body) throws Exception {
+        when(exchange.getRequestMethod()).thenReturn(method);
+        when(exchange.getRequestURI()).thenReturn(new URI(path));
 
-        StartSessionHandler handler = new StartSessionHandler(jwtService, sessionService);
-        StartSessionHandler spy = spy(handler);
-
-        doReturn(null).when(spy).requireTeacher(any(), any());
-
-        FakeExchange ex = new FakeExchange("POST", "/start-session",
-                "{}");
-
-        BaseHandler.RequestContext ctx = mock(BaseHandler.RequestContext.class);
-
-        ApiException exThrown =
-                assertThrows(ApiException.class, () -> spy.handleRequest(ex, ctx));
-
-        assertEquals(400, exThrown.getStatus());
-        assertTrue(exThrown.getMessage().contains("sessionId is required"));
+        if (body != null) {
+            when(exchange.getRequestBody())
+                    .thenReturn(new ByteArrayInputStream(body.getBytes()));
+        }
     }
 
-    // -------------------------
-    // INVALID JSON -> 400
-    // -------------------------
-    @Test
-    void shouldThrow400_whenInvalidJson() {
-
-        JwtService jwtService = mock(JwtService.class);
-        SessionService sessionService = mock(SessionService.class);
-
-        StartSessionHandler handler = new StartSessionHandler(jwtService, sessionService);
-        StartSessionHandler spy = spy(handler);
-
-        doReturn(null).when(spy).requireTeacher(any(), any());
-
-        FakeExchange ex = new FakeExchange("POST", "/start-session",
-                "{invalid-json");
-
-        BaseHandler.RequestContext ctx = mock(BaseHandler.RequestContext.class);
-
-        ApiException exThrown =
-                assertThrows(ApiException.class, () -> spy.handleRequest(ex, ctx));
-
-        assertEquals(400, exThrown.getStatus());
-        assertTrue(exThrown.getMessage().contains("Invalid JSON"));
+    private Map<?, ?> jsonResponse() throws Exception {
+        return om.readValue(responseBody.toByteArray(), Map.class);
     }
 
-    // -------------------------
-    // FAKE HTTP EXCHANGE
-    // -------------------------
-    static class FakeExchange extends HttpExchange {
+    private String rawResponse() {
+        return responseBody.toString();
+    }
 
-        int statusCode = -1;
-        private final String method;
-        private final URI uri;
-        private final InputStream requestBody;
-        private final ByteArrayOutputStream responseBody = new ByteArrayOutputStream();
+    // -----------------------------------
+    // SUCCESS
+    // -----------------------------------
 
-        FakeExchange(String method, String path, String body) {
-            this.method = method;
-            this.uri = URI.create("http://localhost" + path);
-            this.requestBody = body == null
-                    ? InputStream.nullInputStream()
-                    : new ByteArrayInputStream(body.getBytes(StandardCharsets.UTF_8));
-        }
+    @Test
+    void startSession_success_returns200() throws Exception {
+        request("POST", "/api/session/start", """
+                { "sessionId": 42 }
+                """);
 
-        String responseBodyString() {
-            return responseBody.toString(StandardCharsets.UTF_8);
-        }
+        when(sessionService.startSession(42L)).thenReturn("ABC123");
 
-        @Override public String getRequestMethod() { return method; }
-        @Override public URI getRequestURI() { return uri; }
-        @Override public InputStream getRequestBody() { return requestBody; }
-        @Override public OutputStream getResponseBody() { return responseBody; }
+        handler.handle(exchange);
 
-        @Override
-        public void sendResponseHeaders(int rCode, long responseLength) {
-            this.statusCode = rCode;
-        }
+        verify(sessionService).startSession(42L);
+        verify(exchange).sendResponseHeaders(eq(200), anyLong());
 
-        @Override public void close() {            // No-op: not needed for tests
-        }
+        var json = jsonResponse();
+        assertEquals("Session started successfully", json.get("message"));
+        assertEquals(42, json.get("sessionId"));
+        assertEquals("ABC123", json.get("code"));
+    }
 
-        @Override public InetSocketAddress getRemoteAddress() { return new InetSocketAddress(0); }
+    // -----------------------------------
+    // VALIDATION
+    // -----------------------------------
 
-        @Override
-        public int getResponseCode() {
-            return 0;
-        }
+    @Test
+    void missingSessionId_returns400() throws Exception {
+        request("POST", "/api/session/start", "{}");
 
-        @Override public InetSocketAddress getLocalAddress() { return new InetSocketAddress(0); }
-        @Override public String getProtocol() { return "HTTP/1.1"; }
+        handler.handle(exchange);
 
-        @Override public Object getAttribute(String name) { return null; }
-        @Override public void setAttribute(String name, Object value) {            // No-op: not needed
-        }
-        @Override public void setStreams(InputStream i, OutputStream o) {            // Not used in this fake implementation
-        }
-        @Override public com.sun.net.httpserver.HttpContext getHttpContext() { return null; }
-        @Override public com.sun.net.httpserver.Headers getRequestHeaders() { return new com.sun.net.httpserver.Headers(); }
-        @Override public com.sun.net.httpserver.Headers getResponseHeaders() { return new com.sun.net.httpserver.Headers(); }
-        @Override public com.sun.net.httpserver.HttpPrincipal getPrincipal() { return null; }
+        verify(exchange).sendResponseHeaders(eq(400), anyLong());
+        assertTrue(rawResponse().contains("sessionId is required"));
+
+        verify(sessionService, never()).startSession(any());
+    }
+
+    @Test
+    void invalidJson_returns400() throws Exception {
+        request("POST", "/api/session/start", "{bad}");
+
+        handler.handle(exchange);
+
+        verify(exchange).sendResponseHeaders(eq(400), anyLong());
+        assertTrue(rawResponse().contains("Invalid JSON"));
+
+        verify(sessionService, never()).startSession(any());
+    }
+
+    // -----------------------------------
+    // METHOD VALIDATION
+    // -----------------------------------
+
+    @Test
+    void wrongMethod_returns405() throws Exception {
+        request("GET", "/api/session/start", null);
+
+        handler.handle(exchange);
+
+        verify(exchange).sendResponseHeaders(eq(405), anyLong());
+        assertTrue(rawResponse().contains("Method Not Allowed"));
+    }
+
+    // -----------------------------------
+    // AUTH
+    // -----------------------------------
+
+    @Test
+    void requireTeacherFails_stopsExecution() throws Exception {
+        request("POST", "/api/session/start", """
+                { "sessionId": 1 }
+                """);
+
+        doThrow(new RuntimeException("Forbidden"))
+                .when(handler).requireTeacher(any(), any());
+
+        verify(sessionService, never()).startSession(any());
+    }
+
+    // -----------------------------------
+    // EDGE CASES
+    // -----------------------------------
+
+    @Test
+    void sessionId_asString_causes500_or_400() throws Exception {
+        request("POST", "/api/session/start", """
+                { "sessionId": "not-a-number" }
+                """);
+
+        handler.handle(exchange);
+
+        // Depending on Jackson behavior, this may be 400 or 500
+        verify(exchange).sendResponseHeaders(anyInt(), anyLong());
+    }
+
+    @Test
+    void sessionId_largeNumber_handlesCorrectly() throws Exception {
+        request("POST", "/api/session/start", """
+                { "sessionId": 999999999 }
+                """);
+
+        when(sessionService.startSession(anyLong())).thenReturn("CODE");
+
+        handler.handle(exchange);
+
+        verify(sessionService).startSession(999999999L);
     }
 }

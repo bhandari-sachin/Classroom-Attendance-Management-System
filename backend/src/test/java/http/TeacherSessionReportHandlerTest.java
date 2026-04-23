@@ -6,6 +6,8 @@ import com.sun.net.httpserver.Headers;
 import com.sun.net.httpserver.HttpExchange;
 import config.AttendanceSQL;
 import config.ClassSQL;
+import config.SessionSQL;
+import model.Session;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
@@ -14,19 +16,20 @@ import security.JwtService;
 
 import java.io.ByteArrayOutputStream;
 import java.net.URI;
-import java.util.List;
+import java.time.LocalDate;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.*;
 
-class TeacherReportsHandlerTest {
+class TeacherSessionReportHandlerTest {
 
     private JwtService jwtService;
-    private AttendanceSQL attendanceSQL;
     private ClassSQL classSQL;
+    private SessionSQL sessionSQL;
+    private AttendanceSQL attendanceSQL;
 
-    private TeacherReportsHandler handler;
+    private TeacherSessionReportHandler handler;
     private HttpExchange exchange;
 
     private ByteArrayOutputStream responseBody;
@@ -34,10 +37,16 @@ class TeacherReportsHandlerTest {
     @BeforeEach
     void setUp() {
         jwtService = mock(JwtService.class);
-        attendanceSQL = mock(AttendanceSQL.class);
         classSQL = mock(ClassSQL.class);
+        sessionSQL = mock(SessionSQL.class);
+        attendanceSQL = mock(AttendanceSQL.class);
 
-        handler = new TeacherReportsHandler(jwtService, attendanceSQL, classSQL);
+        handler = new TeacherSessionReportHandler(
+                jwtService,
+                classSQL,
+                sessionSQL,
+                attendanceSQL
+        );
 
         exchange = mock(HttpExchange.class);
         responseBody = new ByteArrayOutputStream();
@@ -48,9 +57,9 @@ class TeacherReportsHandlerTest {
 
     // ---------------- helpers ----------------
 
-    private void request(String path) throws Exception {
+    private void request(String query) throws Exception {
         when(exchange.getRequestMethod()).thenReturn("GET");
-        when(exchange.getRequestURI()).thenReturn(new URI(path));
+        when(exchange.getRequestURI()).thenReturn(new URI("/api/session/report?" + query));
     }
 
     private DecodedJWT mockJwt(Long id, String role) {
@@ -68,11 +77,18 @@ class TeacherReportsHandlerTest {
         return jwt;
     }
 
+    private Session mockSession(Long classId) {
+        Session session = mock(Session.class);
+        when(session.getClassId()).thenReturn(classId);
+        when(session.getSessionDate()).thenReturn(LocalDate.of(2026, 1, 1));
+        return session;
+    }
+
     // ---------------- tests ----------------
 
     @Test
-    void missingClassId_returns400() throws Exception {
-        request("/api/reports/teacher");
+    void missingSessionId_returns400() throws Exception {
+        request("");
 
         try (MockedStatic<Auth> auth = mockStatic(Auth.class)) {
 
@@ -88,12 +104,12 @@ class TeacherReportsHandlerTest {
         }
 
         verify(exchange).sendResponseHeaders(eq(400), anyLong());
-        assertTrue(responseBody.toString().contains("classId query param is required"));
+        assertTrue(responseBody.toString().contains("sessionId is required"));
     }
 
     @Test
-    void notOwnerTeacher_returns403() throws Exception {
-        request("/api/reports/teacher?classId=10");
+    void sessionNotFound_returns404() throws Exception {
+        request("sessionId=10");
 
         try (MockedStatic<Auth> auth = mockStatic(Auth.class)) {
 
@@ -105,19 +121,72 @@ class TeacherReportsHandlerTest {
             auth.when(() -> Auth.requireRole(any(), any()))
                     .thenAnswer(inv -> null);
 
-            when(classSQL.isClassOwnedByTeacher(10L, 1L))
-                    .thenReturn(false);
+            when(sessionSQL.findById(10L)).thenReturn(null);
+
+            handler.handle(exchange);
+        }
+
+        verify(exchange).sendResponseHeaders(eq(404), anyLong());
+        assertTrue(responseBody.toString().contains("Session not found"));
+    }
+
+    @Test
+    void notOwnerTeacher_returns403() throws Exception {
+        request("sessionId=10");
+
+        try (MockedStatic<Auth> auth = mockStatic(Auth.class)) {
+
+            DecodedJWT jwt = mockJwt(1L, "TEACHER");
+
+            auth.when(() -> Auth.requireJwt(any(), any()))
+                    .thenReturn(jwt);
+
+            auth.when(() -> Auth.requireRole(any(), any()))
+                    .thenAnswer(inv -> null);
+
+            Session session = mockSession(99L);
+
+            when(sessionSQL.findById(10L)).thenReturn(session);
+            when(classSQL.isClassOwnedByTeacher(99L, 1L)).thenReturn(false);
 
             handler.handle(exchange);
         }
 
         verify(exchange).sendResponseHeaders(eq(403), anyLong());
-        assertTrue(responseBody.toString().contains("not your class"));
+        assertTrue(responseBody.toString().contains("Forbidden"));
+    }
+
+    @Test
+    void teacher_owner_returns200() throws Exception {
+        request("sessionId=10&languageCode=en");
+
+        try (MockedStatic<Auth> auth = mockStatic(Auth.class)) {
+
+            DecodedJWT jwt = mockJwt(1L, "TEACHER");
+
+            auth.when(() -> Auth.requireJwt(any(), any()))
+                    .thenReturn(jwt);
+
+            auth.when(() -> Auth.requireRole(any(), any()))
+                    .thenAnswer(inv -> null);
+
+            Session session = mockSession(99L);
+
+            when(sessionSQL.findById(10L)).thenReturn(session);
+            when(classSQL.isClassOwnedByTeacher(99L, 1L)).thenReturn(true);
+
+            when(attendanceSQL.getSessionReport(10L, "en"))
+                    .thenReturn(Map.of("student", "A"));
+            handler.handle(exchange);
+        }
+
+        verify(exchange).sendResponseHeaders(eq(200), anyLong());
+        assertTrue(responseBody.toString().contains("sessionId"));
     }
 
     @Test
     void admin_bypassesOwnership_returns200() throws Exception {
-        request("/api/reports/teacher?classId=10");
+        request("sessionId=10");
 
         try (MockedStatic<Auth> auth = mockStatic(Auth.class)) {
 
@@ -129,39 +198,11 @@ class TeacherReportsHandlerTest {
             auth.when(() -> Auth.requireRole(any(), any()))
                     .thenAnswer(inv -> null);
 
-            when(classSQL.isClassOwnedByTeacher(anyLong(), anyLong()))
-                    .thenReturn(false);
+            Session session = mockSession(77L);
 
-            when(attendanceSQL.reportByClass(10L))
-                    .thenReturn(List.of(Map.of("student", "A")));
-
-            handler.handle(exchange);
-        }
-
-        verify(exchange).sendResponseHeaders(eq(200), anyLong());
-        assertTrue(responseBody.toString().contains("classId"));
-    }
-
-    @Test
-    void teacher_owner_returns200() throws Exception {
-        request("/api/reports/teacher?classId=10");
-
-        try (MockedStatic<Auth> auth = mockStatic(Auth.class)) {
-
-            DecodedJWT jwt = mockJwt(1L, "TEACHER");
-
-            auth.when(() -> Auth.requireJwt(any(), any()))
-                    .thenReturn(jwt);
-
-            auth.when(() -> Auth.requireRole(any(), any()))
-                    .thenAnswer(inv -> null);
-
-            when(classSQL.isClassOwnedByTeacher(10L, 1L))
-                    .thenReturn(true);
-
-            when(attendanceSQL.reportByClass(10L))
-                    .thenReturn(List.of(Map.of("student", "A")));
-
+            when(sessionSQL.findById(10L)).thenReturn(session);
+            when(attendanceSQL.getSessionReport(10L, "en"))
+                    .thenReturn(Map.of("student", "A"));
             handler.handle(exchange);
         }
 

@@ -168,15 +168,12 @@ public class AdminClassesHandler extends BaseHandler implements HttpHandler {
         if (!path.startsWith(PATH_PREFIX) || !path.endsWith(suffix)) return null;
 
         String middle = path.substring(PATH_PREFIX.length(), path.length() - suffix.length());
-
         if (middle.startsWith("/")) {
             middle = middle.substring(1);
         }
-
         if (middle.endsWith("/")) {
             middle = middle.substring(0, middle.length() - 1);
         }
-
         return middle.trim();
     }
 
