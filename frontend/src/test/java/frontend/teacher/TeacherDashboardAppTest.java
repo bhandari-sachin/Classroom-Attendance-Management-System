@@ -1,12 +1,20 @@
 package frontend.teacher;
 
+import frontend.auth.AppRouter;
+import frontend.auth.AuthState;
+import frontend.auth.JwtStore;
 import javafx.application.Platform;
 import javafx.embed.swing.JFXPanel;
 import javafx.geometry.Pos;
+import javafx.scene.Parent;
+import javafx.scene.Scene;
 import javafx.scene.control.Label;
+import javafx.scene.layout.GridPane;
+import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 
 import java.lang.reflect.Method;
 import java.util.List;
@@ -141,12 +149,108 @@ class TeacherDashboardAppTest {
         assertTrue(errorLabel.getText().contains("Backend unavailable"));
     }
 
+    @Test
+    void buildShouldReturnParent() {
+        Scene scene = new Scene(new VBox());
+        AppRouter router = Mockito.mock(AppRouter.class);
+        JwtStore jwtStore = Mockito.mock(JwtStore.class);
+        AuthState state = Mockito.mock(AuthState.class);
 
-    private static void invokePrivateVoid(String methodName, Class<?>[] parameterTypes, Object... args)
-            throws Exception {
-        Method method = TeacherDashboardApp.class.getDeclaredMethod(methodName, parameterTypes);
-        method.setAccessible(true);
-        method.invoke(app, args);
+        Mockito.when(state.getName()).thenReturn("Teacher User");
+
+        Parent result = app.build(scene, router, jwtStore, state);
+
+        assertNotNull(result);
+    }
+
+    @Test
+    void statCardBuildsCardWithValueAndIcon() throws Exception {
+        VBox card = invokePrivate(
+                "statCard",
+                new Class<?>[]{String.class, int.class},
+                "Classes",
+                12
+        );
+
+        assertNotNull(card);
+        assertFalse(card.getChildren().isEmpty());
+    }
+
+    @Test
+    void buildStatsGridPlacesFourCards() throws Exception {
+        VBox c1 = new VBox();
+        VBox c2 = new VBox();
+        VBox c3 = new VBox();
+        VBox c4 = new VBox();
+
+        GridPane grid = invokePrivate(
+                "buildStatsGrid",
+                new Class<?>[]{VBox.class, VBox.class, VBox.class, VBox.class},
+                c1, c2, c3, c4
+        );
+
+        assertNotNull(grid);
+        assertEquals(4, grid.getChildren().size());
+    }
+
+    @Test
+    void buildClassesContainerReturnsVBox() throws Exception {
+        VBox box = invokePrivate("buildClassesContainer");
+
+        assertNotNull(box);
+    }
+
+    @Test
+    void buildGreetingLabelReturnsStyledLabel() throws Exception {
+        Label label = invokePrivate(
+                "buildGreetingLabel",
+                new Class<?>[]{String.class},
+                "Farah"
+        );
+
+        assertNotNull(label);
+        assertFalse(label.getText().isBlank());
+        assertTrue(label.getText().contains("Farah"));
+    }
+
+    @Test
+    void buildDateLabelReturnsNonBlankLabel() throws Exception {
+        Label label = invokePrivate("buildDateLabel");
+
+        assertNotNull(label);
+        assertFalse(label.getText().isBlank());
+    }
+
+    @Test
+    void buildClassesTitleReturnsStyledLabel() throws Exception {
+        Label label = invokePrivate("buildClassesTitle");
+
+        assertNotNull(label);
+        assertFalse(label.getText().isBlank());
+        assertTrue(
+                label.getStyleClass().contains("section-title")
+                        || label.getStyleClass().contains("subtitle")
+                        || label.getStyleClass().contains("title")
+        );
+    }
+
+    @Test
+    void setStatValueUpdatesNestedValueLabel() throws Exception {
+        VBox card = invokePrivate(
+                "statCard",
+                new Class<?>[]{String.class, int.class},
+                "Classes",
+                3
+        );
+
+        invokePrivateVoid(
+                "setStatValue",
+                new Class<?>[]{VBox.class, int.class},
+                card,
+                99
+        );
+
+        assertTrue(containsLabelText(card, "99"));
     }
 
     private static String message(String key) throws Exception {
@@ -156,5 +260,49 @@ class TeacherDashboardAppTest {
 
         Method getMessage = helper.getClass().getMethod("getMessage", String.class);
         return (String) getMessage.invoke(helper, key);
+    }
+
+    @SuppressWarnings("unchecked")
+    private static <T> T invokePrivate(String methodName) throws Exception {
+        Method method = TeacherDashboardApp.class.getDeclaredMethod(methodName);
+        method.setAccessible(true);
+        return (T) method.invoke(app);
+    }
+
+    @SuppressWarnings("unchecked")
+    private static <T> T invokePrivate(String methodName, Class<?>[] parameterTypes, Object... args)
+            throws Exception {
+        Method method = TeacherDashboardApp.class.getDeclaredMethod(methodName, parameterTypes);
+        method.setAccessible(true);
+        return (T) method.invoke(app, args);
+    }
+
+    private static void invokePrivateVoid(String methodName, Class<?>[] parameterTypes, Object... args)
+            throws Exception {
+        Method method = TeacherDashboardApp.class.getDeclaredMethod(methodName, parameterTypes);
+        method.setAccessible(true);
+        method.invoke(app, args);
+    }
+
+    private static boolean containsLabelText(VBox root, String expected) {
+        for (var node : root.getChildren()) {
+            if (node instanceof Label label && expected.equals(label.getText())) {
+                return true;
+            }
+            if (node instanceof VBox child && containsLabelText(child, expected)) {
+                return true;
+            }
+            if (node instanceof HBox row) {
+                for (var inner : row.getChildren()) {
+                    if (inner instanceof Label label && expected.equals(label.getText())) {
+                        return true;
+                    }
+                    if (inner instanceof VBox child && containsLabelText(child, expected)) {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
     }
 }

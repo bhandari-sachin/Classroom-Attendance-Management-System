@@ -14,7 +14,9 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
-
+import javafx.scene.control.Label;
+import javafx.scene.layout.HBox;
+import java.lang.reflect.Method;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -326,5 +328,143 @@ class AdminManageUsersPageTest {
     void nullToEmptyShouldReturnOriginalOrEmptyString() {
         assertEquals("hello", AdminManageUsersPage.nullToEmpty("hello"));
         assertEquals("", AdminManageUsersPage.nullToEmpty(null));
+    }
+
+    @Test
+    void buildTitleShouldReturnStyledLabel() throws Exception {
+        Label title = invokePrivate("buildTitle", Label.class);
+
+        assertNotNull(title);
+        assertNotNull(title.getText());
+        assertTrue(title.getStyleClass().contains("title"));
+    }
+
+    @Test
+    void buildSubtitleShouldReturnStyledLabel() throws Exception {
+        Label subtitle = invokePrivate("buildSubtitle", Label.class);
+
+        assertNotNull(subtitle);
+        assertNotNull(subtitle.getText());
+        assertTrue(subtitle.getStyleClass().contains("subtitle"));
+    }
+
+    @Test
+    void buildSummaryRowShouldHaveCorrectStyleAndSpacing() throws Exception {
+        HBox summary = invokePrivate("buildSummaryRow", HBox.class);
+
+        assertNotNull(summary);
+        assertEquals(12.0, summary.getSpacing());
+        assertTrue(summary.getStyleClass().contains("summary-row"));
+    }
+    @Test
+    void buildSearchFieldShouldHavePromptAndStyle() throws Exception {
+        TextField search = invokePrivate("buildSearchField", TextField.class);
+
+        assertNotNull(search);
+        assertNotNull(search.getPromptText());
+        assertTrue(search.getStyleClass().contains("search-field"));
+    }
+
+    @Test
+    void buildTypeFilterShouldContainAllOptions() throws Exception {
+        ComboBox<String> combo = invokePrivate("buildTypeFilter", ComboBox.class);
+
+        assertNotNull(combo);
+        assertEquals(4, combo.getItems().size());
+        assertNotNull(combo.getValue());
+        assertTrue(combo.getStyleClass().contains("filter-combo"));
+    }
+
+    @Test
+    void buildFiltersRowShouldContainSearchAndCombo() throws Exception {
+        TextField search = new TextField();
+        ComboBox<String> combo = new ComboBox<>();
+
+        HBox filters = invokePrivate(
+                "buildFiltersRow",
+                HBox.class,
+                new Class<?>[]{TextField.class, ComboBox.class},
+                search,
+                combo
+        );
+
+        assertEquals(2, filters.getChildren().size());
+        assertTrue(filters.getChildren().contains(search));
+        assertTrue(filters.getChildren().contains(combo));
+    }
+    @Test
+    void buildLoadErrorLabelShouldBeHiddenByDefault() throws Exception {
+        Label label = invokePrivate("buildLoadErrorLabel", Label.class);
+
+        assertNotNull(label);
+        assertFalse(label.isVisible());
+        assertFalse(label.isManaged());
+        assertTrue(label.getStyleClass().contains("subtitle"));
+    }
+    @Test
+    void showLabelShouldDisplayMessage() throws Exception {
+        Label label = new Label();
+
+        invokePrivateVoid("showLabel", new Class[]{Label.class, String.class}, label, "Error");
+
+        assertEquals("Error", label.getText());
+        assertTrue(label.isVisible());
+        assertTrue(label.isManaged());
+    }
+
+    @Test
+    void hideLabelShouldHideLabel() throws Exception {
+        Label label = new Label();
+        label.setVisible(true);
+        label.setManaged(true);
+
+        invokePrivateVoid("hideLabel", new Class[]{Label.class}, label);
+
+        assertFalse(label.isVisible());
+        assertFalse(label.isManaged());
+    }
+    @Test
+    void updateSummaryCardsShouldCreateThreeCards() throws Exception {
+        HBox summaryRow = new HBox();
+
+        AdminUsersResponseDto dto = new AdminUsersResponseDto();
+        dto.setStudents(10);
+        dto.setTeachers(5);
+        dto.setAdmins(2);
+
+        invokePrivateVoid(
+                "updateSummaryCards",
+                new Class[]{HBox.class, AdminUsersResponseDto.class},
+                summaryRow,
+                dto
+        );
+
+        assertEquals(3, summaryRow.getChildren().size());
+    }
+    private <T> T invokePrivate(String methodName, Class<T> returnType) throws Exception {
+        Method m = page.getClass().getDeclaredMethod(methodName);
+        m.setAccessible(true);
+        return returnType.cast(m.invoke(page));
+    }
+
+    private <T> T invokePrivate(
+            String methodName,
+            Class<T> returnType,
+            Class<?>[] paramTypes,
+            Object... args
+    ) throws Exception {
+        Method m = page.getClass().getDeclaredMethod(methodName, paramTypes);
+        m.setAccessible(true);
+        return returnType.cast(m.invoke(page, args));
+    }
+
+    private void invokePrivateVoid(
+            String methodName,
+            Class<?>[] paramTypes,
+            Object... args
+    ) throws Exception {
+        Method m = page.getClass().getDeclaredMethod(methodName, paramTypes);
+        m.setAccessible(true);
+        m.invoke(page, args);
     }
 }

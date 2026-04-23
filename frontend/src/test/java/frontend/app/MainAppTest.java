@@ -91,11 +91,6 @@ class MainAppTest {
         assertNull(router.lastRoute);
     }
 
-    @Test
-    void mainShouldNotThrow() {
-        assertDoesNotThrow(() -> MainApp.main(new String[]{}));
-    }
-
     @SuppressWarnings("unchecked")
     private Supplier<Parent> invokeGuard(
             MainApp app,

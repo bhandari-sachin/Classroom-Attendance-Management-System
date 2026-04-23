@@ -1,17 +1,45 @@
 package frontend.admin;
 
-import frontend.ui.ClassRow;
 import frontend.dto.AdminClassDto;
 import frontend.dto.AdminStudentDto;
+import frontend.ui.ClassRow;
+import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.transformation.FilteredList;
+import javafx.scene.control.Button;
+import javafx.scene.control.Label;
+import javafx.scene.control.ListCell;
+import javafx.scene.control.ListView;
+import javafx.scene.control.SelectionMode;
+import javafx.scene.control.TextField;
+import javafx.scene.layout.GridPane;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.VBox;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+
+import java.lang.reflect.Method;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 class AdminManageClassesPageTest {
 
     private final AdminManageClassesPage page = new AdminManageClassesPage();
+
+    @BeforeAll
+    static void initJavaFx() throws Exception {
+        CountDownLatch latch = new CountDownLatch(1);
+
+        try {
+            Platform.startup(latch::countDown);
+        } catch (IllegalStateException alreadyStarted) {
+            latch.countDown();
+        }
+
+        assertTrue(latch.await(5, TimeUnit.SECONDS), "JavaFX toolkit failed to start");
+    }
 
     @Test
     void shouldFilterAllRowsWhenSearchQueryIsBlank() {
@@ -103,7 +131,7 @@ class AdminManageClassesPageTest {
     void shouldFilterAllStudentsWhenSearchQueryIsBlank() {
         AdminStudentDto student1 = new AdminStudentDto();
         student1.setFirstName("Oscar");
-        student1.setLastName("Wikman");
+        student1.setLastName("al");
         student1.setEmail("oscar@example.com");
         student1.setStudentCode("ST001");
 
@@ -127,7 +155,7 @@ class AdminManageClassesPageTest {
     void shouldFilterStudentsByFullNameEmailOrStudentCode() {
         AdminStudentDto student1 = new AdminStudentDto();
         student1.setFirstName("Oscar");
-        student1.setLastName("Wikman");
+        student1.setLastName("al");
         student1.setEmail("oscar@example.com");
         student1.setStudentCode("ST001");
 
@@ -142,7 +170,7 @@ class AdminManageClassesPageTest {
                 student -> true
         );
 
-        page.applyStudentFilter(filteredStudents, "oscar wikman");
+        page.applyStudentFilter(filteredStudents, "oscar al");
         assertEquals(1, filteredStudents.size());
         assertTrue(filteredStudents.contains(student1));
 
@@ -159,7 +187,7 @@ class AdminManageClassesPageTest {
     void shouldReturnNoStudentsWhenNoStudentMatchesSearch() {
         AdminStudentDto student = new AdminStudentDto();
         student.setFirstName("Oscar");
-        student.setLastName("Wikman");
+        student.setLastName("al");
         student.setEmail("oscar@example.com");
         student.setStudentCode("ST001");
 
@@ -177,7 +205,7 @@ class AdminManageClassesPageTest {
     void shouldIgnoreNullStudentsInStudentFilter() {
         AdminStudentDto student = new AdminStudentDto();
         student.setFirstName("Oscar");
-        student.setLastName("Wikman");
+        student.setLastName("al");
         student.setEmail("oscar@example.com");
         student.setStudentCode("ST001");
 
@@ -266,5 +294,220 @@ class AdminManageClassesPageTest {
         assertEquals("2025/2026", AdminManageClassesPage.joinNonEmpty("", "2025/2026"));
         assertEquals("", AdminManageClassesPage.joinNonEmpty("", ""));
         assertEquals("", AdminManageClassesPage.joinNonEmpty(null, null));
+    }
+
+    @Test
+    void shouldBuildTitleRowWithExpectedStructure() throws Exception {
+        HBox titleRow = invokePrivate(page, "buildTitleRow", HBox.class);
+
+        assertNotNull(titleRow);
+        assertEquals(4, titleRow.getChildren().size());
+
+        assertInstanceOf(VBox.class, titleRow.getChildren().getFirst());
+        VBox titleColumn = (VBox) titleRow.getChildren().getFirst();
+        assertEquals(2, titleColumn.getChildren().size());
+
+        assertInstanceOf(Label.class, titleColumn.getChildren().get(0));
+        assertInstanceOf(Label.class, titleColumn.getChildren().get(1));
+
+        Button enrollButton = invokePrivate(page, "getEnrollButton", Button.class, HBox.class, titleRow);
+        Button addButton = invokePrivate(page, "getAddButton", Button.class, HBox.class, titleRow);
+
+        assertNotNull(enrollButton);
+        assertNotNull(addButton);
+        assertTrue(enrollButton.getStyleClass().contains("secondary-btn"));
+        assertTrue(addButton.getStyleClass().contains("primary-btn"));
+        assertTrue(addButton.getText().startsWith("+"));
+    }
+
+    @Test
+    void shouldBuildSearchFieldWithPromptAndStyleClass() throws Exception {
+        TextField searchField = invokePrivate(page, "buildSearchField", TextField.class);
+
+        assertNotNull(searchField);
+        assertNotNull(searchField.getPromptText());
+        assertFalse(searchField.getPromptText().isBlank());
+        assertTrue(searchField.getStyleClass().contains("search-field"));
+    }
+
+    @Test
+    void shouldBuildLoadErrorLabelHiddenByDefault() throws Exception {
+        Label loadError = invokePrivate(page, "buildLoadErrorLabel", Label.class);
+
+        assertNotNull(loadError);
+        assertFalse(loadError.isVisible());
+        assertFalse(loadError.isManaged());
+        assertTrue(loadError.getStyleClass().contains("subtitle"));
+    }
+
+    @Test
+    void shouldBuildSectionTitleWithStyleClass() throws Exception {
+        Label sectionTitle = invokePrivate(page, "buildSectionTitle", Label.class);
+
+        assertNotNull(sectionTitle);
+        assertNotNull(sectionTitle.getText());
+        assertFalse(sectionTitle.getText().isBlank());
+        assertTrue(sectionTitle.getStyleClass().contains("section-title"));
+    }
+
+    @Test
+    void shouldBuildAddClassFormWithExpectedSpacingAndPadding() throws Exception {
+        GridPane form = invokePrivate(page, "buildAddClassForm", GridPane.class);
+
+        assertNotNull(form);
+        assertEquals(10.0, form.getHgap());
+        assertEquals(10.0, form.getVgap());
+        assertEquals(10.0, form.getPadding().getTop());
+        assertEquals(10.0, form.getPadding().getRight());
+        assertEquals(10.0, form.getPadding().getBottom());
+        assertEquals(10.0, form.getPadding().getLeft());
+    }
+
+    @Test
+    void shouldBuildAddFormFieldWithPromptText() throws Exception {
+        TextField field = invokePrivate(page, "buildAddFormField", TextField.class, String.class, "e.g. Mathematics");
+
+        assertNotNull(field);
+        assertEquals("e.g. Mathematics", field.getPromptText());
+    }
+
+    @Test
+    void shouldDisableCreateButtonWhenRequiredFieldsAreBlank() throws Exception {
+        Button createButton = new Button();
+        TextField classCodeField = new TextField(" ");
+        TextField nameField = new TextField("Mathematics");
+        TextField teacherEmailField = new TextField("teacher@example.com");
+
+        invokePrivateVoid(
+                page,
+                "updateCreateButtonState",
+                new Class<?>[]{Button.class, TextField.class, TextField.class, TextField.class},
+                createButton, classCodeField, nameField, teacherEmailField
+        );
+
+        assertTrue(createButton.isDisable());
+    }
+
+    @Test
+    void shouldEnableCreateButtonWhenRequiredFieldsAreFilled() throws Exception {
+        Button createButton = new Button();
+        TextField classCodeField = new TextField("MTH101");
+        TextField nameField = new TextField("Mathematics");
+        TextField teacherEmailField = new TextField("teacher@example.com");
+
+        invokePrivateVoid(
+                page,
+                "updateCreateButtonState",
+                new Class<?>[]{Button.class, TextField.class, TextField.class, TextField.class},
+                createButton, classCodeField, nameField, teacherEmailField
+        );
+
+        assertFalse(createButton.isDisable());
+    }
+
+    @Test
+    void shouldBuildStudentListViewWithExpectedConfiguration() throws Exception {
+        ListView<AdminStudentDto> listView = invokePrivate(page, "buildStudentListView", ListView.class);
+
+        assertNotNull(listView);
+        assertEquals(SelectionMode.MULTIPLE, listView.getSelectionModel().getSelectionMode());
+        assertEquals(320.0, listView.getPrefHeight());
+        assertNotNull(listView.getCellFactory());
+    }
+
+    @Test
+    void shouldRenderStudentCellText() throws Exception {
+        ListView<AdminStudentDto> listView = invokePrivate(page, "buildStudentListView", ListView.class);
+        ListCell<AdminStudentDto> cell = listView.getCellFactory().call(listView);
+
+        AdminStudentDto student = new AdminStudentDto();
+        student.setFirstName("Oscar");
+        student.setLastName("al");
+        student.setEmail("oscar@example.com");
+        student.setStudentCode("ST001");
+
+        invokeUpdateItem(cell, student, false);
+
+        assertEquals("Oscar al  |  oscar@example.com  |  ST001", cell.getText());
+    }
+
+    @Test
+    void shouldRenderStudentCellWithNullFieldsAsEmptyStrings() throws Exception {
+        ListView<AdminStudentDto> listView = invokePrivate(page, "buildStudentListView", ListView.class);
+        ListCell<AdminStudentDto> cell = listView.getCellFactory().call(listView);
+
+        AdminStudentDto student = new AdminStudentDto();
+        student.setFirstName(null);
+        student.setLastName(null);
+        student.setEmail(null);
+        student.setStudentCode(null);
+
+        invokeUpdateItem(cell, student, false);
+
+        assertEquals("  |    |  ", cell.getText());
+    }
+
+    @Test
+    void shouldClearStudentCellTextWhenItemIsNullOrEmpty() throws Exception {
+        ListView<AdminStudentDto> listView = invokePrivate(page, "buildStudentListView", ListView.class);
+        ListCell<AdminStudentDto> cell = listView.getCellFactory().call(listView);
+
+        invokeUpdateItem(cell, null, true);
+        assertNull(cell.getText());
+
+        AdminStudentDto student = new AdminStudentDto();
+        student.setFirstName("Oscar");
+        invokeUpdateItem(cell, student, false);
+        assertNotNull(cell.getText());
+
+        invokeUpdateItem(cell, null, true);
+        assertNull(cell.getText());
+    }
+
+    @Test
+    void shouldBuildSelectedCountLabelWithSubtitleStyle() throws Exception {
+        Label label = invokePrivate(page, "buildSelectedCountLabel", Label.class);
+
+        assertNotNull(label);
+        assertNotNull(label.getText());
+        assertFalse(label.getText().isBlank());
+        assertTrue(label.getStyleClass().contains("subtitle"));
+    }
+
+    private static void invokeUpdateItem(ListCell<AdminStudentDto> cell, AdminStudentDto item, boolean empty) throws Exception {
+        Method method = cell.getClass().getDeclaredMethod("updateItem", Object.class, boolean.class);
+        method.setAccessible(true);
+        method.invoke(cell, item, empty);
+    }
+
+    private static void invokePrivateVoid(
+            Object target,
+            String methodName,
+            Class<?>[] parameterTypes,
+            Object... args
+    ) throws Exception {
+        Method method = target.getClass().getDeclaredMethod(methodName, parameterTypes);
+        method.setAccessible(true);
+        method.invoke(target, args);
+    }
+
+    private static <T> T invokePrivate(Object target, String methodName, Class<T> returnType) throws Exception {
+        Method method = target.getClass().getDeclaredMethod(methodName);
+        method.setAccessible(true);
+        Object result = method.invoke(target);
+        return returnType.cast(result);
+    }
+
+    private static <T> T invokePrivate(
+            Object target,
+            String methodName,
+            Class<T> returnType,
+            Class<?> parameterType,
+            Object arg
+    ) throws Exception {
+        Method method = target.getClass().getDeclaredMethod(methodName, parameterType);
+        method.setAccessible(true);
+        Object result = method.invoke(target, arg);
+        return returnType.cast(result);
     }
 }

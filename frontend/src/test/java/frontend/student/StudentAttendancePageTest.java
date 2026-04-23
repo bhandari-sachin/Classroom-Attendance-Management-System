@@ -1,14 +1,20 @@
 package frontend.student;
 
+import frontend.auth.AppRouter;
+import frontend.auth.AuthState;
+import frontend.auth.JwtStore;
 import frontend.ui.UiPreferences;
 import javafx.application.Platform;
 import javafx.scene.Group;
 import javafx.scene.Node;
+import javafx.scene.Parent;
+import javafx.scene.Scene;
 import javafx.scene.control.Label;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 
 import java.lang.reflect.Method;
 import java.util.concurrent.CountDownLatch;
@@ -308,5 +314,20 @@ class StudentAttendancePageTest {
     @FunctionalInterface
     private interface FxSupplier<T> {
         T get() throws Exception;
+    }
+    @Test
+    void buildShouldReturnParent() {
+        StudentAttendancePage page = new StudentAttendancePage();
+
+        Scene scene = new Scene(new VBox());
+        AppRouter router = Mockito.mock(AppRouter.class);
+        JwtStore jwtStore = Mockito.mock(JwtStore.class);
+        AuthState state = Mockito.mock(AuthState.class);
+
+        Mockito.when(state.getName()).thenReturn("Student User");
+
+        Parent result = page.build(scene, router, jwtStore, state);
+
+        assertNotNull(result);
     }
 }
