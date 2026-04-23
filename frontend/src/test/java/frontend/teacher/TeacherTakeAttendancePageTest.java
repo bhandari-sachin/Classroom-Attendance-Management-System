@@ -538,14 +538,19 @@ class TeacherTakeAttendancePageTest {
         });
     }
     @Test
-    void handleGenerateSessionShouldReturnWhenNoClassSelected() throws Exception {
+    void handleGenerateSessionShouldResetUiBeforeBackgroundWork() throws Exception {
         runOnFxThreadAndWait(() -> {
             try {
                 ComboBox<TeacherTakeAttendancePage.ClassItem> classBox = new ComboBox<>();
+                TeacherTakeAttendancePage.ClassItem selected =
+                        new TeacherTakeAttendancePage.ClassItem(1L, "SE101 — Software Engineering");
+                classBox.setValue(selected);
+
                 Button generateButton = new Button("Generate");
-                Label manualCode = new Label("—");
+                Label manualCode = new Label("OLD");
                 ImageView qrImageView = new ImageView();
-                long[] currentSessionId = {-1L};
+                qrImageView.setImage(new javafx.scene.image.WritableImage(10, 10));
+                long[] currentSessionId = {99L};
 
                 Method method = TeacherTakeAttendancePage.class.getDeclaredMethod(
                         "handleGenerateSession",
@@ -560,29 +565,29 @@ class TeacherTakeAttendancePageTest {
                 );
                 method.setAccessible(true);
 
-                assertDoesNotThrow(() -> {
-                    try {
-                        method.invoke(
-                                page,
-                                null,
-                                null,
-                                null,
-                                classBox,
-                                generateButton,
-                                manualCode,
-                                qrImageView,
-                                currentSessionId
-                        );
-                    } catch (Exception e) {
-                        throw new RuntimeException(e);
-                    }
-                });
+                method.invoke(
+                        page,
+                        null,
+                        null,
+                        null,
+                        classBox,
+                        generateButton,
+                        manualCode,
+                        qrImageView,
+                        currentSessionId
+                );
+
+                assertTrue(generateButton.isDisable());
+                assertFalse(manualCode.getText().isBlank());
+                assertNull(qrImageView.getImage());
+                assertEquals(-1L, currentSessionId[0]);
 
             } catch (Exception e) {
                 throw new RuntimeException(e);
             }
         });
     }
+
 
     @Test
     void handleClassSelectionShouldReturnWhenNoClassSelected() throws Exception {
