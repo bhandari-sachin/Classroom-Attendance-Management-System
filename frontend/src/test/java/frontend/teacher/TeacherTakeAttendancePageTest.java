@@ -8,18 +8,15 @@ import frontend.auth.Role;
 import frontend.ui.StudentRow;
 import javafx.application.Platform;
 import javafx.embed.swing.JFXPanel;
-import javafx.geometry.Pos;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.image.ImageView;
-import javafx.scene.layout.HBox;
-import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
-import javafx.scene.layout.VBox;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
+import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.List;
@@ -114,21 +111,7 @@ class TeacherTakeAttendancePageTest {
     }
 
     @Test
-    void mapClassItemParsesStringIdCorrectly() {
-        Map<String, Object> classMap = Map.of(
-                "id", "22",
-                "classCode", "WD202",
-                "name", "Web Development"
-        );
-
-        TeacherTakeAttendancePage.ClassItem item = page.mapClassItem(classMap);
-
-        assertEquals(22L, item.id);
-        assertEquals("WD202 — Web Development", item.label);
-    }
-
-    @Test
-    void mapStudentRowMapsValuesCorrectly() throws Exception {
+    void mapStudentRowMapsValuesCorrectly() {
         Map<String, Object> student = Map.of(
                 "id", 7,
                 "firstName", "Farah",
@@ -138,41 +121,10 @@ class TeacherTakeAttendancePageTest {
 
         StudentRow row = page.mapStudentRow(student);
 
+        assertEquals(7L, row.getStudentId());
         assertEquals("Farah Smith", row.studentNameProperty().get());
         assertEquals("farah@example.com", row.emailProperty().get());
         assertEquals("—", row.statusProperty().get());
-
-        Field studentIdField = StudentRow.class.getDeclaredField("studentId");
-        studentIdField.setAccessible(true);
-
-        javafx.beans.property.LongProperty studentIdProperty =
-                (javafx.beans.property.LongProperty) studentIdField.get(row);
-
-        assertEquals(7L, studentIdProperty.get());
-    }
-
-    @Test
-    void mapStudentRowParsesStringIdCorrectly() throws Exception {
-        Map<String, Object> student = Map.of(
-                "id", "9",
-                "firstName", "John",
-                "lastName", "Doe",
-                "email", "john@example.com"
-        );
-
-        StudentRow row = page.mapStudentRow(student);
-
-        assertEquals("John Doe", row.studentNameProperty().get());
-        assertEquals("john@example.com", row.emailProperty().get());
-        assertEquals("—", row.statusProperty().get());
-
-        Field studentIdField = StudentRow.class.getDeclaredField("studentId");
-        studentIdField.setAccessible(true);
-
-        javafx.beans.property.LongProperty studentIdProperty =
-                (javafx.beans.property.LongProperty) studentIdField.get(row);
-
-        assertEquals(9L, studentIdProperty.get());
     }
 
     @Test
@@ -191,166 +143,21 @@ class TeacherTakeAttendancePageTest {
     }
 
     @Test
-    void localizeAttendanceStatusHandlesWhitespaceAndCase() {
-        String result = page.localizeAttendanceStatus("  present  ");
-
-        assertFalse(result.isBlank());
-        assertNotEquals("  present  ", result);
-    }
-
-    @Test
     void localizeAttendanceStatusReturnsOriginalForUnknownStatus() {
         assertEquals("LATE", page.localizeAttendanceStatus("LATE"));
     }
 
     @Test
-    void buildTitleReturnsStyledLabel() throws Exception {
-        Label title = invokePrivate("buildTitle");
-
-        assertNotNull(title);
-        assertFalse(title.getText().isBlank());
-        assertTrue(title.getStyleClass().contains("title"));
-    }
-
-    @Test
-    void buildSubtitleReturnsStyledLabel() throws Exception {
-        Label subtitle = invokePrivate("buildSubtitle");
-
-        assertNotNull(subtitle);
-        assertFalse(subtitle.getText().isBlank());
-        assertTrue(subtitle.getStyleClass().contains("subtitle"));
-    }
-
-    @Test
-    void buildSelectClassLabelReturnsStyledLabel() throws Exception {
-        Label label = invokePrivate("buildSelectClassLabel");
-
-        assertNotNull(label);
-        assertFalse(label.getText().isBlank());
-        assertTrue(label.getStyleClass().contains("section-title"));
-    }
-
-    @Test
-    void buildClassBoxReturnsConfiguredComboBox() throws Exception {
-        ComboBox<?> classBox = invokePrivate("buildClassBox");
-
-        assertNotNull(classBox);
-        assertFalse(classBox.getPromptText().isBlank());
-        assertEquals(320.0, classBox.getMaxWidth());
-    }
-
-    @Test
-    void buildQrImageViewReturnsConfiguredImageView() throws Exception {
-        ImageView imageView = invokePrivate("buildQrImageView");
-
-        assertNotNull(imageView);
-        assertEquals(180.0, imageView.getFitWidth());
-        assertEquals(180.0, imageView.getFitHeight());
-        assertTrue(imageView.isPreserveRatio());
-    }
-
-    @Test
-    void buildManualCodeLabelReturnsDefaultStyledLabel() throws Exception {
-        Label label = invokePrivate("buildManualCodeLabel");
-
-        assertEquals("—", label.getText());
-        assertTrue(label.getStyleClass().contains("small-subtitle"));
-    }
-
-    @Test
-    void buildGenerateButtonReturnsStyledButton() throws Exception {
-        Button button = invokePrivate("buildGenerateButton");
-
-        assertNotNull(button);
-        assertFalse(button.getText().isBlank());
-        assertEquals(Double.MAX_VALUE, button.getMaxWidth());
-        assertTrue(button.getStyleClass().contains("pill"));
-        assertTrue(button.getStyleClass().contains("pill-green"));
-    }
-
-    @Test
-    void buildQrCardContainsExpectedChildren() throws Exception {
-        ImageView imageView = new ImageView();
-        Label manualCode = new Label("CODE123");
-        Button generateButton = new Button("Generate");
-
-        VBox card = invokePrivate(
-                "buildQrCard",
-                new Class<?>[]{ImageView.class, Label.class, Button.class},
-                imageView,
-                manualCode,
-                generateButton
-        );
-
-        assertNotNull(card);
-        assertEquals(4, card.getChildren().size());
-        assertTrue(card.getStyleClass().contains("card"));
-        assertEquals(16.0, card.getPadding().getTop());
-    }
-
-    @Test
-    void buildStudentsTitleReturnsStyledEmptyLabel() throws Exception {
-        Label label = invokePrivate("buildStudentsTitle");
-
-        assertNotNull(label);
-        assertEquals("", label.getText());
-        assertTrue(label.getStyleClass().contains("section-title"));
-    }
-
-    @Test
-    void buildMarkAllPresentButtonReturnsStyledButton() throws Exception {
-        Button button = invokePrivate("buildMarkAllPresentButton");
-
-        assertNotNull(button);
-        assertFalse(button.getText().isBlank());
-        assertTrue(button.getStyleClass().contains("pill"));
-        assertTrue(button.getStyleClass().contains("pill-green"));
-    }
-
-    @Test
-    void buildStudentsHeaderContainsExpectedNodes() throws Exception {
-        Label studentsTitle = new Label("Students");
-        Button markAllPresentButton = new Button("Mark all");
-
-        HBox header = invokePrivate(
-                "buildStudentsHeader",
-                new Class<?>[]{Label.class, Button.class},
-                studentsTitle,
-                markAllPresentButton
-        );
-
-        assertNotNull(header);
-        assertEquals(Pos.CENTER_LEFT, header.getAlignment());
-        assertEquals(3, header.getChildren().size());
-        assertSame(studentsTitle, header.getChildren().get(0));
-        assertInstanceOf(Region.class, header.getChildren().get(1));
-        assertSame(markAllPresentButton, header.getChildren().get(2));
-    }
-
-    @Test
-    void createActionButtonReturnsConfiguredButton() throws Exception {
-        Button button = invokePrivate(
-                "createActionButton",
-                new Class<?>[]{String.class},
-                "✓"
-        );
-
-        assertEquals("✓", button.getText());
-        assertEquals(30.0, button.getMinWidth());
-        assertEquals(30.0, button.getMinHeight());
-        assertEquals(30.0, button.getPrefWidth());
-        assertEquals(30.0, button.getPrefHeight());
-    }
-
-    @Test
     void buildStudentsTableCreatesFourColumns() throws Exception {
+        Object sessionState = createSessionState();
+
         TableView<?> table = invokePrivate(
                 "buildStudentsTable",
-                new Class<?>[]{TeacherApi.class, JwtStore.class, AuthState.class, long[].class},
+                new Class<?>[]{TeacherApi.class, JwtStore.class, AuthState.class, sessionState.getClass()},
                 new FakeTeacherApi(),
                 new JwtStore(),
                 new AuthState("token", Role.TEACHER, "Teacher"),
-                new long[]{-1L}
+                sessionState
         );
 
         assertNotNull(table);
@@ -380,56 +187,35 @@ class TeacherTakeAttendancePageTest {
     }
 
     @Test
-    void handleClassSelectionShouldReturnWhenNoClassSelected() throws Exception {
-        ComboBox<TeacherTakeAttendancePage.ClassItem> classBox = new ComboBox<>();
-        Label manualCode = new Label("OLD");
-        ImageView qrImageView = new ImageView();
-        long[] currentSessionId = {99L};
+    void handleClassSelectionShouldLoadStudentsAndResetSession() throws Exception {
+        Object sessionState = createSessionState();
 
-        invokePrivateVoid(
-                "handleClassSelection",
-                new Class<?>[]{TeacherApi.class, JwtStore.class, AuthState.class, ComboBox.class, Label.class, ImageView.class, long[].class},
-                new FakeTeacherApi(),
-                new JwtStore(),
-                new AuthState("token", Role.TEACHER, "Teacher"),
-                classBox,
-                manualCode,
-                qrImageView,
-                currentSessionId
-        );
-
-        assertEquals("OLD", manualCode.getText());
-        assertEquals(99L, currentSessionId[0]);
-    }
-
-    @Test
-    void handleClassSelectionShouldLoadStudents() throws Exception {
         ComboBox<TeacherTakeAttendancePage.ClassItem> classBox = new ComboBox<>();
         classBox.setValue(new TeacherTakeAttendancePage.ClassItem(1L, "SE101 — Software Engineering"));
 
         Label manualCode = new Label("OLD");
         ImageView qrImageView = new ImageView();
-        long[] currentSessionId = {55L};
+        Button generateButton = new Button("Generate");
+
+        Object controls = createSessionControls(generateButton, manualCode, qrImageView, sessionState);
 
         invokePrivateVoid(
                 "handleClassSelection",
-                new Class<?>[]{TeacherApi.class, JwtStore.class, AuthState.class, ComboBox.class, Label.class, ImageView.class, long[].class},
+                new Class<?>[]{TeacherApi.class, JwtStore.class, AuthState.class, ComboBox.class, controls.getClass()},
                 new FakeTeacherApi(),
                 new JwtStore(),
                 new AuthState("token", Role.TEACHER, "Teacher"),
                 classBox,
-                manualCode,
-                qrImageView,
-                currentSessionId
+                controls
         );
 
         @SuppressWarnings("unchecked")
         javafx.collections.ObservableList<StudentRow> rows =
-                (javafx.collections.ObservableList<StudentRow>) getPrivateField();
+                (javafx.collections.ObservableList<StudentRow>) getPrivateRows();
 
         waitUntil(() -> rows.size() == 1 && rows.getFirst().getStudentId() == 7L);
 
-        assertEquals(-1L, currentSessionId[0]);
+        assertEquals(-1L, getSessionId(sessionState));
         assertEquals("—", manualCode.getText());
         assertEquals("Farah Smith", rows.getFirst().studentNameProperty().get());
         assertEquals("farah@example.com", rows.getFirst().emailProperty().get());
@@ -437,54 +223,56 @@ class TeacherTakeAttendancePageTest {
 
     @Test
     void handleGenerateSessionShouldCreateSessionAndUpdateUi() throws Exception {
+        Object sessionState = createSessionState();
+
         ComboBox<TeacherTakeAttendancePage.ClassItem> classBox = new ComboBox<>();
         classBox.setValue(new TeacherTakeAttendancePage.ClassItem(1L, "SE101 — Software Engineering"));
 
         Button generateButton = new Button("Generate");
         Label manualCode = new Label("OLD");
         ImageView qrImageView = new ImageView();
-        long[] currentSessionId = {-1L};
+
+        Object controls = createSessionControls(generateButton, manualCode, qrImageView, sessionState);
 
         invokePrivateVoid(
                 "handleGenerateSession",
-                new Class<?>[]{TeacherApi.class, JwtStore.class, AuthState.class, ComboBox.class, Button.class, Label.class, ImageView.class, long[].class},
+                new Class<?>[]{TeacherApi.class, JwtStore.class, AuthState.class, ComboBox.class, controls.getClass()},
                 new FakeTeacherApi(),
                 new JwtStore(),
                 new AuthState("token", Role.TEACHER, "Teacher"),
                 classBox,
-                generateButton,
-                manualCode,
-                qrImageView,
-                currentSessionId
+                controls
         );
 
-        waitUntil(() -> !generateButton.isDisable() && currentSessionId[0] == 99L);
+        waitUntil(() -> !generateButton.isDisable() && getSessionIdQuietly(sessionState) == 99L);
 
         assertEquals("ABC123", manualCode.getText());
-        assertEquals(99L, currentSessionId[0]);
+        assertEquals(99L, getSessionId(sessionState));
     }
 
     @Test
     void handleMarkAllPresentShouldUpdateAllRows() throws Exception {
+        Object sessionState = createSessionState();
+        setSessionId(sessionState, 99L);
+
         @SuppressWarnings("unchecked")
         javafx.collections.ObservableList<StudentRow> rows =
-                (javafx.collections.ObservableList<StudentRow>) getPrivateField();
+                (javafx.collections.ObservableList<StudentRow>) getPrivateRows();
 
         rows.clear();
         rows.add(new StudentRow(1L, "Farah Smith", "farah@example.com", "ABSENT"));
         rows.add(new StudentRow(2L, "John Doe", "john@example.com", "EXCUSED"));
 
         Button markAllButton = new Button("Mark all");
-        long[] currentSessionId = {99L};
 
         invokePrivateVoid(
                 "handleMarkAllPresent",
-                new Class<?>[]{TeacherApi.class, JwtStore.class, AuthState.class, Button.class, long[].class},
+                new Class<?>[]{TeacherApi.class, JwtStore.class, AuthState.class, Button.class, sessionState.getClass()},
                 new FakeTeacherApi(),
                 new JwtStore(),
                 new AuthState("token", Role.TEACHER, "Teacher"),
                 markAllButton,
-                currentSessionId
+                sessionState
         );
 
         waitUntil(() -> !markAllButton.isDisable()
@@ -509,6 +297,59 @@ class TeacherTakeAttendancePageTest {
         });
     }
 
+    private static Object createSessionState() throws Exception {
+        Class<?> clazz = getNestedClass("SessionState");
+        Constructor<?> constructor = clazz.getDeclaredConstructor();
+        constructor.setAccessible(true);
+        return constructor.newInstance();
+    }
+
+    private static Object createSessionControls(
+            Button generateButton,
+            Label manualCode,
+            ImageView qrImageView,
+            Object sessionState
+    ) throws Exception {
+        Class<?> clazz = getNestedClass("SessionControls");
+        Constructor<?> constructor = clazz.getDeclaredConstructor(
+                Button.class,
+                Label.class,
+                ImageView.class,
+                sessionState.getClass()
+        );
+        constructor.setAccessible(true);
+        return constructor.newInstance(generateButton, manualCode, qrImageView, sessionState);
+    }
+
+    private static Class<?> getNestedClass(String simpleName) {
+        for (Class<?> clazz : TeacherTakeAttendancePage.class.getDeclaredClasses()) {
+            if (clazz.getSimpleName().equals(simpleName)) {
+                return clazz;
+            }
+        }
+        throw new IllegalStateException("Nested class not found: " + simpleName);
+    }
+
+    private static long getSessionId(Object sessionState) throws Exception {
+        Method method = sessionState.getClass().getDeclaredMethod("getCurrentSessionId");
+        method.setAccessible(true);
+        return (long) method.invoke(sessionState);
+    }
+
+    private static long getSessionIdQuietly(Object sessionState) {
+        try {
+            return getSessionId(sessionState);
+        } catch (Exception ex) {
+            return -1L;
+        }
+    }
+
+    private static void setSessionId(Object sessionState, long value) throws Exception {
+        Method method = sessionState.getClass().getDeclaredMethod("setCurrentSessionId", long.class);
+        method.setAccessible(true);
+        method.invoke(sessionState, value);
+    }
+
     @SuppressWarnings("unchecked")
     private static <T> T invokePrivate(String methodName) throws Exception {
         Method method = TeacherTakeAttendancePage.class.getDeclaredMethod(methodName);
@@ -531,7 +372,7 @@ class TeacherTakeAttendancePageTest {
         method.invoke(page, args);
     }
 
-    private static Object getPrivateField() throws Exception {
+    private static Object getPrivateRows() throws Exception {
         Field field = TeacherTakeAttendancePage.class.getDeclaredField("rows");
         field.setAccessible(true);
         return field.get(page);

@@ -1,7 +1,7 @@
 package frontend.admin;
 
-import frontend.ui.ReportRow;
 import frontend.ui.HelperClass;
+import frontend.ui.ReportRow;
 import javafx.application.Platform;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
@@ -74,12 +74,11 @@ class AdminAttendanceReportsPageTest {
 
         assertEquals(2, result.size());
 
-        assertEquals(1L, result.getFirst().id);
-        assertEquals("MTH101 — Mathematics", result.get(0).label);
+        assertEquals(1L, result.getFirst().getId());
         assertEquals("MTH101 — Mathematics", result.get(0).toString());
 
-        assertEquals(2L, result.get(1).id);
-        assertEquals("PHY202 — Physics", result.get(1).label);
+        assertEquals(2L, result.get(1).getId());
+        assertEquals("PHY202 — Physics", result.get(1).toString());
     }
 
     @Test
@@ -94,8 +93,8 @@ class AdminAttendanceReportsPageTest {
         List<AdminAttendanceReportsPage.ClassItem> result = page.mapClassItems(classes);
 
         assertEquals(1, result.size());
-        assertEquals(5L, result.get(0).id);
-        assertEquals("— — Unnamed", result.get(0).label);
+        assertEquals(5L, result.getFirst().getId());
+        assertEquals("— — Unnamed", result.getFirst().toString());
     }
 
     @Test
@@ -109,14 +108,14 @@ class AdminAttendanceReportsPageTest {
 
         AdminAttendanceReportsPage.ReportSummary summary = page.mapReportSummary(rawRows);
 
-        assertEquals(4, summary.rows.size());
-        assertEquals(2, summary.present);
-        assertEquals(1, summary.absent);
-        assertEquals(1, summary.excused);
-        assertEquals(4, summary.total);
-        assertEquals(50.0, summary.rate);
+        assertEquals(4, summary.getRows().size());
+        assertEquals(2, summary.getPresent());
+        assertEquals(1, summary.getAbsent());
+        assertEquals(1, summary.getExcused());
+        assertEquals(4, summary.getTotal());
+        assertEquals(50.0, summary.getRate());
 
-        ReportRow firstRow = summary.rows.getFirst();
+        ReportRow firstRow = summary.getRows().getFirst();
         assertEquals("Oscar al", firstRow.studentProperty().get());
         assertEquals("2026-04-01", firstRow.dateProperty().get());
         assertEquals("PRESENT", firstRow.statusProperty().get());
@@ -131,27 +130,27 @@ class AdminAttendanceReportsPageTest {
 
         AdminAttendanceReportsPage.ReportSummary summary = page.mapReportSummary(rawRows);
 
-        assertEquals(2, summary.rows.size());
-        assertEquals(0, summary.present);
-        assertEquals(0, summary.absent);
-        assertEquals(0, summary.excused);
-        assertEquals(2, summary.total);
-        assertEquals(0.0, summary.rate);
+        assertEquals(2, summary.getRows().size());
+        assertEquals(0, summary.getPresent());
+        assertEquals(0, summary.getAbsent());
+        assertEquals(0, summary.getExcused());
+        assertEquals(2, summary.getTotal());
+        assertEquals(0.0, summary.getRate());
 
-        assertEquals("", summary.rows.get(0).studentProperty().get());
-        assertEquals("Oscar", summary.rows.get(1).studentProperty().get());
+        assertEquals("", summary.getRows().get(0).studentProperty().get());
+        assertEquals("Oscar", summary.getRows().get(1).studentProperty().get());
     }
 
     @Test
     void mapReportSummaryShouldReturnZeroRateForEmptyRows() {
         AdminAttendanceReportsPage.ReportSummary summary = page.mapReportSummary(List.of());
 
-        assertTrue(summary.rows.isEmpty());
-        assertEquals(0, summary.present);
-        assertEquals(0, summary.absent);
-        assertEquals(0, summary.excused);
-        assertEquals(0, summary.total);
-        assertEquals(0.0, summary.rate);
+        assertTrue(summary.getRows().isEmpty());
+        assertEquals(0, summary.getPresent());
+        assertEquals(0, summary.getAbsent());
+        assertEquals(0, summary.getExcused());
+        assertEquals(0, summary.getTotal());
+        assertEquals(0.0, summary.getRate());
     }
 
     @Test
@@ -227,7 +226,10 @@ class AdminAttendanceReportsPageTest {
                 "buildFilters",
                 GridPane.class,
                 new Class<?>[]{HelperClass.class, ComboBox.class, ComboBox.class, TextField.class},
-                helper, classFilter, timeFilter, studentSearch
+                helper,
+                classFilter,
+                timeFilter,
+                studentSearch
         );
 
         assertNotNull(filters);
@@ -305,6 +307,7 @@ class AdminAttendanceReportsPageTest {
     void renderStatsShouldPopulateFiveCards() throws Exception {
         HelperClass helper = new HelperClass();
         GridPane statsGrid = new GridPane();
+
         AdminAttendanceReportsPage.ReportSummary summary =
                 new AdminAttendanceReportsPage.ReportSummary(List.of(), 8, 2, 1, 11, 72.7);
 
@@ -312,7 +315,9 @@ class AdminAttendanceReportsPageTest {
                 page,
                 "renderStats",
                 new Class<?>[]{GridPane.class, HelperClass.class, AdminAttendanceReportsPage.ReportSummary.class},
-                statsGrid, helper, summary
+                statsGrid,
+                helper,
+                summary
         );
 
         assertEquals(5, statsGrid.getChildren().size());
@@ -326,7 +331,8 @@ class AdminAttendanceReportsPageTest {
                 page,
                 "showInlineError",
                 new Class<?>[]{Label.class, String.class},
-                errorLabel, "Load failed"
+                errorLabel,
+                "Load failed"
         );
 
         assertEquals("Load failed", errorLabel.getText());

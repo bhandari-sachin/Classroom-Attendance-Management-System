@@ -85,12 +85,7 @@ class AdminPageSupportTest {
         try (MockedStatic<AdminAppLayout> mockedStatic = mockStatic(AdminAppLayout.class)) {
             mockedStatic.when(() ->
                     AdminAppLayout.wrapWithSidebar(
-                            eq("Oscar"),
-                            eq("Admin"),
-                            eq("Dashboard"),
-                            eq("Classes"),
-                            eq("Users"),
-                            eq("Reports"),
+                            any(AdminAppLayout.SidebarConfig.class),
                             eq(content),
                             eq("second"),
                             any(AdminAppLayout.Navigator.class)
@@ -107,6 +102,22 @@ class AdminPageSupportTest {
             );
 
             assertSame(expected, result);
+
+            mockedStatic.verify(() ->
+                    AdminAppLayout.wrapWithSidebar(
+                            argThat(config ->
+                                    "Oscar".equals(config.name())
+                                            && "Admin".equals(config.roleLabel())
+                                            && "Dashboard".equals(config.dashboardLabel())
+                                            && "Classes".equals(config.secondLabel())
+                                            && "Users".equals(config.thirdLabel())
+                                            && "Reports".equals(config.fourthLabel())
+                            ),
+                            eq(content),
+                            eq("second"),
+                            any(AdminAppLayout.Navigator.class)
+                    )
+            );
         }
     }
 
@@ -118,21 +129,18 @@ class AdminPageSupportTest {
         VBox content = new VBox();
         Parent expected = new VBox();
 
-        when(helper.getMessage("admin.sidebar.title")).thenReturn("Admin");
-        when(helper.getMessage("admin.dashboard.title")).thenReturn("Dashboard");
-        when(helper.getMessage("admin.classes.title")).thenReturn("Classes");
-        when(helper.getMessage("admin.users.title")).thenReturn("Users");
-        when(helper.getMessage("admin.reports.title")).thenReturn("Reports");
+        when(helper.getMessage(anyString())).thenReturn("x");
 
         try (MockedStatic<AdminAppLayout> mockedStatic = mockStatic(AdminAppLayout.class)) {
             mockedStatic.when(() ->
                     AdminAppLayout.wrapWithSidebar(
-                            anyString(), anyString(), anyString(), anyString(),
-                            anyString(), anyString(), any(), anyString(),
+                            any(AdminAppLayout.SidebarConfig.class),
+                            any(),
+                            anyString(),
                             any(AdminAppLayout.Navigator.class)
                     )
             ).thenAnswer(invocation -> {
-                AdminAppLayout.Navigator nav = invocation.getArgument(8);
+                AdminAppLayout.Navigator nav = invocation.getArgument(3);
                 nav.goDashboard();
                 return expected;
             });
@@ -156,12 +164,13 @@ class AdminPageSupportTest {
         try (MockedStatic<AdminAppLayout> mockedStatic = mockStatic(AdminAppLayout.class)) {
             mockedStatic.when(() ->
                     AdminAppLayout.wrapWithSidebar(
-                            anyString(), anyString(), anyString(), anyString(),
-                            anyString(), anyString(), any(), anyString(),
+                            any(AdminAppLayout.SidebarConfig.class),
+                            any(),
+                            anyString(),
                             any(AdminAppLayout.Navigator.class)
                     )
             ).thenAnswer(invocation -> {
-                AdminAppLayout.Navigator nav = invocation.getArgument(8);
+                AdminAppLayout.Navigator nav = invocation.getArgument(3);
                 nav.goTakeAttendance();
                 return expected;
             });
@@ -185,12 +194,13 @@ class AdminPageSupportTest {
         try (MockedStatic<AdminAppLayout> mockedStatic = mockStatic(AdminAppLayout.class)) {
             mockedStatic.when(() ->
                     AdminAppLayout.wrapWithSidebar(
-                            anyString(), anyString(), anyString(), anyString(),
-                            anyString(), anyString(), any(), anyString(),
+                            any(AdminAppLayout.SidebarConfig.class),
+                            any(),
+                            anyString(),
                             any(AdminAppLayout.Navigator.class)
                     )
             ).thenAnswer(invocation -> {
-                AdminAppLayout.Navigator nav = invocation.getArgument(8);
+                AdminAppLayout.Navigator nav = invocation.getArgument(3);
                 nav.goReports();
                 return expected;
             });
@@ -214,12 +224,13 @@ class AdminPageSupportTest {
         try (MockedStatic<AdminAppLayout> mockedStatic = mockStatic(AdminAppLayout.class)) {
             mockedStatic.when(() ->
                     AdminAppLayout.wrapWithSidebar(
-                            anyString(), anyString(), anyString(), anyString(),
-                            anyString(), anyString(), any(), anyString(),
+                            any(AdminAppLayout.SidebarConfig.class),
+                            any(),
+                            anyString(),
                             any(AdminAppLayout.Navigator.class)
                     )
             ).thenAnswer(invocation -> {
-                AdminAppLayout.Navigator nav = invocation.getArgument(8);
+                AdminAppLayout.Navigator nav = invocation.getArgument(3);
                 nav.goEmail();
                 return expected;
             });
@@ -243,12 +254,13 @@ class AdminPageSupportTest {
         try (MockedStatic<AdminAppLayout> mockedStatic = mockStatic(AdminAppLayout.class)) {
             mockedStatic.when(() ->
                     AdminAppLayout.wrapWithSidebar(
-                            anyString(), anyString(), anyString(), anyString(),
-                            anyString(), anyString(), any(), anyString(),
+                            any(AdminAppLayout.SidebarConfig.class),
+                            any(),
+                            anyString(),
                             any(AdminAppLayout.Navigator.class)
                     )
             ).thenAnswer(invocation -> {
-                AdminAppLayout.Navigator nav = invocation.getArgument(8);
+                AdminAppLayout.Navigator nav = invocation.getArgument(3);
                 nav.logout();
                 return expected;
             });

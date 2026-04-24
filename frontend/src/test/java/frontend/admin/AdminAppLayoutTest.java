@@ -12,14 +12,20 @@ import static org.mockito.Mockito.*;
 
 class AdminAppLayoutTest {
 
+    private AdminAppLayout.SidebarConfig createConfig() {
+        return new AdminAppLayout.SidebarConfig(
+                "Test",
+                "Admin",
+                "Dashboard",
+                "Attendance",
+                "Reports",
+                "Email"
+        );
+    }
+
     @Test
     void shouldDelegateWrapWithSidebarToAppLayoutAndReturnItsResult() {
-        String name = "Test";
-        String roleLabel = "Admin";
-        String dashboardLabel = "Dashboard";
-        String secondLabel = "Attendance";
-        String thirdLabel = "Reports";
-        String fourthLabel = "Email";
+        AdminAppLayout.SidebarConfig config = createConfig();
         String activeKey = "dashboard";
 
         VBox content = new VBox();
@@ -30,12 +36,12 @@ class AdminAppLayoutTest {
         try (MockedStatic<AppLayout> mockedStatic = mockStatic(AppLayout.class)) {
             mockedStatic.when(() ->
                     AppLayout.wrapWithSidebar(
-                            eq(name),
-                            eq(roleLabel),
-                            eq(dashboardLabel),
-                            eq(secondLabel),
-                            eq(thirdLabel),
-                            eq(fourthLabel),
+                            eq("Test"),
+                            eq("Admin"),
+                            eq("Dashboard"),
+                            eq("Attendance"),
+                            eq("Reports"),
+                            eq("Email"),
                             eq(content),
                             eq(activeKey),
                             any(AppLayout.Navigator.class)
@@ -43,32 +49,13 @@ class AdminAppLayoutTest {
             ).thenReturn(expectedParent);
 
             Parent result = AdminAppLayout.wrapWithSidebar(
-                    name,
-                    roleLabel,
-                    dashboardLabel,
-                    secondLabel,
-                    thirdLabel,
-                    fourthLabel,
+                    config,
                     content,
                     activeKey,
                     nav
             );
 
             assertSame(expectedParent, result);
-
-            mockedStatic.verify(() ->
-                    AppLayout.wrapWithSidebar(
-                            eq(name),
-                            eq(roleLabel),
-                            eq(dashboardLabel),
-                            eq(secondLabel),
-                            eq(thirdLabel),
-                            eq(fourthLabel),
-                            eq(content),
-                            eq(activeKey),
-                            any(AppLayout.Navigator.class)
-                    )
-            );
         }
     }
 
@@ -85,18 +72,13 @@ class AdminAppLayoutTest {
                             any(), anyString(), any(AppLayout.Navigator.class)
                     )
             ).thenAnswer(invocation -> {
-                AppLayout.Navigator wrappedNavigator = invocation.getArgument(8);
-                wrappedNavigator.goDashboard();
+                AppLayout.Navigator wrapped = invocation.getArgument(8);
+                wrapped.goDashboard();
                 return expectedParent;
             });
 
             Parent result = AdminAppLayout.wrapWithSidebar(
-                    "Test",
-                    "Admin",
-                    "Dashboard",
-                    "Attendance",
-                    "Reports",
-                    "Email",
+                    createConfig(),
                     content,
                     "dashboard",
                     nav
@@ -120,18 +102,13 @@ class AdminAppLayoutTest {
                             any(), anyString(), any(AppLayout.Navigator.class)
                     )
             ).thenAnswer(invocation -> {
-                AppLayout.Navigator wrappedNavigator = invocation.getArgument(8);
-                wrappedNavigator.goTakeAttendance();
+                AppLayout.Navigator wrapped = invocation.getArgument(8);
+                wrapped.goTakeAttendance();
                 return expectedParent;
             });
 
             Parent result = AdminAppLayout.wrapWithSidebar(
-                    "Test",
-                    "Admin",
-                    "Dashboard",
-                    "Attendance",
-                    "Reports",
-                    "Email",
+                    createConfig(),
                     content,
                     "attendance",
                     nav
@@ -155,18 +132,13 @@ class AdminAppLayoutTest {
                             any(), anyString(), any(AppLayout.Navigator.class)
                     )
             ).thenAnswer(invocation -> {
-                AppLayout.Navigator wrappedNavigator = invocation.getArgument(8);
-                wrappedNavigator.goReports();
+                AppLayout.Navigator wrapped = invocation.getArgument(8);
+                wrapped.goReports();
                 return expectedParent;
             });
 
             Parent result = AdminAppLayout.wrapWithSidebar(
-                    "Test",
-                    "Admin",
-                    "Dashboard",
-                    "Attendance",
-                    "Reports",
-                    "Email",
+                    createConfig(),
                     content,
                     "reports",
                     nav
@@ -190,18 +162,13 @@ class AdminAppLayoutTest {
                             any(), anyString(), any(AppLayout.Navigator.class)
                     )
             ).thenAnswer(invocation -> {
-                AppLayout.Navigator wrappedNavigator = invocation.getArgument(8);
-                wrappedNavigator.goEmail();
+                AppLayout.Navigator wrapped = invocation.getArgument(8);
+                wrapped.goEmail();
                 return expectedParent;
             });
 
             Parent result = AdminAppLayout.wrapWithSidebar(
-                    "Test",
-                    "Admin",
-                    "Dashboard",
-                    "Attendance",
-                    "Reports",
-                    "Email",
+                    createConfig(),
                     content,
                     "email",
                     nav
@@ -225,18 +192,13 @@ class AdminAppLayoutTest {
                             any(), anyString(), any(AppLayout.Navigator.class)
                     )
             ).thenAnswer(invocation -> {
-                AppLayout.Navigator wrappedNavigator = invocation.getArgument(8);
-                wrappedNavigator.logout();
+                AppLayout.Navigator wrapped = invocation.getArgument(8);
+                wrapped.logout();
                 return expectedParent;
             });
 
             Parent result = AdminAppLayout.wrapWithSidebar(
-                    "Test",
-                    "Admin",
-                    "Dashboard",
-                    "Attendance",
-                    "Reports",
-                    "Email",
+                    createConfig(),
                     content,
                     "dashboard",
                     nav
