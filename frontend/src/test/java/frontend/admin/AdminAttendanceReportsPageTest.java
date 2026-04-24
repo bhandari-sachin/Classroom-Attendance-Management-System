@@ -14,6 +14,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import java.lang.reflect.Method;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
@@ -74,7 +75,7 @@ class AdminAttendanceReportsPageTest {
 
         assertEquals(2, result.size());
 
-        assertEquals(1L, result.getFirst().getId());
+        assertEquals(1L, result.get(0).getId());
         assertEquals("MTH101 — Mathematics", result.get(0).toString());
 
         assertEquals(2L, result.get(1).getId());
@@ -83,14 +84,12 @@ class AdminAttendanceReportsPageTest {
 
     @Test
     void mapClassItemsShouldUseFallbackValuesWhenFieldsAreNull() {
-        Map<String, Object> classData = new java.util.HashMap<>();
+        Map<String, Object> classData = new HashMap<>();
         classData.put("id", 5L);
         classData.put("classCode", null);
         classData.put("name", null);
 
-        List<Map<String, Object>> classes = List.of(classData);
-
-        List<AdminAttendanceReportsPage.ClassItem> result = page.mapClassItems(classes);
+        List<AdminAttendanceReportsPage.ClassItem> result = page.mapClassItems(List.of(classData));
 
         assertEquals(1, result.size());
         assertEquals(5L, result.getFirst().getId());
@@ -108,14 +107,14 @@ class AdminAttendanceReportsPageTest {
 
         AdminAttendanceReportsPage.ReportSummary summary = page.mapReportSummary(rawRows);
 
-        assertEquals(4, summary.getRows().size());
-        assertEquals(2, summary.getPresent());
-        assertEquals(1, summary.getAbsent());
-        assertEquals(1, summary.getExcused());
-        assertEquals(4, summary.getTotal());
-        assertEquals(50.0, summary.getRate());
+        assertEquals(4, summary.rows().size());
+        assertEquals(2, summary.present());
+        assertEquals(1, summary.absent());
+        assertEquals(1, summary.excused());
+        assertEquals(4, summary.total());
+        assertEquals(50.0, summary.rate());
 
-        ReportRow firstRow = summary.getRows().getFirst();
+        ReportRow firstRow = summary.rows().getFirst();
         assertEquals("Oscar al", firstRow.studentProperty().get());
         assertEquals("2026-04-01", firstRow.dateProperty().get());
         assertEquals("PRESENT", firstRow.statusProperty().get());
@@ -130,27 +129,27 @@ class AdminAttendanceReportsPageTest {
 
         AdminAttendanceReportsPage.ReportSummary summary = page.mapReportSummary(rawRows);
 
-        assertEquals(2, summary.getRows().size());
-        assertEquals(0, summary.getPresent());
-        assertEquals(0, summary.getAbsent());
-        assertEquals(0, summary.getExcused());
-        assertEquals(2, summary.getTotal());
-        assertEquals(0.0, summary.getRate());
+        assertEquals(2, summary.rows().size());
+        assertEquals(0, summary.present());
+        assertEquals(0, summary.absent());
+        assertEquals(0, summary.excused());
+        assertEquals(2, summary.total());
+        assertEquals(0.0, summary.rate());
 
-        assertEquals("", summary.getRows().get(0).studentProperty().get());
-        assertEquals("Oscar", summary.getRows().get(1).studentProperty().get());
+        assertEquals("", summary.rows().get(0).studentProperty().get());
+        assertEquals("Oscar", summary.rows().get(1).studentProperty().get());
     }
 
     @Test
     void mapReportSummaryShouldReturnZeroRateForEmptyRows() {
         AdminAttendanceReportsPage.ReportSummary summary = page.mapReportSummary(List.of());
 
-        assertTrue(summary.getRows().isEmpty());
-        assertEquals(0, summary.getPresent());
-        assertEquals(0, summary.getAbsent());
-        assertEquals(0, summary.getExcused());
-        assertEquals(0, summary.getTotal());
-        assertEquals(0.0, summary.getRate());
+        assertTrue(summary.rows().isEmpty());
+        assertEquals(0, summary.present());
+        assertEquals(0, summary.absent());
+        assertEquals(0, summary.excused());
+        assertEquals(0, summary.total());
+        assertEquals(0.0, summary.rate());
     }
 
     @Test
@@ -181,7 +180,7 @@ class AdminAttendanceReportsPageTest {
     void buildClassFilterShouldSetPromptText() throws Exception {
         HelperClass helper = new HelperClass();
 
-        ComboBox<AdminAttendanceReportsPage.ClassItem> classFilter =
+        ComboBox<?> classFilter =
                 invokePrivate(page, "buildClassFilter", ComboBox.class, HelperClass.class, helper);
 
         assertNotNull(classFilter);
@@ -193,13 +192,13 @@ class AdminAttendanceReportsPageTest {
     void buildTimeFilterShouldContainOptionsAndDefaultValue() throws Exception {
         HelperClass helper = new HelperClass();
 
-        ComboBox<String> timeFilter =
+        ComboBox<?> timeFilter =
                 invokePrivate(page, "buildTimeFilter", ComboBox.class, HelperClass.class, helper);
 
         assertNotNull(timeFilter);
         assertEquals(4, timeFilter.getItems().size());
         assertNotNull(timeFilter.getValue());
-        assertFalse(timeFilter.getValue().isBlank());
+        assertFalse(timeFilter.getValue().toString().isBlank());
     }
 
     @Test
@@ -274,7 +273,7 @@ class AdminAttendanceReportsPageTest {
     void buildReportTableShouldCreateThreeColumns() throws Exception {
         HelperClass helper = new HelperClass();
 
-        TableView<ReportRow> table =
+        TableView<?> table =
                 invokePrivate(page, "buildReportTable", TableView.class, HelperClass.class, helper);
 
         assertNotNull(table);
