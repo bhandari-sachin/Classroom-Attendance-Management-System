@@ -3,7 +3,7 @@ package model;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Assertions;
 
-public class StudentTest {
+class StudentTest {
 
     // Contract:
     // - Inputs: studentId (Long), name (String), email (String)

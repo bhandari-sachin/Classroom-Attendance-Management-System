@@ -86,7 +86,9 @@ class TeacherClassesHandlerTest {
         @Override public URI getRequestURI() { return uri; }
         @Override public String getRequestMethod() { return method; }
         @Override public HttpContext getHttpContext() { return null; }
-        @Override public void close() { }
+        @Override public void close() {
+            // no-op for testing
+        }
         @Override public InputStream getRequestBody() { return requestBody; }
         @Override public OutputStream getResponseBody() { return responseBody; }
 
@@ -100,8 +102,12 @@ class TeacherClassesHandlerTest {
         @Override public InetSocketAddress getLocalAddress() { return new InetSocketAddress(0); }
         @Override public String getProtocol() { return "HTTP/1.1"; }
         @Override public Object getAttribute(String name) { return null; }
-        @Override public void setAttribute(String name, Object value) { }
-        @Override public void setStreams(InputStream i, OutputStream o) { }
+        @Override public void setAttribute(String name, Object value) {
+            // No-op for testing
+        }
+        @Override public void setStreams(InputStream i, OutputStream o) {
+            // No-op for testing
+        }
         @Override public HttpPrincipal getPrincipal() { return null; }
     }
 }

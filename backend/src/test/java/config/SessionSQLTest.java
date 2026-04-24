@@ -4,7 +4,6 @@ import model.Session;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import java.sql.SQLException;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
@@ -66,7 +65,7 @@ class SessionSQLTest {
     }
 
     @Test
-    void findById_returnsMockedSession() throws SQLException {
+    void findById_returnsMockedSession() {
 
         Session s = mock(Session.class);
 

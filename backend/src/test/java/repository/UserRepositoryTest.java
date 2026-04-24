@@ -59,10 +59,6 @@ class UserRepositoryTest {
 
     @Test
     void findAllTeachers_returnsList() {
-        List<User> teachers = List.of(
-                new User(1L, "t1@test.com", "hash", "Alice", "Zeus", UserRole.TEACHER, null),
-                new User(2L, "t2@test.com", "hash", "Bob", "Alpha", UserRole.TEACHER, null)
-        );
 
         when(repo.findAllTeachers()).thenReturn(List.of());
 

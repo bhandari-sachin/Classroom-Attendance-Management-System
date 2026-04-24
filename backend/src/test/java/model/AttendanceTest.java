@@ -3,7 +3,7 @@ package model;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Assertions;
 
-public class AttendanceTest {
+class AttendanceTest {
 
     @Test
     void constructorAndGetters_workAsExpected() {
