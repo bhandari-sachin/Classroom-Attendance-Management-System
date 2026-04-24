@@ -19,11 +19,9 @@ import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.StackPane;
-import javafx.stage.Window;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
-import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.List;
 import java.util.Map;
@@ -551,9 +549,6 @@ class TeacherReportsPageTest {
         });
 
         assertNotNull(root);
-
-        // prevent later interference if an async error alert appears
-        closeAllWindowsQuietly();
     }
 
     @Test
@@ -636,30 +631,17 @@ class TeacherReportsPageTest {
         return result.get();
     }
 
-    private static void closeAllWindowsQuietly() throws Exception {
-        runOnFxThreadAndWait(() -> {
-            for (Window window : Window.getWindows()) {
-                try {
-                    window.hide();
-                } catch (Exception ignored) {// close quietly
-                }
-            }
-            return null;
-        });
-    }
-
     @FunctionalInterface
     private interface FxSupplier<T> {
         T get() throws Exception;
     }
-    private static void waitUntil(BooleanSupplier condition) throws Exception {
+    private static void waitUntil(BooleanSupplier condition) {
         long deadline = System.currentTimeMillis() + 5000;
 
         while (System.currentTimeMillis() < deadline) {
             if (condition.getAsBoolean()) {
                 return;
             }
-            Thread.sleep(50);
         }
 
         fail("Condition was not completed in time");

@@ -213,7 +213,7 @@ class TeacherTakeAttendancePageTest {
         javafx.collections.ObservableList<StudentRow> rows =
                 (javafx.collections.ObservableList<StudentRow>) getPrivateRows();
 
-        waitUntil(() -> rows.size() == 1 && rows.getFirst().getStudentId() == 7L);
+        waitUntil(() -> rows.size() == 1 && rows.get(0).getStudentId() == 7L);
 
         assertEquals(-1L, getSessionId(sessionState));
         assertEquals("—", manualCode.getText());
