@@ -51,3 +51,6 @@ desktop.ini
 /jacoco.exec
 /coverage/
 .idea/misc.xml
+/backend/admin-report.pdf
+/backend/student-report.pdf
+/backend/teacher-report.pdf
