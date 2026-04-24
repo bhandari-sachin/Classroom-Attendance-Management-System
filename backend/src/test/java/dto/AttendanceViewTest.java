@@ -6,7 +6,7 @@ import org.junit.jupiter.api.Assertions;
 import java.lang.reflect.Field;
 import java.time.LocalDate;
 
-public class AttendanceViewTest {
+class AttendanceViewTest {
 
     @Test
     void getStatus_returnsProvidedStatus() {

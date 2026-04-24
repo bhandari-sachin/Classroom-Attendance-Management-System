@@ -29,7 +29,7 @@ class StudentAttendanceRecordsHandlerTest {
     private ByteArrayOutputStream responseBody;
 
     @BeforeEach
-    void setup() throws Exception {
+    void setup() {
         jwtService = mock(JwtService.class);
         attendanceService = mock(AttendanceService.class);
 
@@ -82,10 +82,10 @@ class StudentAttendanceRecordsHandlerTest {
             handler.handle(exchange);
 
             verify(attendanceService).getStudentAttendanceViews(
-                    eq(10L),
-                    eq(1L),
-                    eq("THIS_MONTH"),
-                    eq("en")
+                    10L,
+                    1L,
+                    "THIS_MONTH",
+                    "en"
             );
 
             verify(exchange).sendResponseHeaders(eq(200), anyLong());
@@ -117,10 +117,10 @@ class StudentAttendanceRecordsHandlerTest {
             handler.handle(exchange);
 
             verify(attendanceService).getStudentAttendanceViews(
-                    eq(5L),
-                    eq(2L),
-                    eq("ALL"),
-                    eq("en") // default
+                    5L,
+                    2L,
+                    "ALL",
+                    "en" // default
             );
         }
     }
