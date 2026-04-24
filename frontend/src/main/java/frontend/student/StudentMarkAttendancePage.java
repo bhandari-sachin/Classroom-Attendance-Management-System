@@ -26,6 +26,8 @@ public class StudentMarkAttendancePage {
     private static final String BASE_URL =
             System.getenv().getOrDefault("BACKEND_URL", "http://localhost:8081");
 
+    private static final String UNKNOWN_ERROR = "Unknown error";
+
     private final HelperClass helper = new HelperClass();
 
     public Parent build(Scene scene, AppRouter router, JwtStore jwtStore, AuthState state) {
@@ -201,6 +203,9 @@ public class StudentMarkAttendancePage {
                     codeField.clear();
                     showInfo(helper.getMessage("student.mark.success"));
                 });
+            } catch (InterruptedException ex) {
+                Thread.currentThread().interrupt();
+                Platform.runLater(() -> showError(safeMessage(ex)));
             } catch (Exception ex) {
                 Platform.runLater(() -> showError(safeMessage(ex)));
             }
@@ -209,7 +214,7 @@ public class StudentMarkAttendancePage {
 
     String safeMessage(Throwable throwable) {
         if (throwable == null || throwable.getMessage() == null || throwable.getMessage().isBlank()) {
-            return "Unknown error";
+            return UNKNOWN_ERROR;
         }
         return throwable.getMessage();
     }

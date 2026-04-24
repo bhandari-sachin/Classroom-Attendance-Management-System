@@ -34,6 +34,8 @@ public class TeacherDashboardApp {
             Logger.getLogger(TeacherDashboardApp.class.getName());
 
     private static final String EMPTY_SUBTITLE_STYLE = "empty-subtitle";
+    private static final String UNKNOWN_ERROR = "Unknown error";
+    private static final String ERROR_PLACEHOLDER = "{error}";
 
     private final HelperClass helper = new HelperClass();
 
@@ -224,12 +226,21 @@ public class TeacherDashboardApp {
                     setStatValue(presentTodayCard, presentToday);
                     setStatValue(absentTodayCard, absentToday);
                 });
+            } catch (InterruptedException ex) {
+                Thread.currentThread().interrupt();
+                LOGGER.log(Level.WARNING, "Loading teacher dashboard stats was interrupted.", ex);
+                Platform.runLater(() ->
+                        showError(
+                                helper.getMessage("teacher.dashboard.error.stats")
+                                        .replace(ERROR_PLACEHOLDER, safeErrorMessage(ex))
+                        )
+                );
             } catch (Exception ex) {
                 LOGGER.log(Level.SEVERE, "Failed to load teacher dashboard stats.", ex);
                 Platform.runLater(() ->
                         showError(
                                 helper.getMessage("teacher.dashboard.error.stats")
-                                        .replace("{error}", ex.getMessage() == null ? "Unknown error" : ex.getMessage())
+                                        .replace(ERROR_PLACEHOLDER, safeErrorMessage(ex))
                         )
                 );
             }
@@ -246,11 +257,18 @@ public class TeacherDashboardApp {
             try {
                 List<Map<String, Object>> classes = api.getMyClasses(jwtStore, state);
                 Platform.runLater(() -> renderTeacherClasses(classesContainer, classes));
+            } catch (InterruptedException ex) {
+                Thread.currentThread().interrupt();
+                LOGGER.log(Level.WARNING, "Loading teacher classes for dashboard was interrupted.", ex);
+                Platform.runLater(() -> showClassesError(
+                        classesContainer,
+                        safeErrorMessage(ex)
+                ));
             } catch (Exception ex) {
                 LOGGER.log(Level.SEVERE, "Failed to load teacher classes for dashboard.", ex);
                 Platform.runLater(() -> showClassesError(
                         classesContainer,
-                        ex.getMessage() == null ? "Unknown error" : ex.getMessage()
+                        safeErrorMessage(ex)
                 ));
             }
         }).start();
@@ -305,7 +323,7 @@ public class TeacherDashboardApp {
 
         Label error = new Label(
                 helper.getMessage("teacher.dashboard.error.classes")
-                        .replace("{error}", errorMessage)
+                        .replace(ERROR_PLACEHOLDER, errorMessage)
         );
         error.getStyleClass().add(EMPTY_SUBTITLE_STYLE);
 
@@ -415,6 +433,13 @@ public class TeacherDashboardApp {
 
     static String valueOr(Object value, String fallback) {
         return value == null ? fallback : String.valueOf(value);
+    }
+
+    private String safeErrorMessage(Throwable throwable) {
+        if (throwable == null || throwable.getMessage() == null || throwable.getMessage().isBlank()) {
+            return UNKNOWN_ERROR;
+        }
+        return throwable.getMessage();
     }
 
     private void showError(String message) {

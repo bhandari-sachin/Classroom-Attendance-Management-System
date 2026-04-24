@@ -254,6 +254,18 @@ public final class AdminPages {
 
                     renderRecentClasses(helper, recentGrid, classes);
                 });
+            } catch (InterruptedException ex) {
+                Thread.currentThread().interrupt();
+                LOGGER.log(Level.WARNING, "Loading admin dashboard data was interrupted.", ex);
+                Platform.runLater(() -> showDashboardLoadError(
+                        helper,
+                        totalClassesCard,
+                        studentsCard,
+                        teachersCard,
+                        rateCard,
+                        recentGrid,
+                        safeErrorMessage(ex)
+                ));
             } catch (Exception ex) {
                 LOGGER.log(Level.SEVERE, "Failed to load admin dashboard data", ex);
                 Platform.runLater(() -> showDashboardLoadError(
