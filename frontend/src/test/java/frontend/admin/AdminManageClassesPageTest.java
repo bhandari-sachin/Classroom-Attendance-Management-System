@@ -510,4 +510,38 @@ class AdminManageClassesPageTest {
         Object result = method.invoke(target, arg);
         return returnType.cast(result);
     }
+
+    @Test
+    void showLabelShouldMakeLabelVisibleAndManaged() throws Exception {
+        Label label = new Label();
+
+        invokePrivateVoid(
+                page,
+                "showLabel",
+                new Class<?>[]{Label.class, String.class},
+                label,
+                "Error message"
+        );
+
+        assertEquals("Error message", label.getText());
+        assertTrue(label.isVisible());
+        assertTrue(label.isManaged());
+    }
+
+    @Test
+    void hideLabelShouldHideAndUnmanageLabel() throws Exception {
+        Label label = new Label("Error");
+        label.setVisible(true);
+        label.setManaged(true);
+
+        invokePrivateVoid(
+                page,
+                "hideLabel",
+                new Class<?>[]{Label.class},
+                label
+        );
+
+        assertFalse(label.isVisible());
+        assertFalse(label.isManaged());
+    }
 }

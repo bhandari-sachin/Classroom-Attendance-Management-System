@@ -1,5 +1,6 @@
 package frontend.teacher;
 
+import frontend.api.TeacherApi;
 import frontend.auth.AppRouter;
 import frontend.auth.AuthState;
 import frontend.auth.JwtStore;
@@ -29,10 +30,50 @@ import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.BooleanSupplier;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 class TeacherReportsPageTest {
+    private static class FakeTeacherApi extends TeacherApi {
+        FakeTeacherApi() {
+            super("http://localhost:8081");
+        }
+
+        @Override
+        public List<Map<String, Object>> getMyClasses(JwtStore jwtStore, AuthState state) {
+            return List.of(
+                    Map.of("id", 1, "classCode", "SE101", "name", "Software Engineering")
+            );
+        }
+
+        @Override
+        public List<Map<String, Object>> getSessionsForClass(JwtStore jwtStore, AuthState state, long classId) {
+            return List.of(
+                    Map.of("id", 10, "date", "2026-04-24", "code", "ABC123")
+            );
+        }
+
+        @Override
+        public Map<String, Object> getSessionReport(JwtStore jwtStore, AuthState state, long sessionId) {
+            return Map.of(
+                    "stats", Map.of(
+                            "present", 8,
+                            "absent", 2,
+                            "excused", 1,
+                            "rate", 72.7
+                    ),
+                    "rows", List.of(
+                            Map.of(
+                                    "firstName", "Farah",
+                                    "lastName", "Smith",
+                                    "email", "farah@example.com",
+                                    "status", "PRESENT"
+                            )
+                    )
+            );
+        }
+    }
 
     private static TeacherReportsPage page;
 
@@ -645,5 +686,195 @@ class TeacherReportsPageTest {
     @FunctionalInterface
     private interface FxSupplier<T> {
         T get() throws Exception;
+    }
+    private static void waitUntil(BooleanSupplier condition) throws Exception {
+        long deadline = System.currentTimeMillis() + 5000;
+
+        while (System.currentTimeMillis() < deadline) {
+            if (condition.getAsBoolean()) {
+                return;
+            }
+            Thread.sleep(50);
+        }
+
+        fail("Condition was not completed in time");
+    }
+    @Test
+    void loadClassesShouldFillClassBox() throws Exception {
+        ComboBox<TeacherReportsPage.ClassItem> classBox =
+                runOnFxThreadAndWait(ComboBox::new);
+
+        invokePrivateVoid(
+                "loadClasses",
+                new Class<?>[]{
+                        TeacherApi.class,
+                        JwtStore.class,
+                        AuthState.class,
+                        ComboBox.class
+                },
+                new FakeTeacherApi(),
+                new JwtStore(),
+                new AuthState("token", Role.TEACHER, "Teacher Test"),
+                classBox
+        );
+
+        waitUntil(() -> classBox.getItems().size() == 1);
+
+        assertEquals(1L, classBox.getItems().getFirst().id);
+        assertEquals("SE101 — Software Engineering", classBox.getItems().getFirst().label);
+    }
+
+    @Test
+    void loadSessionsShouldFillSessionBox() throws Exception {
+        ComboBox<TeacherReportsPage.SessionItem> sessionBox =
+                runOnFxThreadAndWait(ComboBox::new);
+
+        invokePrivateVoid(
+                "loadSessions",
+                new Class<?>[]{
+                        TeacherApi.class,
+                        JwtStore.class,
+                        AuthState.class,
+                        long.class,
+                        ComboBox.class
+                },
+                new FakeTeacherApi(),
+                new JwtStore(),
+                new AuthState("token", Role.TEACHER, "Teacher Test"),
+                1L,
+                sessionBox
+        );
+
+        waitUntil(() -> sessionBox.getItems().size() == 1);
+
+        assertEquals(10L, sessionBox.getItems().getFirst().id);
+        assertTrue(sessionBox.getItems().getFirst().label.contains("2026-04-24"));
+        assertTrue(sessionBox.getItems().getFirst().label.contains("ABC123"));
+    }
+
+    @Test
+    void loadSessionReportShouldUpdateStatsAndRows() throws Exception {
+        Field field = TeacherReportsPage.class.getDeclaredField("tableRows");
+        field.setAccessible(true);
+
+        @SuppressWarnings("unchecked")
+        javafx.collections.ObservableList<TeacherReportsPage.ReportRow> rows =
+                (javafx.collections.ObservableList<TeacherReportsPage.ReportRow>) field.get(page);
+
+        Button loadButton = runOnFxThreadAndWait(() -> new Button("Load"));
+        Label present = runOnFxThreadAndWait(() -> new Label("old"));
+        Label absent = runOnFxThreadAndWait(() -> new Label("old"));
+        Label excused = runOnFxThreadAndWait(() -> new Label("old"));
+        Label rate = runOnFxThreadAndWait(() -> new Label("old"));
+
+        invokePrivateVoid(
+                "loadSessionReport",
+                new Class<?>[]{
+                        TeacherApi.class,
+                        JwtStore.class,
+                        AuthState.class,
+                        long.class,
+                        Button.class,
+                        Label.class,
+                        Label.class,
+                        Label.class,
+                        Label.class
+                },
+                new FakeTeacherApi(),
+                new JwtStore(),
+                new AuthState("token", Role.TEACHER, "Teacher Test"),
+                10L,
+                loadButton,
+                present,
+                absent,
+                excused,
+                rate
+        );
+
+        waitUntil(() -> !loadButton.isDisable() && rows.size() == 1);
+
+        assertTrue(present.getText().contains("8"));
+        assertTrue(absent.getText().contains("2"));
+        assertTrue(excused.getText().contains("1"));
+        assertTrue(rate.getText().contains("72.7"));
+
+        assertEquals("Farah Smith", rows.getFirst().getName());
+        assertEquals("farah@example.com", rows.getFirst().getEmail());
+        assertEquals("PRESENT", rows.getFirst().getStatus());
+    }
+
+    @Test
+    void loadSessionReportShouldHandleNestedReportObject() throws Exception {
+        TeacherApi fakeApi = new TeacherApi("http://localhost:8081") {
+            @Override
+            public Map<String, Object> getSessionReport(JwtStore jwtStore, AuthState state, long sessionId) {
+                return Map.of(
+                        "report", Map.of(
+                                "stats", Map.of(
+                                        "present", "5",
+                                        "absent", "3",
+                                        "excused", "0",
+                                        "rate", "62.5"
+                                ),
+                                "rows", List.of(
+                                        Map.of(
+                                                "first_name", "John",
+                                                "last_name", "Doe",
+                                                "email", "john@example.com",
+                                                "status", "ABSENT"
+                                        )
+                                )
+                        )
+                );
+            }
+        };
+
+        Field field = TeacherReportsPage.class.getDeclaredField("tableRows");
+        field.setAccessible(true);
+
+        @SuppressWarnings("unchecked")
+        javafx.collections.ObservableList<TeacherReportsPage.ReportRow> rows =
+                (javafx.collections.ObservableList<TeacherReportsPage.ReportRow>) field.get(page);
+
+        Button loadButton = runOnFxThreadAndWait(() -> new Button("Load"));
+        Label present = runOnFxThreadAndWait(() -> new Label("old"));
+        Label absent = runOnFxThreadAndWait(() -> new Label("old"));
+        Label excused = runOnFxThreadAndWait(() -> new Label("old"));
+        Label rate = runOnFxThreadAndWait(() -> new Label("old"));
+
+        invokePrivateVoid(
+                "loadSessionReport",
+                new Class<?>[]{
+                        TeacherApi.class,
+                        JwtStore.class,
+                        AuthState.class,
+                        long.class,
+                        Button.class,
+                        Label.class,
+                        Label.class,
+                        Label.class,
+                        Label.class
+                },
+                fakeApi,
+                new JwtStore(),
+                new AuthState("token", Role.TEACHER, "Teacher Test"),
+                20L,
+                loadButton,
+                present,
+                absent,
+                excused,
+                rate
+        );
+
+        waitUntil(() -> !loadButton.isDisable() && rows.size() == 1);
+
+        assertTrue(present.getText().contains("5"));
+        assertTrue(absent.getText().contains("3"));
+        assertTrue(excused.getText().contains("0"));
+        assertTrue(rate.getText().contains("62.5"));
+
+        assertEquals("John Doe", rows.getFirst().getName());
+        assertEquals("john@example.com", rows.getFirst().getEmail());
+        assertEquals("ABSENT", rows.getFirst().getStatus());
     }
 }
