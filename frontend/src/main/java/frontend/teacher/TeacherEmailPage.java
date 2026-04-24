@@ -1,11 +1,11 @@
 package frontend.teacher;
 
-import frontend.StudentRow;
 import frontend.api.TeacherApi;
 import frontend.auth.AppRouter;
 import frontend.auth.AuthState;
 import frontend.auth.JwtStore;
 import frontend.ui.HelperClass;
+import frontend.ui.StudentRow;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -31,6 +31,9 @@ public class TeacherEmailPage {
     private static final Logger LOGGER =
             Logger.getLogger(TeacherEmailPage.class.getName());
 
+    private static final String UNKNOWN_ERROR = "Unknown error";
+    private static final String REASON_PLACEHOLDER = "{reason}";
+
     static class ClassItem {
         final long id;
         final String label;
@@ -50,6 +53,8 @@ public class TeacherEmailPage {
     private final HelperClass helper = new HelperClass();
 
     public Parent build(Scene scene, AppRouter router, JwtStore jwtStore, AuthState state) {
+        logIfSceneMissing(scene);
+
         String teacherName = TeacherPageSupport.resolveTeacherName(state, helper);
 
         String backendUrl = System.getenv().getOrDefault("BACKEND_URL", "http://localhost:8081");
@@ -94,6 +99,12 @@ public class TeacherEmailPage {
         );
     }
 
+    private void logIfSceneMissing(Scene scene) {
+        if (scene == null) {
+            LOGGER.fine("TeacherEmailPage.build called with a null scene.");
+        }
+    }
+
     private Label buildTitle() {
         Label title = new Label(helper.getMessage("teacher.email.title"));
         title.getStyleClass().add("title");
@@ -128,7 +139,7 @@ public class TeacherEmailPage {
 
     private TableView<StudentRow> buildStudentTable() {
         TableView<StudentRow> table = new TableView<>(rows);
-        table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+        table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
         table.setPrefHeight(340);
 
         TableColumn<StudentRow, String> nameColumn =
@@ -157,11 +168,18 @@ public class TeacherEmailPage {
                         .toList();
 
                 Platform.runLater(() -> classBox.getItems().setAll(items));
+            } catch (InterruptedException ex) {
+                Thread.currentThread().interrupt();
+                LOGGER.log(Level.WARNING, "Loading classes for teacher email page was interrupted.", ex);
+                Platform.runLater(() ->
+                        showError(helper.getMessage("teacher.email.error.classes")
+                                .replace(REASON_PLACEHOLDER, safeErrorMessage(ex)))
+                );
             } catch (Exception ex) {
                 LOGGER.log(Level.SEVERE, "Failed to load classes for teacher email page.", ex);
                 Platform.runLater(() ->
                         showError(helper.getMessage("teacher.email.error.classes")
-                                .replace("{reason}", ex.getMessage() == null ? "Unknown error" : ex.getMessage()))
+                                .replace(REASON_PLACEHOLDER, safeErrorMessage(ex)))
                 );
             }
         }).start();
@@ -194,12 +212,20 @@ public class TeacherEmailPage {
                         .toList();
 
                 Platform.runLater(() -> rows.setAll(mappedRows));
+            } catch (InterruptedException ex) {
+                Thread.currentThread().interrupt();
+                LOGGER.log(Level.WARNING, "Loading students for selected class on teacher email page was interrupted.", ex);
+                Platform.runLater(() -> {
+                    rows.clear();
+                    showError(helper.getMessage("teacher.email.error.students")
+                            .replace(REASON_PLACEHOLDER, safeErrorMessage(ex)));
+                });
             } catch (Exception ex) {
                 LOGGER.log(Level.SEVERE, "Failed to load students for selected class on teacher email page.", ex);
                 Platform.runLater(() -> {
                     rows.clear();
                     showError(helper.getMessage("teacher.email.error.students")
-                            .replace("{reason}", ex.getMessage() == null ? "Unknown error" : ex.getMessage()));
+                            .replace(REASON_PLACEHOLDER, safeErrorMessage(ex)));
                 });
             }
         }).start();
@@ -224,6 +250,13 @@ public class TeacherEmailPage {
                 email,
                 "—"
         );
+    }
+
+    private String safeErrorMessage(Throwable throwable) {
+        if (throwable == null || throwable.getMessage() == null || throwable.getMessage().isBlank()) {
+            return UNKNOWN_ERROR;
+        }
+        return throwable.getMessage();
     }
 
     private void showError(String message) {

@@ -1,6 +1,6 @@
 package frontend.teacher;
 
-import frontend.AppLayout;
+import frontend.app.AppLayout;
 import frontend.auth.AppRouter;
 import frontend.auth.AuthState;
 import frontend.auth.JwtStore;
@@ -17,9 +17,9 @@ public final class TeacherPageSupport {
     }
 
     public static String resolveTeacherName(AuthState state, HelperClass helper) {
-        return (state.getName() == null || state.getName().isBlank())
+        return (state.name() == null || state.name().isBlank())
                 ? helper.getMessage("teacher.fallback.name")
-                : state.getName();
+                : state.name();
     }
 
     public static VBox buildPageContainer() {

@@ -16,9 +16,9 @@ public final class AdminPageSupport {
     }
 
     public static String resolveAdminName(AuthState state, HelperClass helper) {
-        return (state.getName() == null || state.getName().isBlank())
+        return (state.name() == null || state.name().isBlank())
                 ? helper.getMessage("teacher.fallback.name")
-                : state.getName();
+                : state.name();
     }
 
     public static VBox buildContentContainer() {
@@ -37,12 +37,14 @@ public final class AdminPageSupport {
             JwtStore jwtStore
     ) {
         return AdminAppLayout.wrapWithSidebar(
-                adminName,
-                helper.getMessage("admin.sidebar.title"),
-                helper.getMessage("admin.dashboard.title"),
-                helper.getMessage("admin.classes.title"),
-                helper.getMessage("admin.users.title"),
-                helper.getMessage("admin.reports.title"),
+                new AdminAppLayout.SidebarConfig(
+                        adminName,
+                        helper.getMessage("admin.sidebar.title"),
+                        helper.getMessage("admin.dashboard.title"),
+                        helper.getMessage("admin.classes.title"),
+                        helper.getMessage("admin.users.title"),
+                        helper.getMessage("admin.reports.title")
+                ),
                 content,
                 activeKey,
                 new AdminNavigator(router, jwtStore)

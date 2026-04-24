@@ -12,7 +12,7 @@ import java.util.Map;
 /**
  * API client for teacher-related operations.
  */
-public final class TeacherApi extends BaseApiClient {
+public class TeacherApi extends BaseApiClient {
 
     private static final String QUERY_PREFIX = "?";
     private static final String CLASS_ID_PARAM = "classId=";

@@ -39,6 +39,15 @@ public class TeacherReportsPage {
     private static final Logger LOGGER =
             Logger.getLogger(TeacherReportsPage.class.getName());
 
+    private static final String UNKNOWN_ERROR = "Unknown error";
+    private static final String ERROR_PLACEHOLDER = "{error}";
+    private static final String STATS_PRESENT_KEY = "teacher.reports.stats.present";
+    private static final String STATS_ABSENT_KEY = "teacher.reports.stats.absent";
+    private static final String STATS_EXCUSED_KEY = "teacher.reports.stats.excused";
+    private static final String STATS_RATE_KEY = "teacher.reports.stats.rate";
+    private static final String COUNT_PLACEHOLDER = "{count}";
+    private static final String RATE_PLACEHOLDER = "{rate}";
+
     static class ClassItem {
         final long id;
         final String label;
@@ -93,6 +102,14 @@ public class TeacherReportsPage {
         }
     }
 
+    private record ReportSummaryLabels(
+            Label presentLabel,
+            Label absentLabel,
+            Label excusedLabel,
+            Label rateLabel
+    ) {
+    }
+
     private final ObservableList<ReportRow> tableRows = FXCollections.observableArrayList();
     private final HelperClass helper = new HelperClass();
 
@@ -119,22 +136,20 @@ public class TeacherReportsPage {
 
         HBox selects = buildSelectRow(classBox, sessionBox, loadButton, exportButton);
 
-        Label presentLabel = buildStatsLabel("teacher.reports.stats.present", "{count}", "—");
-        Label absentLabel = buildStatsLabel("teacher.reports.stats.absent", "{count}", "—");
-        Label excusedLabel = buildStatsLabel("teacher.reports.stats.excused", "{count}", "—");
-        Label rateLabel = buildStatsLabel("teacher.reports.stats.rate", "{rate}", "—");
+        Label presentLabel = buildStatsLabel(STATS_PRESENT_KEY, COUNT_PLACEHOLDER, "—");
+        Label absentLabel = buildStatsLabel(STATS_ABSENT_KEY, COUNT_PLACEHOLDER, "—");
+        Label excusedLabel = buildStatsLabel(STATS_EXCUSED_KEY, COUNT_PLACEHOLDER, "—");
+        Label rateLabel = buildStatsLabel(STATS_RATE_KEY, RATE_PLACEHOLDER, "—");
+
+        ReportSummaryLabels summaryLabels =
+                new ReportSummaryLabels(presentLabel, absentLabel, excusedLabel, rateLabel);
 
         HBox stats = buildStatsRow(presentLabel, absentLabel, excusedLabel, rateLabel);
         TableView<ReportRow> table = buildReportTable();
 
         page.getChildren().addAll(title, subtitle, selects, stats, table);
 
-        Runnable resetReportUI = () -> resetReportUI(
-                presentLabel,
-                absentLabel,
-                excusedLabel,
-                rateLabel
-        );
+        Runnable resetReportUI = () -> resetReportUI(summaryLabels);
 
         loadClasses(api, jwtStore, state, classBox);
 
@@ -168,10 +183,7 @@ public class TeacherReportsPage {
                     state,
                     selectedSession.id,
                     loadButton,
-                    presentLabel,
-                    absentLabel,
-                    excusedLabel,
-                    rateLabel
+                    summaryLabels
             );
         });
 
@@ -255,7 +267,7 @@ public class TeacherReportsPage {
 
     private TableView<ReportRow> buildReportTable() {
         TableView<ReportRow> table = new TableView<>(tableRows);
-        table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+        table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
         table.setPrefHeight(340);
 
         TableColumn<ReportRow, String> colName = new TableColumn<>(helper.getMessage("teacher.reports.table.student"));
@@ -284,16 +296,11 @@ public class TeacherReportsPage {
         return table;
     }
 
-    private void resetReportUI(
-            Label present,
-            Label absent,
-            Label excused,
-            Label rate
-    ) {
-        present.setText(helper.getMessage("teacher.reports.stats.present").replace("{count}", "—"));
-        absent.setText(helper.getMessage("teacher.reports.stats.absent").replace("{count}", "—"));
-        excused.setText(helper.getMessage("teacher.reports.stats.excused").replace("{count}", "—"));
-        rate.setText(helper.getMessage("teacher.reports.stats.rate").replace("{rate}", "—"));
+    private void resetReportUI(ReportSummaryLabels labels) {
+        labels.presentLabel().setText(helper.getMessage(STATS_PRESENT_KEY).replace(COUNT_PLACEHOLDER, "—"));
+        labels.absentLabel().setText(helper.getMessage(STATS_ABSENT_KEY).replace(COUNT_PLACEHOLDER, "—"));
+        labels.excusedLabel().setText(helper.getMessage(STATS_EXCUSED_KEY).replace(COUNT_PLACEHOLDER, "—"));
+        labels.rateLabel().setText(helper.getMessage(STATS_RATE_KEY).replace(RATE_PLACEHOLDER, "—"));
         tableRows.clear();
     }
 
@@ -308,11 +315,18 @@ public class TeacherReportsPage {
                 List<Map<String, Object>> classes = api.getMyClasses(jwtStore, state);
                 List<ClassItem> items = mapClassItems(classes);
                 Platform.runLater(() -> classBox.getItems().setAll(items));
+            } catch (InterruptedException ex) {
+                Thread.currentThread().interrupt();
+                LOGGER.log(Level.WARNING, "Loading teacher classes for reports was interrupted.", ex);
+                Platform.runLater(() ->
+                        showError(helper.getMessage("teacher.reports.error.loadClasses")
+                                .replace(ERROR_PLACEHOLDER, safeErrorMessage(ex)))
+                );
             } catch (Exception ex) {
                 LOGGER.log(Level.SEVERE, "Failed to load teacher classes for reports.", ex);
                 Platform.runLater(() ->
                         showError(helper.getMessage("teacher.reports.error.loadClasses")
-                                .replace("{error}", ex.getMessage() == null ? "Unknown error" : ex.getMessage()))
+                                .replace(ERROR_PLACEHOLDER, safeErrorMessage(ex)))
                 );
             }
         }).start();
@@ -339,11 +353,18 @@ public class TeacherReportsPage {
                 List<Map<String, Object>> sessions = api.getSessionsForClass(jwtStore, state, classId);
                 List<SessionItem> items = mapSessionItems(sessions);
                 Platform.runLater(() -> sessionBox.getItems().setAll(items));
+            } catch (InterruptedException ex) {
+                Thread.currentThread().interrupt();
+                LOGGER.log(Level.WARNING, "Loading teacher sessions for reports was interrupted.", ex);
+                Platform.runLater(() ->
+                        showError(helper.getMessage("teacher.reports.error.loadSessions")
+                                .replace(ERROR_PLACEHOLDER, safeErrorMessage(ex)))
+                );
             } catch (Exception ex) {
                 LOGGER.log(Level.SEVERE, "Failed to load teacher sessions for reports.", ex);
                 Platform.runLater(() ->
                         showError(helper.getMessage("teacher.reports.error.loadSessions")
-                                .replace("{error}", ex.getMessage() == null ? "Unknown error" : ex.getMessage()))
+                                .replace(ERROR_PLACEHOLDER, safeErrorMessage(ex)))
                 );
             }
         }).start();
@@ -372,10 +393,7 @@ public class TeacherReportsPage {
             AuthState state,
             long sessionId,
             Button loadButton,
-            Label presentLabel,
-            Label absentLabel,
-            Label excusedLabel,
-            Label rateLabel
+            ReportSummaryLabels labels
     ) {
         loadButton.setDisable(true);
         tableRows.clear();
@@ -399,31 +417,39 @@ public class TeacherReportsPage {
                 List<ReportRow> mappedRows = mapReportRows(rows);
 
                 Platform.runLater(() -> {
-                    presentLabel.setText(
-                            helper.getMessage("teacher.reports.stats.present")
-                                    .replace("{count}", String.valueOf(presentCount))
+                    labels.presentLabel().setText(
+                            helper.getMessage(STATS_PRESENT_KEY)
+                                    .replace(COUNT_PLACEHOLDER, String.valueOf(presentCount))
                     );
-                    absentLabel.setText(
-                            helper.getMessage("teacher.reports.stats.absent")
-                                    .replace("{count}", String.valueOf(absentCount))
+                    labels.absentLabel().setText(
+                            helper.getMessage(STATS_ABSENT_KEY)
+                                    .replace(COUNT_PLACEHOLDER, String.valueOf(absentCount))
                     );
-                    excusedLabel.setText(
-                            helper.getMessage("teacher.reports.stats.excused")
-                                    .replace("{count}", String.valueOf(excusedCount))
+                    labels.excusedLabel().setText(
+                            helper.getMessage(STATS_EXCUSED_KEY)
+                                    .replace(COUNT_PLACEHOLDER, String.valueOf(excusedCount))
                     );
-                    rateLabel.setText(
-                            helper.getMessage("teacher.reports.stats.rate")
-                                    .replace("{rate}", formatOneDecimal(rate))
+                    labels.rateLabel().setText(
+                            helper.getMessage(STATS_RATE_KEY)
+                                    .replace(RATE_PLACEHOLDER, formatOneDecimal(rate))
                     );
                     tableRows.setAll(mappedRows);
                     loadButton.setDisable(false);
+                });
+            } catch (InterruptedException ex) {
+                Thread.currentThread().interrupt();
+                LOGGER.log(Level.WARNING, "Loading teacher session report was interrupted.", ex);
+                Platform.runLater(() -> {
+                    loadButton.setDisable(false);
+                    showError(helper.getMessage("teacher.reports.error.loadReport") + " "
+                            + safeErrorMessage(ex));
                 });
             } catch (Exception ex) {
                 LOGGER.log(Level.SEVERE, "Failed to load teacher session report.", ex);
                 Platform.runLater(() -> {
                     loadButton.setDisable(false);
                     showError(helper.getMessage("teacher.reports.error.loadReport") + " "
-                            + (ex.getMessage() == null ? "Unknown error" : ex.getMessage()));
+                            + safeErrorMessage(ex));
                 });
             }
         }).start();
@@ -492,11 +518,18 @@ public class TeacherReportsPage {
                                         : "teacher.reports.export.success.csv"
                         ) + "\n" + destination.getAbsolutePath()
                 ));
+            } catch (InterruptedException ex) {
+                Thread.currentThread().interrupt();
+                LOGGER.log(Level.WARNING, "Exporting teacher report was interrupted.", ex);
+                Platform.runLater(() ->
+                        showError(helper.getMessage("teacher.reports.error.export") + " "
+                                + safeErrorMessage(ex))
+                );
             } catch (Exception ex) {
                 LOGGER.log(Level.SEVERE, "Failed to export teacher report.", ex);
                 Platform.runLater(() ->
                         showError(helper.getMessage("teacher.reports.error.export") + " "
-                                + (ex.getMessage() == null ? "Unknown error" : ex.getMessage()))
+                                + safeErrorMessage(ex))
                 );
             }
         }).start();
@@ -512,6 +545,13 @@ public class TeacherReportsPage {
 
     private void showInfo(String message) {
         new Alert(Alert.AlertType.INFORMATION, message, ButtonType.OK).showAndWait();
+    }
+
+    private String safeErrorMessage(Throwable throwable) {
+        if (throwable == null || throwable.getMessage() == null || throwable.getMessage().isBlank()) {
+            return UNKNOWN_ERROR;
+        }
+        return throwable.getMessage();
     }
 
     @SuppressWarnings("unchecked")

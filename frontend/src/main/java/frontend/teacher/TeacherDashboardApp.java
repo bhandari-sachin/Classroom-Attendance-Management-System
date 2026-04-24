@@ -33,9 +33,15 @@ public class TeacherDashboardApp {
     private static final Logger LOGGER =
             Logger.getLogger(TeacherDashboardApp.class.getName());
 
+    private static final String EMPTY_SUBTITLE_STYLE = "empty-subtitle";
+    private static final String UNKNOWN_ERROR = "Unknown error";
+    private static final String ERROR_PLACEHOLDER = "{error}";
+
     private final HelperClass helper = new HelperClass();
 
     public Parent build(Scene scene, AppRouter router, JwtStore jwtStore, AuthState state) {
+        logIfSceneMissing(scene);
+
         String teacherName = TeacherPageSupport.resolveTeacherName(state, helper);
 
         String backendUrl = System.getenv().getOrDefault("BACKEND_URL", "http://localhost:8081");
@@ -97,6 +103,12 @@ public class TeacherDashboardApp {
                 router,
                 jwtStore
         );
+    }
+
+    private void logIfSceneMissing(Scene scene) {
+        if (scene == null) {
+            LOGGER.fine("TeacherDashboardApp.build called with a null scene.");
+        }
     }
 
     private Label buildGreetingLabel(String teacherName) {
@@ -184,7 +196,7 @@ public class TeacherDashboardApp {
         classesContainer.setAlignment(Pos.CENTER);
 
         Label loading = new Label(helper.getMessage("teacher.dashboard.classes.loading"));
-        loading.getStyleClass().add("empty-subtitle");
+        loading.getStyleClass().add(EMPTY_SUBTITLE_STYLE);
 
         classesContainer.getChildren().add(loading);
         return classesContainer;
@@ -214,12 +226,21 @@ public class TeacherDashboardApp {
                     setStatValue(presentTodayCard, presentToday);
                     setStatValue(absentTodayCard, absentToday);
                 });
+            } catch (InterruptedException ex) {
+                Thread.currentThread().interrupt();
+                LOGGER.log(Level.WARNING, "Loading teacher dashboard stats was interrupted.", ex);
+                Platform.runLater(() ->
+                        showError(
+                                helper.getMessage("teacher.dashboard.error.stats")
+                                        .replace(ERROR_PLACEHOLDER, safeErrorMessage(ex))
+                        )
+                );
             } catch (Exception ex) {
                 LOGGER.log(Level.SEVERE, "Failed to load teacher dashboard stats.", ex);
                 Platform.runLater(() ->
                         showError(
                                 helper.getMessage("teacher.dashboard.error.stats")
-                                        .replace("{error}", ex.getMessage() == null ? "Unknown error" : ex.getMessage())
+                                        .replace(ERROR_PLACEHOLDER, safeErrorMessage(ex))
                         )
                 );
             }
@@ -236,11 +257,18 @@ public class TeacherDashboardApp {
             try {
                 List<Map<String, Object>> classes = api.getMyClasses(jwtStore, state);
                 Platform.runLater(() -> renderTeacherClasses(classesContainer, classes));
+            } catch (InterruptedException ex) {
+                Thread.currentThread().interrupt();
+                LOGGER.log(Level.WARNING, "Loading teacher classes for dashboard was interrupted.", ex);
+                Platform.runLater(() -> showClassesError(
+                        classesContainer,
+                        safeErrorMessage(ex)
+                ));
             } catch (Exception ex) {
                 LOGGER.log(Level.SEVERE, "Failed to load teacher classes for dashboard.", ex);
                 Platform.runLater(() -> showClassesError(
                         classesContainer,
-                        ex.getMessage() == null ? "Unknown error" : ex.getMessage()
+                        safeErrorMessage(ex)
                 ));
             }
         }).start();
@@ -282,7 +310,7 @@ public class TeacherDashboardApp {
         title.getStyleClass().add("empty-title");
 
         Label subtitle = new Label(helper.getMessage("teacher.dashboard.classes.empty.subtitle"));
-        subtitle.getStyleClass().add("empty-subtitle");
+        subtitle.getStyleClass().add(EMPTY_SUBTITLE_STYLE);
 
         classesContainer.getChildren().addAll(icon, title, subtitle);
     }
@@ -293,9 +321,9 @@ public class TeacherDashboardApp {
 
         Label error = new Label(
                 helper.getMessage("teacher.dashboard.error.classes")
-                        .replace("{error}", errorMessage)
+                        .replace(ERROR_PLACEHOLDER, errorMessage)
         );
-        error.getStyleClass().add("empty-subtitle");
+        error.getStyleClass().add(EMPTY_SUBTITLE_STYLE);
 
         classesContainer.getChildren().add(error);
     }
@@ -403,6 +431,13 @@ public class TeacherDashboardApp {
 
     static String valueOr(Object value, String fallback) {
         return value == null ? fallback : String.valueOf(value);
+    }
+
+    private String safeErrorMessage(Throwable throwable) {
+        if (throwable == null || throwable.getMessage() == null || throwable.getMessage().isBlank()) {
+            return UNKNOWN_ERROR;
+        }
+        return throwable.getMessage();
     }
 
     private void showError(String message) {

@@ -1,6 +1,8 @@
 package http;
 
 import backend.exception.ApiException;
+import com.auth0.jwt.interfaces.Claim;
+import com.auth0.jwt.interfaces.DecodedJWT;
 import com.sun.net.httpserver.*;
 import org.junit.jupiter.api.Test;
 import security.JwtService;
@@ -15,6 +17,17 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 class MarkAttendanceHandlerTest {
+
+    // -------------------------------------------------------------
+    // Mock ADMIN JWT (safe inline version - avoids UnfinishedStubbing)
+    // -------------------------------------------------------------
+    private DecodedJWT mockStudentJwt() {
+        DecodedJWT jwt = mock(DecodedJWT.class);
+        Claim role = mock(Claim.class);
+        when(role.asString()).thenReturn("STUDENT");
+        when(jwt.getClaim("role")).thenReturn(role);
+        return jwt;
+    }
 
     // -------------------------------------------------------------
     // SUCCESS CASE
@@ -124,8 +137,7 @@ class MarkAttendanceHandlerTest {
         @Override public URI getRequestURI() { return uri; }
         @Override public String getRequestMethod() { return method; }
         @Override public HttpContext getHttpContext() { return null; }
-        @Override public void close() {
-            // no-op for testing
+        @Override public void close() {     // No-op: not needed for unit testing
         }
         @Override public InputStream getRequestBody() { return requestBody; }
         @Override public OutputStream getResponseBody() { return responseBody; }
@@ -140,11 +152,9 @@ class MarkAttendanceHandlerTest {
         @Override public InetSocketAddress getLocalAddress() { return new InetSocketAddress(0); }
         @Override public String getProtocol() { return "HTTP/1.1"; }
         @Override public Object getAttribute(String name) { return null; }
-        @Override public void setAttribute(String name, Object value) {
-            // No-op for testing
+        @Override public void setAttribute(String name, Object value) {     // Attributes are not used in this fake implementation
         }
-        @Override public void setStreams(InputStream i, OutputStream o) {
-            // No-op for testing
+        @Override public void setStreams(InputStream i, OutputStream o) {    // Not used in this fake exchange
         }
         @Override public HttpPrincipal getPrincipal() { return null; }
     }

@@ -152,11 +152,9 @@ class HttpUtilTest {
         @Override public InetSocketAddress getLocalAddress() { return new InetSocketAddress(0); }
         @Override public String getProtocol() { return "HTTP/1.1"; }
         @Override public Object getAttribute(String name) { return null; }
-        @Override public void setAttribute(String name, Object value) {
-            // No-op for testing
+        @Override public void setAttribute(String name, Object value) {    // No-op: attributes not needed for testing
         }
-        @Override public void setStreams(InputStream i, OutputStream o) {
-            // No-op for testing
+        @Override public void setStreams(InputStream i, OutputStream o) {     // Not used in this fake exchange
         }
         @Override public com.sun.net.httpserver.HttpPrincipal getPrincipal() { return null; }
     }

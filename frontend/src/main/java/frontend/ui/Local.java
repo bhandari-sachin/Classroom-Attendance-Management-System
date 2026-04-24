@@ -1,7 +1,5 @@
 package frontend.ui;
 
-import frontend.UTF8Control;
-
 import java.util.Locale;
 import java.util.ResourceBundle;
 

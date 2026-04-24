@@ -1,12 +1,12 @@
 package frontend.admin;
 
-import frontend.ClassRow;
 import frontend.api.AdminApi;
 import frontend.auth.AppRouter;
 import frontend.auth.AuthState;
 import frontend.auth.JwtStore;
 import frontend.dto.AdminClassDto;
 import frontend.dto.AdminStudentDto;
+import frontend.ui.ClassRow;
 import frontend.ui.HelperClass;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
@@ -34,20 +34,37 @@ import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import java.util.stream.Collectors;
 
 public class AdminManageClassesPage {
 
     private static final Logger LOGGER =
             Logger.getLogger(AdminManageClassesPage.class.getName());
 
+    private static final String STYLE_SUBTITLE = "subtitle";
+    private static final String UNKNOWN_ERROR = "Unknown error";
+    private static final String LOAD_STUDENTS_FAILED_KEY =
+            "admin.classes.dialog.loadStudents.failed";
+    private static final String ENROLL_FAILURE_KEY =
+            "admin.classes.dialog.enroll.failure";
+
     private final HelperClass helper = new HelperClass();
 
+    private record CreateClassRequest(
+            String classCode,
+            String name,
+            String teacherEmail,
+            String semester,
+            String academicYear,
+            Integer maxCapacity
+    ) {
+    }
+
     public Parent build(Scene scene, AppRouter router, JwtStore jwtStore, AuthState state) {
+        logIfSceneMissing(scene);
+
         String adminName = AdminPageSupport.resolveAdminName(state, helper);
 
         VBox content = AdminPageSupport.buildContentContainer();
@@ -104,6 +121,12 @@ public class AdminManageClassesPage {
         );
     }
 
+    private void logIfSceneMissing(Scene scene) {
+        if (scene == null) {
+            LOGGER.fine("AdminManageClassesPage.build called with a null scene.");
+        }
+    }
+
     private HBox buildTitleRow() {
         HBox titleRow = new HBox(12);
         titleRow.setAlignment(Pos.CENTER_LEFT);
@@ -114,7 +137,7 @@ public class AdminManageClassesPage {
         title.getStyleClass().add("title");
 
         Label subtitle = new Label(helper.getMessage("admin.classes.subtitle"));
-        subtitle.getStyleClass().add("subtitle");
+        subtitle.getStyleClass().add(STYLE_SUBTITLE);
 
         titleColumn.getChildren().addAll(title, subtitle);
 
@@ -148,7 +171,7 @@ public class AdminManageClassesPage {
 
     private Label buildLoadErrorLabel() {
         Label loadError = new Label();
-        loadError.getStyleClass().add("subtitle");
+        loadError.getStyleClass().add(STYLE_SUBTITLE);
         loadError.setManaged(false);
         loadError.setVisible(false);
         return loadError;
@@ -160,7 +183,7 @@ public class AdminManageClassesPage {
         return section;
     }
 
-    void applySearchFilter(FilteredList<ClassRow> filteredRows, String query) {
+    public void applySearchFilter(FilteredList<ClassRow> filteredRows, String query) {
         String searchValue = query == null ? "" : query.trim().toLowerCase();
 
         filteredRows.setPredicate(row -> {
@@ -183,19 +206,20 @@ public class AdminManageClassesPage {
 
         new Thread(() -> {
             try {
-                List<AdminClassDto> classes = adminApi.getAdminClasses();
-                List<ClassRow> mappedRows = classes.stream()
+                List<ClassRow> mappedRows = adminApi.getAdminClasses()
+                        .stream()
                         .map(this::mapClassRow)
-                        .collect(Collectors.toList());
+                        .toList();
 
                 Platform.runLater(() -> rows.setAll(mappedRows));
             } catch (Exception ex) {
+                handleInterruptedException(ex);
                 LOGGER.log(Level.SEVERE, "Failed to load admin classes.", ex);
                 Platform.runLater(() -> showLabel(
                         loadError,
-                        helper.getMessage("admin.classes.dialog.loadStudents.failed")
+                        helper.getMessage(LOAD_STUDENTS_FAILED_KEY)
                                 + " "
-                                + (ex.getMessage() == null ? "Unknown error" : ex.getMessage())
+                                + safeErrorMessage(ex)
                 ));
             }
         }).start();
@@ -255,23 +279,16 @@ public class AdminManageClassesPage {
                 return;
             }
 
-            String classCode = classCodeField.getText().trim();
-            String name = nameField.getText().trim();
-            String teacherEmail = teacherEmailField.getText().trim();
-            String semester = semesterField.getText().trim();
-            String academicYear = academicYearField.getText().trim();
-            Integer maxCapacity = parseInteger(maxCapacityField.getText().trim());
-
-            createClass(
-                    adminApi,
-                    classCode,
-                    name,
-                    teacherEmail,
-                    semester,
-                    academicYear,
-                    maxCapacity,
-                    reload
+            CreateClassRequest request = new CreateClassRequest(
+                    classCodeField.getText().trim(),
+                    nameField.getText().trim(),
+                    teacherEmailField.getText().trim(),
+                    semesterField.getText().trim(),
+                    academicYearField.getText().trim(),
+                    parseInteger(maxCapacityField.getText().trim())
             );
+
+            createClass(adminApi, request, reload);
         });
     }
 
@@ -305,24 +322,27 @@ public class AdminManageClassesPage {
 
     private void createClass(
             AdminApi adminApi,
-            String classCode,
-            String name,
-            String teacherEmail,
-            String semester,
-            String academicYear,
-            Integer maxCapacity,
+            CreateClassRequest request,
             Runnable reload
     ) {
         new Thread(() -> {
             try {
-                adminApi.createClass(classCode, name, teacherEmail, semester, academicYear, maxCapacity);
+                adminApi.createClass(
+                        request.classCode(),
+                        request.name(),
+                        request.teacherEmail(),
+                        request.semester(),
+                        request.academicYear(),
+                        request.maxCapacity()
+                );
                 Platform.runLater(reload);
             } catch (Exception ex) {
+                handleInterruptedException(ex);
                 LOGGER.log(Level.SEVERE, "Failed to create class.", ex);
                 Platform.runLater(() -> showError(
                         helper.getMessage("admin.classes.dialog.add.error")
                                 + ":\n"
-                                + (ex.getMessage() == null ? "Unknown error" : ex.getMessage())
+                                + safeErrorMessage(ex)
                 ));
             }
         }).start();
@@ -352,7 +372,7 @@ public class AdminManageClassesPage {
         searchStudents.setPromptText(helper.getMessage("admin.classes.dialog.enroll.search.placeholder"));
 
         Label statusLabel = new Label(helper.getMessage("admin.classes.dialog.loadStudents.loading"));
-        statusLabel.getStyleClass().add("subtitle");
+        statusLabel.getStyleClass().add(STYLE_SUBTITLE);
 
         ListView<AdminStudentDto> listView = buildStudentListView();
         Label selectedCount = buildSelectedCountLabel();
@@ -414,11 +434,11 @@ public class AdminManageClassesPage {
 
     private Label buildSelectedCountLabel() {
         Label selectedCount = new Label(helper.getMessage("admin.classes.dialog.enroll.selectedCount"));
-        selectedCount.getStyleClass().add("subtitle");
+        selectedCount.getStyleClass().add(STYLE_SUBTITLE);
         return selectedCount;
     }
 
-    void applyStudentFilter(FilteredList<AdminStudentDto> filteredStudents, String query) {
+    public void applyStudentFilter(FilteredList<AdminStudentDto> filteredStudents, String query) {
         String searchValue = query == null ? "" : query.trim().toLowerCase();
 
         filteredStudents.setPredicate(student -> {
@@ -456,12 +476,13 @@ public class AdminManageClassesPage {
                     );
                 });
             } catch (Exception ex) {
+                handleInterruptedException(ex);
                 LOGGER.log(Level.SEVERE, "Failed to load available students for class enrollment.", ex);
                 Platform.runLater(() ->
                         statusLabel.setText(
-                                helper.getMessage("admin.classes.dialog.loadStudents.failed")
+                                helper.getMessage(LOAD_STUDENTS_FAILED_KEY)
                                         + " "
-                                        + (ex.getMessage() == null ? "Unknown error" : ex.getMessage())
+                                        + safeErrorMessage(ex)
                         )
                 );
             }
@@ -477,12 +498,12 @@ public class AdminManageClassesPage {
             Runnable reload
     ) {
         List<AdminStudentDto> selectedStudents =
-                new ArrayList<>(listView.getSelectionModel().getSelectedItems());
+                List.copyOf(listView.getSelectionModel().getSelectedItems());
 
         List<String> studentEmails = selectedStudents.stream()
-                .map(student -> student.getEmail())
+                .map(AdminStudentDto::getEmail)
                 .filter(email -> email != null && !email.isBlank())
-                .collect(Collectors.toList());
+                .toList();
 
         if (studentEmails.isEmpty()) {
             showWarning(helper.getMessage("admin.classes.dialog.enroll.noneSelected"));
@@ -501,15 +522,14 @@ public class AdminManageClassesPage {
                     reload.run();
                 });
             } catch (Exception ex) {
+                handleInterruptedException(ex);
                 LOGGER.log(Level.SEVERE, "Failed to enroll students into class.", ex);
                 Platform.runLater(() -> {
-                    String errorMessage = ex.getMessage() == null ? "Unknown error" : ex.getMessage();
-                    statusLabel.setText(
-                            helper.getMessage("admin.classes.dialog.enroll.failure") + " " + errorMessage
-                    );
-                    showError(
-                            helper.getMessage("admin.classes.dialog.enroll.failure") + "\n" + errorMessage
-                    );
+                    String errorMessage = safeErrorMessage(ex);
+                    String failureMessage = helper.getMessage(ENROLL_FAILURE_KEY);
+
+                    statusLabel.setText(failureMessage + " " + errorMessage);
+                    showError(failureMessage + "\n" + errorMessage);
                 });
             }
         }).start();
@@ -547,6 +567,19 @@ public class AdminManageClassesPage {
 
     private void showError(String message) {
         new Alert(Alert.AlertType.ERROR, message, ButtonType.OK).showAndWait();
+    }
+
+    private void handleInterruptedException(Exception ex) {
+        if (ex instanceof InterruptedException) {
+            Thread.currentThread().interrupt();
+        }
+    }
+
+    private String safeErrorMessage(Exception ex) {
+        if (ex == null || ex.getMessage() == null || ex.getMessage().isBlank()) {
+            return UNKNOWN_ERROR;
+        }
+        return ex.getMessage();
     }
 
     static String safe(String value) {
