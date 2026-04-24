@@ -151,16 +151,13 @@ public class AdminManageUsersPage {
 
     private ComboBox<String> buildTypeFilter() {
         String allTypesLabel = helper.getMessage("admin.users.filter.allTypes");
-        String studentLabel = roleLabel(FILTER_STUDENT_KEY);
-        String teacherLabel = roleLabel(FILTER_TEACHER_KEY);
-        String adminLabel = roleLabel(FILTER_ADMIN_KEY);
 
         ComboBox<String> type = new ComboBox<>();
         type.getItems().addAll(
                 allTypesLabel,
-                studentLabel,
-                teacherLabel,
-                adminLabel
+                roleLabel(FILTER_STUDENT_KEY),
+                roleLabel(FILTER_TEACHER_KEY),
+                roleLabel(FILTER_ADMIN_KEY)
         );
         type.setValue(allTypesLabel);
         type.getStyleClass().add("filter-combo");
@@ -197,9 +194,7 @@ public class AdminManageUsersPage {
         String selectedType = typeFilter.getValue();
 
         filteredRows.setPredicate(row -> {
-            if (row == null) {
-                return false;
-            }
+            if (row == null) return false;
 
             boolean matchesText = query.isBlank()
                     || safe(row.getUser()).contains(query)
@@ -238,8 +233,19 @@ public class AdminManageUsersPage {
                     rows.setAll(mapUserRows(data));
                     applyFilter.run();
                 });
+
+            } catch (InterruptedException ex) {
+                Thread.currentThread().interrupt(); // ✅ FIX
+                LOGGER.log(Level.WARNING, "Loading users interrupted", ex);
+
+                Platform.runLater(() -> showLabel(
+                        loadError,
+                        helper.getMessage("admin.users.loadError") + " Interrupted"
+                ));
+
             } catch (Exception ex) {
                 LOGGER.log(Level.SEVERE, "Failed to load admin users.", ex);
+
                 Platform.runLater(() -> showLabel(
                         loadError,
                         helper.getMessage("admin.users.loadError") + " "
@@ -275,9 +281,7 @@ public class AdminManageUsersPage {
     ObservableList<UserRow> mapUserRows(AdminUsersResponseDto data) {
         ObservableList<UserRow> mappedRows = FXCollections.observableArrayList();
 
-        if (data.getUsers() == null) {
-            return mappedRows;
-        }
+        if (data.getUsers() == null) return mappedRows;
 
         for (AdminUserDto user : data.getUsers()) {
             String userCell = nullToEmpty(user.getName()) + "\n" + nullToEmpty(user.getEmail());
@@ -291,9 +295,7 @@ public class AdminManageUsersPage {
     }
 
     String localizeRole(String role) {
-        if (role == null) {
-            return "";
-        }
+        if (role == null) return "";
 
         return switch (role.trim().toUpperCase()) {
             case "STUDENT" -> roleLabel(FILTER_STUDENT_KEY);

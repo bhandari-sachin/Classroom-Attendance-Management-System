@@ -34,11 +34,9 @@ import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import java.util.stream.Collectors;
 
 public class AdminManageClassesPage {
 
@@ -47,6 +45,10 @@ public class AdminManageClassesPage {
 
     private static final String STYLE_SUBTITLE = "subtitle";
     private static final String UNKNOWN_ERROR = "Unknown error";
+    private static final String LOAD_STUDENTS_FAILED_KEY =
+            "admin.classes.dialog.loadStudents.failed";
+    private static final String ENROLL_FAILURE_KEY =
+            "admin.classes.dialog.enroll.failure";
 
     private final HelperClass helper = new HelperClass();
 
@@ -204,17 +206,18 @@ public class AdminManageClassesPage {
 
         new Thread(() -> {
             try {
-                List<AdminClassDto> classes = adminApi.getAdminClasses();
-                List<ClassRow> mappedRows = classes.stream()
+                List<ClassRow> mappedRows = adminApi.getAdminClasses()
+                        .stream()
                         .map(this::mapClassRow)
-                        .collect(Collectors.toList());
+                        .toList();
 
                 Platform.runLater(() -> rows.setAll(mappedRows));
             } catch (Exception ex) {
+                handleInterruptedException(ex);
                 LOGGER.log(Level.SEVERE, "Failed to load admin classes.", ex);
                 Platform.runLater(() -> showLabel(
                         loadError,
-                        helper.getMessage("admin.classes.dialog.loadStudents.failed")
+                        helper.getMessage(LOAD_STUDENTS_FAILED_KEY)
                                 + " "
                                 + safeErrorMessage(ex)
                 ));
@@ -334,6 +337,7 @@ public class AdminManageClassesPage {
                 );
                 Platform.runLater(reload);
             } catch (Exception ex) {
+                handleInterruptedException(ex);
                 LOGGER.log(Level.SEVERE, "Failed to create class.", ex);
                 Platform.runLater(() -> showError(
                         helper.getMessage("admin.classes.dialog.add.error")
@@ -472,10 +476,11 @@ public class AdminManageClassesPage {
                     );
                 });
             } catch (Exception ex) {
+                handleInterruptedException(ex);
                 LOGGER.log(Level.SEVERE, "Failed to load available students for class enrollment.", ex);
                 Platform.runLater(() ->
                         statusLabel.setText(
-                                helper.getMessage("admin.classes.dialog.loadStudents.failed")
+                                helper.getMessage(LOAD_STUDENTS_FAILED_KEY)
                                         + " "
                                         + safeErrorMessage(ex)
                         )
@@ -493,12 +498,12 @@ public class AdminManageClassesPage {
             Runnable reload
     ) {
         List<AdminStudentDto> selectedStudents =
-                new ArrayList<>(listView.getSelectionModel().getSelectedItems());
+                List.copyOf(listView.getSelectionModel().getSelectedItems());
 
         List<String> studentEmails = selectedStudents.stream()
                 .map(AdminStudentDto::getEmail)
                 .filter(email -> email != null && !email.isBlank())
-                .collect(Collectors.toList());
+                .toList();
 
         if (studentEmails.isEmpty()) {
             showWarning(helper.getMessage("admin.classes.dialog.enroll.noneSelected"));
@@ -517,15 +522,14 @@ public class AdminManageClassesPage {
                     reload.run();
                 });
             } catch (Exception ex) {
+                handleInterruptedException(ex);
                 LOGGER.log(Level.SEVERE, "Failed to enroll students into class.", ex);
                 Platform.runLater(() -> {
                     String errorMessage = safeErrorMessage(ex);
-                    statusLabel.setText(
-                            helper.getMessage("admin.classes.dialog.enroll.failure") + " " + errorMessage
-                    );
-                    showError(
-                            helper.getMessage("admin.classes.dialog.enroll.failure") + "\n" + errorMessage
-                    );
+                    String failureMessage = helper.getMessage(ENROLL_FAILURE_KEY);
+
+                    statusLabel.setText(failureMessage + " " + errorMessage);
+                    showError(failureMessage + "\n" + errorMessage);
                 });
             }
         }).start();
@@ -563,6 +567,12 @@ public class AdminManageClassesPage {
 
     private void showError(String message) {
         new Alert(Alert.AlertType.ERROR, message, ButtonType.OK).showAndWait();
+    }
+
+    private void handleInterruptedException(Exception ex) {
+        if (ex instanceof InterruptedException) {
+            Thread.currentThread().interrupt();
+        }
     }
 
     private String safeErrorMessage(Exception ex) {

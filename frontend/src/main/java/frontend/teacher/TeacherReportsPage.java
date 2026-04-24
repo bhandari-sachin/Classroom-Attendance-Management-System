@@ -40,6 +40,7 @@ public class TeacherReportsPage {
             Logger.getLogger(TeacherReportsPage.class.getName());
 
     private static final String UNKNOWN_ERROR = "Unknown error";
+    private static final String ERROR_PLACEHOLDER = "{error}";
     private static final String STATS_PRESENT_KEY = "teacher.reports.stats.present";
     private static final String STATS_ABSENT_KEY = "teacher.reports.stats.absent";
     private static final String STATS_EXCUSED_KEY = "teacher.reports.stats.excused";
@@ -314,11 +315,18 @@ public class TeacherReportsPage {
                 List<Map<String, Object>> classes = api.getMyClasses(jwtStore, state);
                 List<ClassItem> items = mapClassItems(classes);
                 Platform.runLater(() -> classBox.getItems().setAll(items));
+            } catch (InterruptedException ex) {
+                Thread.currentThread().interrupt();
+                LOGGER.log(Level.WARNING, "Loading teacher classes for reports was interrupted.", ex);
+                Platform.runLater(() ->
+                        showError(helper.getMessage("teacher.reports.error.loadClasses")
+                                .replace(ERROR_PLACEHOLDER, safeErrorMessage(ex)))
+                );
             } catch (Exception ex) {
                 LOGGER.log(Level.SEVERE, "Failed to load teacher classes for reports.", ex);
                 Platform.runLater(() ->
                         showError(helper.getMessage("teacher.reports.error.loadClasses")
-                                .replace("{error}", safeErrorMessage(ex)))
+                                .replace(ERROR_PLACEHOLDER, safeErrorMessage(ex)))
                 );
             }
         }).start();
@@ -345,11 +353,18 @@ public class TeacherReportsPage {
                 List<Map<String, Object>> sessions = api.getSessionsForClass(jwtStore, state, classId);
                 List<SessionItem> items = mapSessionItems(sessions);
                 Platform.runLater(() -> sessionBox.getItems().setAll(items));
+            } catch (InterruptedException ex) {
+                Thread.currentThread().interrupt();
+                LOGGER.log(Level.WARNING, "Loading teacher sessions for reports was interrupted.", ex);
+                Platform.runLater(() ->
+                        showError(helper.getMessage("teacher.reports.error.loadSessions")
+                                .replace(ERROR_PLACEHOLDER, safeErrorMessage(ex)))
+                );
             } catch (Exception ex) {
                 LOGGER.log(Level.SEVERE, "Failed to load teacher sessions for reports.", ex);
                 Platform.runLater(() ->
                         showError(helper.getMessage("teacher.reports.error.loadSessions")
-                                .replace("{error}", safeErrorMessage(ex)))
+                                .replace(ERROR_PLACEHOLDER, safeErrorMessage(ex)))
                 );
             }
         }).start();
@@ -420,6 +435,14 @@ public class TeacherReportsPage {
                     );
                     tableRows.setAll(mappedRows);
                     loadButton.setDisable(false);
+                });
+            } catch (InterruptedException ex) {
+                Thread.currentThread().interrupt();
+                LOGGER.log(Level.WARNING, "Loading teacher session report was interrupted.", ex);
+                Platform.runLater(() -> {
+                    loadButton.setDisable(false);
+                    showError(helper.getMessage("teacher.reports.error.loadReport") + " "
+                            + safeErrorMessage(ex));
                 });
             } catch (Exception ex) {
                 LOGGER.log(Level.SEVERE, "Failed to load teacher session report.", ex);
@@ -495,6 +518,13 @@ public class TeacherReportsPage {
                                         : "teacher.reports.export.success.csv"
                         ) + "\n" + destination.getAbsolutePath()
                 ));
+            } catch (InterruptedException ex) {
+                Thread.currentThread().interrupt();
+                LOGGER.log(Level.WARNING, "Exporting teacher report was interrupted.", ex);
+                Platform.runLater(() ->
+                        showError(helper.getMessage("teacher.reports.error.export") + " "
+                                + safeErrorMessage(ex))
+                );
             } catch (Exception ex) {
                 LOGGER.log(Level.SEVERE, "Failed to export teacher report.", ex);
                 Platform.runLater(() ->

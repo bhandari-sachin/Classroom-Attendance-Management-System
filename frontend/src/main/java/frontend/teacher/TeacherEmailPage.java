@@ -31,6 +31,9 @@ public class TeacherEmailPage {
     private static final Logger LOGGER =
             Logger.getLogger(TeacherEmailPage.class.getName());
 
+    private static final String UNKNOWN_ERROR = "Unknown error";
+    private static final String REASON_PLACEHOLDER = "{reason}";
+
     static class ClassItem {
         final long id;
         final String label;
@@ -165,11 +168,18 @@ public class TeacherEmailPage {
                         .toList();
 
                 Platform.runLater(() -> classBox.getItems().setAll(items));
+            } catch (InterruptedException ex) {
+                Thread.currentThread().interrupt();
+                LOGGER.log(Level.WARNING, "Loading classes for teacher email page was interrupted.", ex);
+                Platform.runLater(() ->
+                        showError(helper.getMessage("teacher.email.error.classes")
+                                .replace(REASON_PLACEHOLDER, safeErrorMessage(ex)))
+                );
             } catch (Exception ex) {
                 LOGGER.log(Level.SEVERE, "Failed to load classes for teacher email page.", ex);
                 Platform.runLater(() ->
                         showError(helper.getMessage("teacher.email.error.classes")
-                                .replace("{reason}", ex.getMessage() == null ? "Unknown error" : ex.getMessage()))
+                                .replace(REASON_PLACEHOLDER, safeErrorMessage(ex)))
                 );
             }
         }).start();
@@ -202,12 +212,20 @@ public class TeacherEmailPage {
                         .toList();
 
                 Platform.runLater(() -> rows.setAll(mappedRows));
+            } catch (InterruptedException ex) {
+                Thread.currentThread().interrupt();
+                LOGGER.log(Level.WARNING, "Loading students for selected class on teacher email page was interrupted.", ex);
+                Platform.runLater(() -> {
+                    rows.clear();
+                    showError(helper.getMessage("teacher.email.error.students")
+                            .replace(REASON_PLACEHOLDER, safeErrorMessage(ex)));
+                });
             } catch (Exception ex) {
                 LOGGER.log(Level.SEVERE, "Failed to load students for selected class on teacher email page.", ex);
                 Platform.runLater(() -> {
                     rows.clear();
                     showError(helper.getMessage("teacher.email.error.students")
-                            .replace("{reason}", ex.getMessage() == null ? "Unknown error" : ex.getMessage()));
+                            .replace(REASON_PLACEHOLDER, safeErrorMessage(ex)));
                 });
             }
         }).start();
@@ -232,6 +250,13 @@ public class TeacherEmailPage {
                 email,
                 "—"
         );
+    }
+
+    private String safeErrorMessage(Throwable throwable) {
+        if (throwable == null || throwable.getMessage() == null || throwable.getMessage().isBlank()) {
+            return UNKNOWN_ERROR;
+        }
+        return throwable.getMessage();
     }
 
     private void showError(String message) {

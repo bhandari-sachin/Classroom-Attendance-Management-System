@@ -438,6 +438,14 @@ public class TeacherTakeAttendancePage {
                     request.onSuccess().run();
                     request.onFinally().run();
                 });
+            } catch (InterruptedException ex) {
+                Thread.currentThread().interrupt();
+                LOGGER.log(Level.WARNING, "Updating attendance status was interrupted.", ex);
+                Platform.runLater(() -> {
+                    request.onFinally().run();
+                    showError(helper.getMessage("teacher.attendance.updateFailed") + " "
+                            + safeErrorMessage(ex));
+                });
             } catch (Exception ex) {
                 LOGGER.log(Level.SEVERE, "Failed to update attendance status.", ex);
                 Platform.runLater(() -> {
@@ -512,6 +520,15 @@ public class TeacherTakeAttendancePage {
                 Platform.runLater(() -> {
                     controls.sessionState().setCurrentSessionId(sessionId);
                     updateGeneratedSessionUi(controls, code);
+                });
+            } catch (InterruptedException ex) {
+                Thread.currentThread().interrupt();
+                LOGGER.log(Level.WARNING, "Generating attendance session was interrupted.", ex);
+                Platform.runLater(() -> {
+                    resetSessionDisplay(controls);
+                    controls.generateButton().setDisable(false);
+                    showError(helper.getMessage("teacher.attendance.generateFailed") + " "
+                            + safeErrorMessage(ex));
                 });
             } catch (Exception ex) {
                 LOGGER.log(Level.SEVERE, "Failed to generate attendance session.", ex);
@@ -602,6 +619,14 @@ public class TeacherTakeAttendancePage {
                     }
                     markAllPresentButton.setDisable(false);
                 });
+            } catch (InterruptedException ex) {
+                Thread.currentThread().interrupt();
+                LOGGER.log(Level.WARNING, "Marking all students present was interrupted.", ex);
+                Platform.runLater(() -> {
+                    markAllPresentButton.setDisable(false);
+                    showError(helper.getMessage("teacher.attendance.markAllFailed") + " "
+                            + safeErrorMessage(ex));
+                });
             } catch (Exception ex) {
                 LOGGER.log(Level.SEVERE, "Failed to mark all students present.", ex);
                 Platform.runLater(() -> {
@@ -639,6 +664,14 @@ public class TeacherTakeAttendancePage {
                         rows.add(mapStudentRow(student));
                     }
                 });
+            } catch (InterruptedException ex) {
+                Thread.currentThread().interrupt();
+                LOGGER.log(Level.WARNING, "Loading students for selected class was interrupted.", ex);
+                Platform.runLater(() -> {
+                    rows.clear();
+                    showError(helper.getMessage("teacher.attendance.error.loadStudents") + " "
+                            + safeErrorMessage(ex));
+                });
             } catch (Exception ex) {
                 LOGGER.log(Level.SEVERE, "Failed to load students for selected class.", ex);
                 Platform.runLater(() -> {
@@ -675,6 +708,13 @@ public class TeacherTakeAttendancePage {
                         .toList();
 
                 Platform.runLater(() -> classBox.getItems().setAll(items));
+            } catch (InterruptedException ex) {
+                Thread.currentThread().interrupt();
+                LOGGER.log(Level.WARNING, "Loading teacher classes was interrupted.", ex);
+                Platform.runLater(() ->
+                        showError(helper.getMessage("teacher.attendance.loadClassesFailed") + " "
+                                + safeErrorMessage(ex))
+                );
             } catch (Exception ex) {
                 LOGGER.log(Level.SEVERE, "Failed to load teacher classes.", ex);
                 Platform.runLater(() ->

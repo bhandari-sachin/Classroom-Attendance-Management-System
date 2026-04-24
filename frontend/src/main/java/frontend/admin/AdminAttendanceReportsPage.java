@@ -57,46 +57,14 @@ public class AdminAttendanceReportsPage {
         }
     }
 
-    static final class ReportSummary {
-        private final List<ReportRow> rows;
-        private final int present;
-        private final int absent;
-        private final int excused;
-        private final int total;
-        private final double rate;
-
-        ReportSummary(List<ReportRow> rows, int present, int absent, int excused, int total, double rate) {
-            this.rows = rows;
-            this.present = present;
-            this.absent = absent;
-            this.excused = excused;
-            this.total = total;
-            this.rate = rate;
-        }
-
-        List<ReportRow> getRows() {
-            return rows;
-        }
-
-        int getPresent() {
-            return present;
-        }
-
-        int getAbsent() {
-            return absent;
-        }
-
-        int getExcused() {
-            return excused;
-        }
-
-        int getTotal() {
-            return total;
-        }
-
-        double getRate() {
-            return rate;
-        }
+    record ReportSummary(
+            List<ReportRow> rows,
+            int present,
+            int absent,
+            int excused,
+            int total,
+            double rate
+    ) {
     }
 
     private record ReportFilters(
@@ -372,11 +340,18 @@ public class AdminAttendanceReportsPage {
                                         : "admin.reports.export.success.csv"
                         ).replace("{path}", destination.getAbsolutePath())
                 ));
+            } catch (InterruptedException ex) {
+                Thread.currentThread().interrupt();
+                LOGGER.log(Level.WARNING, "Admin report export was interrupted.", ex);
+                Platform.runLater(() -> showError(
+                        helper.getMessage("admin.reports.export.error")
+                                .replace("{error}", safeErrorMessage(ex))
+                ));
             } catch (Exception ex) {
                 LOGGER.log(Level.SEVERE, "Failed to export admin report.", ex);
                 Platform.runLater(() -> showError(
                         helper.getMessage("admin.reports.export.error")
-                                .replace("{error}", ex.getMessage() == null ? "Unknown error" : ex.getMessage())
+                                .replace("{error}", safeErrorMessage(ex))
                 ));
             }
         }).start();
@@ -401,6 +376,13 @@ public class AdminAttendanceReportsPage {
                         loadReport.run();
                     }
                 });
+            } catch (InterruptedException ex) {
+                Thread.currentThread().interrupt();
+                LOGGER.log(Level.WARNING, "Loading admin classes for reports page was interrupted.", ex);
+                Platform.runLater(() -> showInlineError(
+                        errorLabel,
+                        helper.getMessage("admin.reports.error.loadClasses")
+                ));
             } catch (Exception ex) {
                 LOGGER.log(Level.SEVERE, "Failed to load admin classes for reports page.", ex);
                 Platform.runLater(() -> showInlineError(
@@ -456,8 +438,14 @@ public class AdminAttendanceReportsPage {
                 Platform.runLater(() -> {
                     hideInlineError(view.errorLabel());
                     renderStats(view.statsGrid(), helper, summary);
-                    view.table().getItems().setAll(summary.getRows());
+                    view.table().getItems().setAll(summary.rows());
                 });
+            } catch (InterruptedException ex) {
+                Thread.currentThread().interrupt();
+                LOGGER.log(Level.WARNING, "Loading attendance report was interrupted.", ex);
+                Platform.runLater(() ->
+                        showInlineError(view.errorLabel(), helper.getMessage("admin.reports.error.loadReport"))
+                );
             } catch (Exception ex) {
                 LOGGER.log(Level.SEVERE, "Failed to load attendance report.", ex);
                 Platform.runLater(() ->
@@ -504,7 +492,7 @@ public class AdminAttendanceReportsPage {
         statsGrid.add(
                 AdminUI.makeStatCard(
                         helper.getMessage("admin.reports.stats.rate"),
-                        formatOneDecimal(summary.getRate()) + "%",
+                        formatOneDecimal(summary.rate()) + "%",
                         "📈",
                         "accent-green"
                 ),
@@ -515,7 +503,7 @@ public class AdminAttendanceReportsPage {
         statsGrid.add(
                 AdminUI.makeStatCard(
                         helper.getMessage("admin.reports.stats.present"),
-                        String.valueOf(summary.getPresent()),
+                        String.valueOf(summary.present()),
                         "🟢",
                         "accent-green"
                 ),
@@ -526,7 +514,7 @@ public class AdminAttendanceReportsPage {
         statsGrid.add(
                 AdminUI.makeStatCard(
                         helper.getMessage("admin.reports.stats.absent"),
-                        String.valueOf(summary.getAbsent()),
+                        String.valueOf(summary.absent()),
                         "🔴",
                         "accent-orange"
                 ),
@@ -537,7 +525,7 @@ public class AdminAttendanceReportsPage {
         statsGrid.add(
                 AdminUI.makeStatCard(
                         helper.getMessage("admin.reports.stats.excused"),
-                        String.valueOf(summary.getExcused()),
+                        String.valueOf(summary.excused()),
                         "🟠",
                         "accent-purple"
                 ),
@@ -548,7 +536,7 @@ public class AdminAttendanceReportsPage {
         statsGrid.add(
                 AdminUI.makeStatCard(
                         helper.getMessage("admin.reports.stats.total"),
-                        String.valueOf(summary.getTotal()),
+                        String.valueOf(summary.total()),
                         "📄",
                         "accent-purple"
                 ),
@@ -578,6 +566,13 @@ public class AdminAttendanceReportsPage {
 
     String valueOr(Object value, String fallback) {
         return value == null ? fallback : String.valueOf(value);
+    }
+
+    private String safeErrorMessage(Throwable throwable) {
+        if (throwable == null || throwable.getMessage() == null || throwable.getMessage().isBlank()) {
+            return "Unknown error";
+        }
+        return throwable.getMessage();
     }
 
     String formatOneDecimal(double value) {

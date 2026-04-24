@@ -28,6 +28,8 @@ public class StudentDashboardApp {
     private static final String BASE_URL =
             System.getenv().getOrDefault("BACKEND_URL", "http://localhost:8081");
 
+    private static final String UNKNOWN_ERROR = "Unknown error";
+
     private static final Logger LOGGER = Logger.getLogger(StudentDashboardApp.class.getName());
 
     private final HelperClass helper = new HelperClass();
@@ -326,16 +328,37 @@ public class StudentDashboardApp {
                     excusedValue.setText(resolveSummaryValue(summary, "excusedCount", false));
                     rateValue.setText(resolveSummaryValue(summary, "attendanceRate", true));
                 });
+            } catch (InterruptedException ex) {
+                Thread.currentThread().interrupt();
+                LOGGER.log(Level.WARNING, "Loading student dashboard summary was interrupted.", ex);
+                Platform.runLater(() -> resetSummaryValues(
+                        presentValue,
+                        absentValue,
+                        excusedValue,
+                        rateValue
+                ));
             } catch (Exception ex) {
                 LOGGER.log(Level.SEVERE, "Failed to load student dashboard summary.", ex);
-                Platform.runLater(() -> {
-                    presentValue.setText("0");
-                    absentValue.setText("0");
-                    excusedValue.setText("0");
-                    rateValue.setText("0%");
-                });
+                Platform.runLater(() -> resetSummaryValues(
+                        presentValue,
+                        absentValue,
+                        excusedValue,
+                        rateValue
+                ));
             }
         }).start();
+    }
+
+    private void resetSummaryValues(
+            Label presentValue,
+            Label absentValue,
+            Label excusedValue,
+            Label rateValue
+    ) {
+        presentValue.setText("0");
+        absentValue.setText("0");
+        excusedValue.setText("0");
+        rateValue.setText("0%");
     }
 
     String resolveSummaryValue(Map<String, Object> summary, String key, boolean percentage) {
@@ -378,7 +401,7 @@ public class StudentDashboardApp {
 
     String safeErrorMessage(Throwable throwable) {
         if (throwable == null || throwable.getMessage() == null || throwable.getMessage().isBlank()) {
-            return "Unknown error";
+            return UNKNOWN_ERROR;
         }
         return throwable.getMessage();
     }
