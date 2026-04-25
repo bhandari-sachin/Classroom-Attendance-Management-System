@@ -30,9 +30,11 @@ class DatabaseConnectionTest {
 
     @Test
     void getConnection_shouldThrowSQLException() {
+        SQLException exception = new SQLException("DB error");
+
         try (MockedStatic<DriverManager> mocked = mockStatic(DriverManager.class)) {
             mocked.when(() -> DriverManager.getConnection(anyString(), anyString(), anyString()))
-                    .thenThrow(new SQLException("DB error"));
+                    .thenThrow(exception);
 
             assertThrows(SQLException.class, DatabaseConnection::getConnection);
         }

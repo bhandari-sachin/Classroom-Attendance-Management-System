@@ -10,10 +10,9 @@ class ConfigLoaderTest {
 
     @Test
     void testGetExistingProperty() {
-        String value = ConfigLoader.get("app.name");
+        String value = ConfigLoader.get("api.admin.classes");
 
-        assertNotNull(value);
-        assertEquals("TestApplication", value);
+        assertEquals("/api/admin/classes", value);
     }
 
     @Test
@@ -25,8 +24,8 @@ class ConfigLoaderTest {
 
     @Test
     void testRepeatedAccessReturnsSameValue() {
-        String first = ConfigLoader.get("app.name");
-        String second = ConfigLoader.get("app.name");
+        String first = ConfigLoader.get("api.admin.classes");
+        String second = ConfigLoader.get("api.admin.classes");
 
         assertEquals(first, second);
     }
