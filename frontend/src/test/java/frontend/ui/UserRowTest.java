@@ -1,11 +1,10 @@
 package frontend.ui;
 
-//import model.UserRole;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-public class UserRowTest {
+class UserRowTest {
 
     @Test
     void testConstructorAndGetters() {
@@ -17,8 +16,6 @@ public class UserRowTest {
         );
 
         assertEquals("Alice", userRow.getUser());
-        //assertEquals("alice@school.com", userRow.emailProperty().get());
-        //assertEquals(String.valueOf(UserRole.STUDENT), userRow.typeProperty().get());
         assertEquals("Math 101", userRow.enrolledProperty().get());
     }
 
@@ -32,7 +29,6 @@ public class UserRowTest {
         );
 
         assertNotNull(userRow.userProperty());
-        //assertNotNull(userRow.emailProperty());
         assertNotNull(userRow.typeProperty());
         assertNotNull(userRow.enrolledProperty());
     }
@@ -47,11 +43,9 @@ public class UserRowTest {
         );
 
         userRow.userProperty().set("Sarah");
-        //userRow.emailProperty().set("sarah@school.com");
         userRow.enrolledProperty().set("History");
 
         assertEquals("Sarah", userRow.getUser());
-        //assertEquals("sarah@school.com", userRow.emailProperty().get());
         assertEquals("History", userRow.enrolledProperty().get());
     }
 }

@@ -17,12 +17,16 @@ import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -124,8 +128,13 @@ class StudentPageSupportTest {
         assertNotNull(root.getCenter());
     }
 
-    @Test
-    void wrapWithSidebarShouldNavigateToDashboard() throws Exception {
+    @ParameterizedTest
+    @MethodSource("navigationProvider")
+    void wrapWithSidebarShouldNavigateCorrectly(
+            String labelKey,
+            String expectedRoute
+    ) throws Exception {
+
         TestRouter router = new TestRouter();
         TestJwtStore store = new TestJwtStore();
         HelperClass helper = new HelperClass();
@@ -139,81 +148,21 @@ class StudentPageSupportTest {
                 store
         );
 
-        Label nav = findLabelByText(root, helper.getMessage("student.nav.dashboard"));
+        Label nav = findLabelByText(root, helper.getMessage(labelKey));
         assertNotNull(nav);
 
         runOnFxThreadAndWait(() -> clickNode(nav));
 
-        assertEquals("student-dashboard", router.lastRoute);
+        assertEquals(expectedRoute, router.lastRoute);
     }
 
-    @Test
-    void wrapWithSidebarShouldNavigateToMarkAttendance() throws Exception {
-        TestRouter router = new TestRouter();
-        TestJwtStore store = new TestJwtStore();
-        HelperClass helper = new HelperClass();
-
-        Parent root = StudentPageSupport.wrapWithSidebar(
-                "Oscar",
-                helper,
-                new StackPane(),
-                "dashboard",
-                router,
-                store
+    static Stream<Arguments> navigationProvider() {
+        return Stream.of(
+                Arguments.of("student.nav.dashboard", "student-dashboard"),
+                Arguments.of("student.nav.markAttendance", "student-mark"),
+                Arguments.of("student.nav.myAttendance", "student-attendance"),
+                Arguments.of("student.nav.email", "student-email")
         );
-
-        Label nav = findLabelByText(root, helper.getMessage("student.nav.markAttendance"));
-        assertNotNull(nav);
-
-        runOnFxThreadAndWait(() -> clickNode(nav));
-
-        assertEquals("student-mark", router.lastRoute);
-    }
-
-    @Test
-    void wrapWithSidebarShouldNavigateToReports() throws Exception {
-        TestRouter router = new TestRouter();
-        TestJwtStore store = new TestJwtStore();
-        HelperClass helper = new HelperClass();
-
-        Parent root = StudentPageSupport.wrapWithSidebar(
-                "Oscar",
-                helper,
-                new StackPane(),
-                "dashboard",
-                router,
-                store
-        );
-
-        Label nav = findLabelByText(root, helper.getMessage("student.nav.myAttendance"));
-        assertNotNull(nav);
-
-        runOnFxThreadAndWait(() -> clickNode(nav));
-
-        assertEquals("student-attendance", router.lastRoute);
-    }
-
-    @Test
-    void wrapWithSidebarShouldNavigateToEmail() throws Exception {
-        TestRouter router = new TestRouter();
-        TestJwtStore store = new TestJwtStore();
-        HelperClass helper = new HelperClass();
-
-        Parent root = StudentPageSupport.wrapWithSidebar(
-                "Oscar",
-                helper,
-                new StackPane(),
-                "dashboard",
-                router,
-                store
-        );
-
-        Label nav = findLabelByText(root, helper.getMessage("student.nav.email"));
-        assertNotNull(nav);
-
-        runOnFxThreadAndWait(() -> clickNode(nav));
-
-        assertEquals("student-email", router.lastRoute);
     }
 
     @Test

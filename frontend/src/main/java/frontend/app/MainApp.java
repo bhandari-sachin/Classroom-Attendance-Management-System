@@ -136,9 +136,9 @@ public class MainApp extends Application {
 
             store.clear();
 
-            javafx.application.Platform.runLater(() -> {
-                router.go(LOGIN_PAGE);
-            });
+            javafx.application.Platform.runLater(() ->
+                router.go(LOGIN_PAGE)
+            );
         }
     }
 

@@ -1,7 +1,5 @@
 package frontend.auth;
 
-import frontend.auth.Role;
-import frontend.auth.RoleRedirect;
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 

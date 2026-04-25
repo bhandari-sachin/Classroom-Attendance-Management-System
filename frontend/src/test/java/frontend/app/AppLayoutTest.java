@@ -14,6 +14,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 
+import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
@@ -38,9 +39,10 @@ class AppLayoutTest {
     }
 
     @Test
+    @SuppressWarnings("java:S1612")
     void constructorShouldBePrivate() throws Exception {
         var constructor = AppLayout.class.getDeclaredConstructor();
-        assertTrue(java.lang.reflect.Modifier.isPrivate(constructor.getModifiers()));
+        assertTrue(Modifier.isPrivate(constructor.getModifiers()));
         constructor.setAccessible(true);
         assertDoesNotThrow(() -> constructor.newInstance());
     }

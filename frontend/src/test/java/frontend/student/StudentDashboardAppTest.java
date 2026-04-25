@@ -355,7 +355,7 @@ class StudentDashboardAppTest {
             return null;
         });
 
-        waitForFxUpdates();
+        waitForFxUpdates(present);
 
         assertEquals("0", present.getText());
         assertEquals("0", absent.getText());
@@ -363,12 +363,23 @@ class StudentDashboardAppTest {
         assertEquals("0%", rate.getText());
     }
 
-    private static void waitForFxUpdates() throws Exception {
-        Thread.sleep(800);
+    private static void waitForFxUpdates(Label present) throws InterruptedException {
+        long timeoutMs = 2000;
+        long start = System.currentTimeMillis();
 
-        CountDownLatch latch = new CountDownLatch(1);
-        Platform.runLater(latch::countDown);
-        assertTrue(latch.await(5, TimeUnit.SECONDS), "FX updates did not complete");
+        while (System.currentTimeMillis() - start < timeoutMs) {
+            CountDownLatch latch = new CountDownLatch(1);
+            Platform.runLater(latch::countDown);
+            latch.await();
+
+            if (!present.getText().equals("x")) {
+                return;
+            }
+
+            Thread.yield();
+        }
+
+        fail("FX updates did not complete in time");
     }
 
     private static Object invokePrivate(

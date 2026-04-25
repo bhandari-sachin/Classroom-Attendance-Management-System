@@ -9,10 +9,14 @@ import javafx.embed.swing.JFXPanel;
 import javafx.scene.layout.VBox;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.Mockito;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
+import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.verify;
@@ -104,19 +108,37 @@ class TeacherPageSupportTest {
         assertTrue(page.getStyleClass().contains("page"));
     }
 
-    @Test
-    void teacherNavigatorGoDashboardShouldNavigate() throws Exception {
+    @ParameterizedTest
+    @MethodSource("teacherNavigatorProvider")
+    void teacherNavigatorShouldBehaveCorrectly(
+            String methodName,
+            String expectedRoute,
+            boolean isRunnable
+    ) throws Exception {
+
         AppRouter router = Mockito.mock(AppRouter.class);
         JwtStore jwtStore = Mockito.mock(JwtStore.class);
         Runnable takeAttendanceAction = Mockito.mock(Runnable.class);
 
         Object navigator = createTeacherNavigator(router, jwtStore, takeAttendanceAction);
 
-        Method method = navigator.getClass().getDeclaredMethod("goDashboard");
+        Method method = navigator.getClass().getDeclaredMethod(methodName);
         method.setAccessible(true);
         method.invoke(navigator);
 
-        verify(router).go("teacher-dashboard");
+        if (isRunnable) {
+            verify(takeAttendanceAction).run();
+        } else {
+            verify(router).go(expectedRoute);
+        }
+    }
+
+    static Stream<Arguments> teacherNavigatorProvider() {
+        return Stream.of(
+                Arguments.of("goDashboard", "teacher-dashboard", false),
+                Arguments.of("goReports", "teacher-reports", false),
+                Arguments.of("goEmail", "teacher-email", false)
+        );
     }
 
     @Test
@@ -132,36 +154,6 @@ class TeacherPageSupportTest {
         method.invoke(navigator);
 
         verify(takeAttendanceAction).run();
-    }
-
-    @Test
-    void teacherNavigatorGoReportsShouldNavigate() throws Exception {
-        AppRouter router = Mockito.mock(AppRouter.class);
-        JwtStore jwtStore = Mockito.mock(JwtStore.class);
-        Runnable takeAttendanceAction = Mockito.mock(Runnable.class);
-
-        Object navigator = createTeacherNavigator(router, jwtStore, takeAttendanceAction);
-
-        Method method = navigator.getClass().getDeclaredMethod("goReports");
-        method.setAccessible(true);
-        method.invoke(navigator);
-
-        verify(router).go("teacher-reports");
-    }
-
-    @Test
-    void teacherNavigatorGoEmailShouldNavigate() throws Exception {
-        AppRouter router = Mockito.mock(AppRouter.class);
-        JwtStore jwtStore = Mockito.mock(JwtStore.class);
-        Runnable takeAttendanceAction = Mockito.mock(Runnable.class);
-
-        Object navigator = createTeacherNavigator(router, jwtStore, takeAttendanceAction);
-
-        Method method = navigator.getClass().getDeclaredMethod("goEmail");
-        method.setAccessible(true);
-        method.invoke(navigator);
-
-        verify(router).go("teacher-email");
     }
 
     @Test

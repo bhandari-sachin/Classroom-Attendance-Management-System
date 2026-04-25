@@ -7,7 +7,7 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-public class JwtStoreTest {
+class JwtStoreTest {
 
     private JwtStore store;
 

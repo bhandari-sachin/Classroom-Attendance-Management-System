@@ -26,6 +26,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.function.BooleanSupplier;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -221,7 +222,7 @@ class TeacherEmailPageTest {
                 api, jwtStore, state, classBox
         );
 
-        waitForFxEvents();
+        waitForFxEvents(() -> classBox.getItems().size() == 2);
 
         assertEquals(2, classBox.getItems().size());
         assertEquals("SE101 — Software Engineering", classBox.getItems().get(0).toString());
@@ -245,7 +246,7 @@ class TeacherEmailPageTest {
                 )
         );
 
-        waitForFxEvents();
+        waitForFxEvents(() -> classBox.getItems().isEmpty());
         assertTrue(classBox.getItems().isEmpty());
     }
 
@@ -273,7 +274,13 @@ class TeacherEmailPageTest {
                 api, jwtStore, state, classBox
         );
 
-        waitForFxEvents();
+        waitForFxEvents(() -> {
+            try {
+                return rowsAccessor.rows().isEmpty();
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        });
         assertTrue(rowsAccessor.rows().isEmpty());
     }
 
@@ -301,9 +308,15 @@ class TeacherEmailPageTest {
                 api, jwtStore, state, classBox
         );
 
-        waitForFxEvents();
-
         ObservableRowsAccessor rowsAccessor = new ObservableRowsAccessor(page);
+        waitForFxEvents(() -> {
+            try {
+                return rowsAccessor.rows().size() == 2;
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        });
+
         assertEquals(2, rowsAccessor.rows().size());
         assertEquals("Farah Smith", rowsAccessor.rows().get(0).getStudentName());
         assertEquals("john@example.com", rowsAccessor.rows().get(1).getEmail());
@@ -338,7 +351,13 @@ class TeacherEmailPageTest {
                 )
         );
 
-        waitForFxEvents();
+        waitForFxEvents(() -> {
+            try {
+                return rowsAccessor.rows().isEmpty();
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        });
         assertTrue(rowsAccessor.rows().isEmpty());
     }
 
@@ -390,25 +409,20 @@ class TeacherEmailPageTest {
         }
     }
 
-    private static void waitForFxEvents() throws Exception {
-        CountDownLatch threadWait = new CountDownLatch(1);
+    private static void waitForFxEvents(BooleanSupplier condition) throws Exception {
+        long timeoutMs = 2000;
+        long start = System.currentTimeMillis();
 
-        Thread waiter = new Thread(() -> {
-            try {
-                Thread.sleep(300);
-            } catch (InterruptedException ignored) {
-                Thread.currentThread().interrupt();
-            } finally {
-                threadWait.countDown();
+        while (System.currentTimeMillis() - start < timeoutMs) {
+            CountDownLatch latch = new CountDownLatch(1);
+            Platform.runLater(latch::countDown);
+            latch.await();
+
+            if (condition.getAsBoolean()) {
+                return;
             }
-        });
-        waiter.start();
-
-        assertTrue(threadWait.await(2, TimeUnit.SECONDS), "Background thread did not finish in time");
-
-        CountDownLatch fxLatch = new CountDownLatch(1);
-        Platform.runLater(fxLatch::countDown);
-        assertTrue(fxLatch.await(2, TimeUnit.SECONDS), "FX updates did not finish in time");
+        }
+        fail("FX updates did not finish in time");
     }
 
     private static final class ObservableRowsAccessor {
