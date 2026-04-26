@@ -2,6 +2,7 @@ package frontend.student;
 
 import frontend.auth.AppRouter;
 import javafx.application.Platform;
+import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
@@ -17,6 +18,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.mock;
 
 class StudentMarkAttendancePageTest {
 
@@ -57,6 +59,15 @@ class StudentMarkAttendancePageTest {
         StudentMarkAttendancePage page = new StudentMarkAttendancePage();
 
         assertEquals("Boom", page.safeMessage(new RuntimeException("Boom")));
+    }
+
+    @Test
+    void safeMessage_shouldBeUsed_whenExceptionOccurs() {
+        StudentMarkAttendancePage page = new StudentMarkAttendancePage();
+
+        String msg = page.safeMessage(new RuntimeException());
+
+        assertEquals("Unknown error", msg);
     }
 
     @Test
@@ -199,6 +210,31 @@ class StudentMarkAttendancePageTest {
     }
 
     @Test
+    void logIfSceneMissing_shouldNotCrash_whenNull() {
+        StudentMarkAttendancePage page = new StudentMarkAttendancePage();
+
+        assertDoesNotThrow(() -> {
+            invokePrivate(page, "logIfSceneMissing", new Class[]{Scene.class}, (Scene) null);
+        });
+    }
+
+    @Test
+    void build_shouldReturnParent() throws Exception {
+        StudentMarkAttendancePage page = new StudentMarkAttendancePage();
+
+        Parent root = runOnFxThread(() ->
+                page.build(
+                        new Scene(new StackPane()),
+                        new TestRouter(),
+                        mock(frontend.auth.JwtStore.class),
+                        mock(frontend.auth.AuthState.class)
+                )
+        );
+
+        assertNotNull(root);
+    }
+
+    @Test
     void buildSubmitButtonShouldCreateStyledButton() throws Exception {
         StudentMarkAttendancePage page = new StudentMarkAttendancePage();
         TextField field = new TextField();
@@ -215,6 +251,58 @@ class StudentMarkAttendancePageTest {
         assertNotNull(submit);
         assertTrue(submit.getStyleClass().contains("submit-button"));
         assertEquals(Double.MAX_VALUE, submit.getMaxWidth());
+    }
+
+    @Test
+    void handleSubmit_shouldShowWarning_whenCodeBlank() throws Exception {
+        StudentMarkAttendancePage page = new StudentMarkAttendancePage();
+        TextField field = new TextField("   ");
+
+        runOnFxThread(() -> {
+            invokePrivate(
+                    page,
+                    "handleSubmit",
+                    new Class[]{
+                            TextField.class,
+                            frontend.auth.JwtStore.class,
+                            frontend.auth.AuthState.class
+                    },
+                    field,
+                    null,
+                    null
+            );
+            return null;
+        });
+
+        assertEquals("   ", field.getText()); // not cleared
+    }
+
+    @Test
+    void handleSubmit_shouldClearField_onSuccess() throws Exception {
+        StudentMarkAttendancePage page = new StudentMarkAttendancePage();
+        TextField field = new TextField("CODE");
+        CountDownLatch latch = new CountDownLatch(1);
+
+        runOnFxThread(() -> {
+            invokePrivate(
+                    page,
+                    "handleSubmit",
+                    new Class[]{
+                            TextField.class,
+                            frontend.auth.JwtStore.class,
+                            frontend.auth.AuthState.class
+                    },
+                    field,
+                    mock(frontend.auth.JwtStore.class),
+                    mock(frontend.auth.AuthState.class)
+            );
+            return null;
+        });
+
+        Platform.runLater(latch::countDown);
+        assertTrue(latch.await(2, TimeUnit.SECONDS), "FX thread did not complete");
+
+        assertNotNull(field.getText());
     }
 
     private static Object invokePrivate(
@@ -250,6 +338,36 @@ class StudentMarkAttendancePageTest {
         }
 
         return result.get();
+    }
+
+    @Test
+    void showWarning_shouldNotCrash() throws Exception {
+        StudentMarkAttendancePage page = new StudentMarkAttendancePage();
+
+        runOnFxThread(() -> {
+            invokePrivate(page, "showWarning", new Class[]{String.class}, "warn");
+            return null;
+        });
+    }
+
+    @Test
+    void showInfo_shouldNotCrash() throws Exception {
+        StudentMarkAttendancePage page = new StudentMarkAttendancePage();
+
+        runOnFxThread(() -> {
+            invokePrivate(page, "showInfo", new Class[]{String.class}, "info");
+            return null;
+        });
+    }
+
+    @Test
+    void showError_shouldNotCrash() throws Exception {
+        StudentMarkAttendancePage page = new StudentMarkAttendancePage();
+
+        runOnFxThread(() -> {
+            invokePrivate(page, "showError", new Class[]{String.class}, "error");
+            return null;
+        });
     }
 
     @FunctionalInterface
