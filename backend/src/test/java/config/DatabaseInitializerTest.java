@@ -50,6 +50,7 @@ class DatabaseInitializerTest {
 
             // should NOT throw (exception is caught internally)
             DatabaseInitializer.init();
+            assertNotNull(mockStatement); // just to use the variable and avoid unused warning
         }
     }
 
@@ -68,6 +69,7 @@ class DatabaseInitializerTest {
 
             // should not throw (handled inside method)
             DatabaseInitializer.init();
+            assertNotNull(original); // just to use the variable and avoid unused warning
 
         } finally {
             Thread.currentThread().setContextClassLoader(original);

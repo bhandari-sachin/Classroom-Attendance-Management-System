@@ -1,51 +1,70 @@
 package dto;
 
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.Assertions;
 
-import java.lang.reflect.Field;
 import java.time.LocalDate;
+
+import static org.junit.jupiter.api.Assertions.*;
 
 class AttendanceViewTest {
 
     @Test
-    void getStatus_returnsProvidedStatus() {
-        AttendanceView view = new AttendanceView(1L, "Alice", "Brown", LocalDate.of(2025, 1, 2), "PRESENT");
-        Assertions.assertEquals("PRESENT", view.getStatus());
+    void constructor_initializesAllFields() {
+
+        Long id = 42L;
+        String firstName = "Bob";
+        String lastName = "Smith";
+        LocalDate date = LocalDate.of(2024, 12, 31);
+        String status = "ABSENT";
+
+        AttendanceView view = new AttendanceView(id, firstName, lastName, date, status);
+
+        assertEquals(id, view.getStudentNumber());
+        assertEquals(firstName, view.getFirstName());
+        assertEquals(lastName, view.getLastName());
+        assertEquals(date, view.getSessionDate());
+        assertEquals(status, view.getStatus());
     }
 
     @Test
-    void constructor_initializesAllFields() throws Exception {
-        Long expectedId = 42L;
-        String expectedFirstName = "Bob";
-        String expectedLastName = "Smith";
-        LocalDate expectedDate = LocalDate.of(2024, 12, 31);
-        String expectedStatus = "ABSENT";
+    void setters_updateFieldsCorrectly() {
 
-        AttendanceView view = new AttendanceView(expectedId, expectedFirstName, expectedLastName, expectedDate, expectedStatus);
+        AttendanceView view = new AttendanceView();
 
-        // verify private fields via reflection because there are no getters for them
-        Field studentIdField = AttendanceView.class.getDeclaredField("studentNumber");
-        studentIdField.setAccessible(true);
-        Object studentIdValue = studentIdField.get(view);
-        Assertions.assertEquals(expectedId, studentIdValue);
+        view.setStudentNumber(1L);
+        view.setFirstName("Alice");
+        view.setLastName("Brown");
+        view.setSessionDate(LocalDate.of(2025, 1, 2));
+        view.setStatus("PRESENT");
 
-        Field firstNameField = AttendanceView.class.getDeclaredField("firstName");
-        firstNameField.setAccessible(true);
-        Object firstNameValue = firstNameField.get(view);
-        Assertions.assertEquals(expectedFirstName, firstNameValue);
+        assertEquals(1L, view.getStudentNumber());
+        assertEquals("Alice", view.getFirstName());
+        assertEquals("Brown", view.getLastName());
+        assertEquals(LocalDate.of(2025, 1, 2), view.getSessionDate());
+        assertEquals("PRESENT", view.getStatus());
+    }
 
-        Field lastNameField = AttendanceView.class.getDeclaredField("firstName");
-        lastNameField.setAccessible(true);
-        Object lastNameValue = lastNameField.get(view);
-        Assertions.assertEquals(expectedFirstName, lastNameValue);
+    @Test
+    void defaultConstructor_allowsEmptyObject() {
 
-        Field dateField = AttendanceView.class.getDeclaredField("sessionDate");
-        dateField.setAccessible(true);
-        Object dateValue = dateField.get(view);
-        Assertions.assertEquals(expectedDate, dateValue);
+        AttendanceView view = new AttendanceView();
 
-        // status should be accessible via getter as a sanity check
-        Assertions.assertEquals(expectedStatus, view.getStatus());
+        assertNull(view.getStudentNumber());
+        assertNull(view.getFirstName());
+        assertNull(view.getLastName());
+        assertNull(view.getSessionDate());
+        assertNull(view.getStatus());
+    }
+
+    @Test
+    void status_canBeUpdatedIndependently() {
+
+        AttendanceView view = new AttendanceView();
+        view.setStatus("PRESENT");
+
+        assertEquals("PRESENT", view.getStatus());
+
+        view.setStatus("ABSENT");
+        assertEquals("ABSENT", view.getStatus());
     }
 }

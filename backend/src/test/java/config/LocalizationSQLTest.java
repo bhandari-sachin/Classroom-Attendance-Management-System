@@ -40,7 +40,7 @@ class LocalizationSQLTest {
     }
 
     @Test
-    void getLabels_shouldHandleException() throws Exception {
+    void getLabels_shouldHandleException() {
         try (MockedStatic<DatabaseConnection> dbMock = mockStatic(DatabaseConnection.class)) {
             dbMock.when(DatabaseConnection::getConnection)
                     .thenThrow(new SQLException("fail"));
