@@ -7,8 +7,8 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class JwtServiceTest {
 
-    private final String secret = "test-secret";
-    private final JwtService jwtService = new JwtService(secret);
+    private static final String SECRET = "test-secret";
+    private final JwtService jwtService = new JwtService(SECRET);
 
     @Test
     void issueTokenShouldContainCorrectClaims() {
@@ -41,7 +41,7 @@ class JwtServiceTest {
 
     @Test
     void verifyShouldThrowIfTokenInvalid() {
-        JwtService service = new JwtService(secret);
+        JwtService service = new JwtService(SECRET);
 
         String invalidToken = "invalid.token.value";
 

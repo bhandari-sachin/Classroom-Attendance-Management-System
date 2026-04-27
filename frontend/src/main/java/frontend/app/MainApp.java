@@ -111,7 +111,7 @@ public class MainApp extends Application {
         return () -> {
             AuthState state = store.load().orElse(null);
 
-            if (state == null) {
+            if (state == null || state.token() == null || state.token().isBlank()) {
                 router.go(LOGIN_PAGE);
                 return new StackPane();
             }

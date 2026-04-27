@@ -1,5 +1,6 @@
 package frontend.admin;
 
+import frontend.app.AppLayout;
 import frontend.auth.AppRouter;
 import frontend.auth.AuthState;
 import frontend.auth.JwtStore;
@@ -37,7 +38,7 @@ public final class AdminPageSupport {
             JwtStore jwtStore
     ) {
         return AdminAppLayout.wrapWithSidebar(
-                new AdminAppLayout.SidebarConfig(
+                new AppLayout.SidebarConfig(
                         adminName,
                         helper.getMessage("admin.sidebar.title"),
                         helper.getMessage("admin.dashboard.title"),

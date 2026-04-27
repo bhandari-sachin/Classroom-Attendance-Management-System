@@ -40,6 +40,49 @@ class AdminAttendanceReportsPageTest {
     }
 
     @Test
+    void safeErrorMessageShouldReturnUnknownWhenNull() throws Exception {
+        String result = invokePrivate(
+                page,
+                "safeErrorMessage",
+                String.class,
+                Throwable.class,
+                null
+        );
+
+        assertEquals("Unknown error", result);
+    }
+
+    @Test
+    void safeErrorMessageShouldReturnUnknownWhenMessageBlank() throws Exception {
+        Throwable ex = new Exception(" ");
+
+        String result = invokePrivate(
+                page,
+                "safeErrorMessage",
+                String.class,
+                Throwable.class,
+                ex
+        );
+
+        assertEquals("Unknown error", result);
+    }
+
+    @Test
+    void safeErrorMessageShouldReturnActualMessage() throws Exception {
+        Throwable ex = new Exception("Boom");
+
+        String result = invokePrivate(
+                page,
+                "safeErrorMessage",
+                String.class,
+                Throwable.class,
+                ex
+        );
+
+        assertEquals("Boom", result);
+    }
+
+    @Test
     void valueOrShouldReturnFallbackWhenValueIsNull() {
         assertEquals("fallback", page.valueOr(null, "fallback"));
     }
@@ -62,6 +105,11 @@ class AdminAttendanceReportsPageTest {
         assertEquals("12.3", page.formatOneDecimal(12.34));
         assertEquals("12.4", page.formatOneDecimal(12.35));
         assertEquals("99.9", page.formatOneDecimal(99.94));
+    }
+
+    @Test
+    void formatOneDecimalShouldHandleExactWholeAfterRounding() {
+        assertEquals("5.0", page.formatOneDecimal(5.0001));
     }
 
     @Test
@@ -94,6 +142,31 @@ class AdminAttendanceReportsPageTest {
         assertEquals(1, result.size());
         assertEquals(5L, result.getFirst().getId());
         assertEquals("— — Unnamed", result.getFirst().toString());
+    }
+
+    @Test
+    void mapClassItemsShouldHandleIntegerId() {
+        List<Map<String, Object>> classes = List.of(
+                Map.of("id", 10, "classCode", "CS", "name", "CompSci")
+        );
+
+        var result = page.mapClassItems(classes);
+
+        assertEquals(10L, result.getFirst().getId());
+    }
+
+    @Test
+    void mapReportSummaryShouldIgnoreUnknownStatusWithoutCrash() {
+        List<Map<String, Object>> rawRows = List.of(
+                Map.of("firstName", "A", "lastName", "B", "sessionDate", "2026", "status", "RANDOM")
+        );
+
+        AdminAttendanceReportsPage.ReportSummary summary = page.mapReportSummary(rawRows);
+
+        assertEquals(1, summary.total());
+        assertEquals(0, summary.present());
+        assertEquals(0, summary.absent());
+        assertEquals(0, summary.excused());
     }
 
     @Test
@@ -150,6 +223,53 @@ class AdminAttendanceReportsPageTest {
         assertEquals(0, summary.excused());
         assertEquals(0, summary.total());
         assertEquals(0.0, summary.rate());
+    }
+
+    @Test
+    void loadReportShouldClearViewWhenNoClassSelected() throws Exception {
+        ComboBox<AdminAttendanceReportsPage.ClassItem> classFilter = new ComboBox<>();
+        ComboBox<String> timeFilter = new ComboBox<>();
+        TextField search = new TextField();
+
+        GridPane stats = new GridPane();
+        TableView<ReportRow> table = new TableView<>();
+        Label error = new Label();
+
+        Object filters = createRecord(
+                "frontend.admin.AdminAttendanceReportsPage$ReportFilters",
+                classFilter, timeFilter, search
+        );
+
+        Object view = createRecord(
+                "frontend.admin.AdminAttendanceReportsPage$ReportView",
+                stats, table, error
+        );
+
+        invokePrivateVoid(
+                page,
+                "loadReport",
+                new Class<?>[]{
+                        frontend.api.AdminApi.class,
+                        frontend.ui.HelperClass.class,
+                        filters.getClass(),
+                        view.getClass()
+                },
+                null,
+                new HelperClass(),
+                filters,
+                view
+        );
+
+        assertTrue(stats.getChildren().isEmpty());
+        assertTrue(table.getItems().isEmpty());
+    }
+
+    @Test
+    void classItemToStringShouldReturnLabel() {
+        AdminAttendanceReportsPage.ClassItem item =
+                new AdminAttendanceReportsPage.ClassItem(1L, "Label");
+
+        assertEquals("Label", item.toString());
     }
 
     @Test
@@ -303,6 +423,32 @@ class AdminAttendanceReportsPageTest {
     }
 
     @Test
+    void addExportActionsShouldAddMenuItems() throws Exception {
+        MenuButton button = new MenuButton();
+
+        invokePrivateVoid(
+                page,
+                "addExportActions",
+                new Class<?>[]{
+                        MenuButton.class,
+                        javafx.scene.Scene.class,
+                        HelperClass.class,
+                        frontend.api.ReportApi.class,
+                        frontend.auth.JwtStore.class,
+                        frontend.auth.AuthState.class
+                },
+                button,
+                null,
+                new HelperClass(),
+                null,
+                null,
+                null
+        );
+
+        assertEquals(2, button.getItems().size());
+    }
+
+    @Test
     void renderStatsShouldPopulateFiveCards() throws Exception {
         HelperClass helper = new HelperClass();
         GridPane statsGrid = new GridPane();
@@ -354,6 +500,13 @@ class AdminAttendanceReportsPageTest {
 
         assertFalse(errorLabel.isVisible());
         assertFalse(errorLabel.isManaged());
+    }
+
+    private static Object createRecord(String className, Object... args) throws Exception {
+        Class<?> clazz = Class.forName(className);
+        var constructor = clazz.getDeclaredConstructors()[0];
+        constructor.setAccessible(true);
+        return constructor.newInstance(args);
     }
 
     private static void invokePrivateVoid(

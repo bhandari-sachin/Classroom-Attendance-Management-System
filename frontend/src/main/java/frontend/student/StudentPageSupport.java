@@ -37,13 +37,17 @@ public final class StudentPageSupport {
             AppRouter router,
             JwtStore jwtStore
     ) {
-        return AppLayout.wrapWithSidebar(
+        AppLayout.SidebarConfig config = new AppLayout.SidebarConfig(
                 studentName,
                 helper.getMessage("student.panel.title"),
                 helper.getMessage("student.nav.dashboard"),
                 helper.getMessage("student.nav.markAttendance"),
                 helper.getMessage("student.nav.myAttendance"),
-                helper.getMessage("student.nav.email"),
+                helper.getMessage("student.nav.email")
+        );
+
+        return AppLayout.wrapWithSidebar(
+                config,
                 content,
                 activeKey,
                 new AppLayout.Navigator() {

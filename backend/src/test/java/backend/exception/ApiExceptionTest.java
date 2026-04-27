@@ -15,10 +15,12 @@ class ApiExceptionTest {
     }
 
     @Test
-    void shouldBeInstanceOfRuntimeException() {
-        ApiException ex = new ApiException(401, "Unauthorized");
+    void shouldThrowApiException() {
+        ApiException ex = assertThrows(ApiException.class, () -> {
+            throw new ApiException(401, "Unauthorized");
+        });
 
-        assertTrue(ex instanceof RuntimeException);
+        assertEquals(401, ex.getStatus());
     }
 
     @Test

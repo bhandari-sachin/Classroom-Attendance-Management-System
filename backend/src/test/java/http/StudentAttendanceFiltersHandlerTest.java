@@ -15,6 +15,7 @@ import security.JwtService;
 
 import java.io.ByteArrayOutputStream;
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 
@@ -134,7 +135,7 @@ class StudentAttendanceFiltersHandlerTest {
         handler.handle(exchange);
 
         verify(exchange).sendResponseHeaders(eq(405), anyLong());
-        assertTrue(responseBody.toString().contains("Method Not Allowed"));
+        assertTrue(responseBody.toString(StandardCharsets.UTF_8).contains("Method Not Allowed"));
     }
 
     // -----------------------------
@@ -154,7 +155,7 @@ class StudentAttendanceFiltersHandlerTest {
         }
 
         verify(exchange).sendResponseHeaders(eq(403), anyLong());
-        assertTrue(responseBody.toString().contains("Forbidden"));
+        assertTrue(responseBody.toString(StandardCharsets.UTF_8).contains("Forbidden"));
     }
 
     // -----------------------------

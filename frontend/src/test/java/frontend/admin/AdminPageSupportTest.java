@@ -1,5 +1,6 @@
 package frontend.admin;
 
+import frontend.app.AppLayout;
 import frontend.auth.AppRouter;
 import frontend.auth.AuthState;
 import frontend.auth.JwtStore;
@@ -85,7 +86,7 @@ class AdminPageSupportTest {
         try (MockedStatic<AdminAppLayout> mockedStatic = mockStatic(AdminAppLayout.class)) {
             mockedStatic.when(() ->
                     AdminAppLayout.wrapWithSidebar(
-                            any(AdminAppLayout.SidebarConfig.class),
+                            any(AppLayout.SidebarConfig.class),
                             eq(content),
                             eq("second"),
                             any(AdminAppLayout.Navigator.class)
@@ -134,7 +135,7 @@ class AdminPageSupportTest {
         try (MockedStatic<AdminAppLayout> mockedStatic = mockStatic(AdminAppLayout.class)) {
             mockedStatic.when(() ->
                     AdminAppLayout.wrapWithSidebar(
-                            any(AdminAppLayout.SidebarConfig.class),
+                            any(AppLayout.SidebarConfig.class),
                             any(),
                             anyString(),
                             any(AdminAppLayout.Navigator.class)
@@ -164,7 +165,7 @@ class AdminPageSupportTest {
         try (MockedStatic<AdminAppLayout> mockedStatic = mockStatic(AdminAppLayout.class)) {
             mockedStatic.when(() ->
                     AdminAppLayout.wrapWithSidebar(
-                            any(AdminAppLayout.SidebarConfig.class),
+                            any(AppLayout.SidebarConfig.class),
                             any(),
                             anyString(),
                             any(AdminAppLayout.Navigator.class)
@@ -194,7 +195,7 @@ class AdminPageSupportTest {
         try (MockedStatic<AdminAppLayout> mockedStatic = mockStatic(AdminAppLayout.class)) {
             mockedStatic.when(() ->
                     AdminAppLayout.wrapWithSidebar(
-                            any(AdminAppLayout.SidebarConfig.class),
+                            any(AppLayout.SidebarConfig.class),
                             any(),
                             anyString(),
                             any(AdminAppLayout.Navigator.class)
@@ -224,7 +225,7 @@ class AdminPageSupportTest {
         try (MockedStatic<AdminAppLayout> mockedStatic = mockStatic(AdminAppLayout.class)) {
             mockedStatic.when(() ->
                     AdminAppLayout.wrapWithSidebar(
-                            any(AdminAppLayout.SidebarConfig.class),
+                            any(AppLayout.SidebarConfig.class),
                             any(),
                             anyString(),
                             any(AdminAppLayout.Navigator.class)
@@ -254,7 +255,7 @@ class AdminPageSupportTest {
         try (MockedStatic<AdminAppLayout> mockedStatic = mockStatic(AdminAppLayout.class)) {
             mockedStatic.when(() ->
                     AdminAppLayout.wrapWithSidebar(
-                            any(AdminAppLayout.SidebarConfig.class),
+                            any(AppLayout.SidebarConfig.class),
                             any(),
                             anyString(),
                             any(AdminAppLayout.Navigator.class)

@@ -17,6 +17,7 @@ import util.PDFReportExporter;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -89,7 +90,7 @@ class ReportHandlerTest {
         }
 
         verify(exchange).sendResponseHeaders(eq(405), anyLong());
-        assertTrue(responseBody.toString().contains("Method Not Allowed"));
+        assertTrue(responseBody.toString(StandardCharsets.UTF_8).contains("Method Not Allowed"));
     }
 
     // ---------------------------------------
@@ -163,7 +164,7 @@ class ReportHandlerTest {
         }
 
         verify(exchange).sendResponseHeaders(eq(400), anyLong());
-        assertTrue(responseBody.toString().contains("only export PDF"));
+        assertTrue(responseBody.toString(StandardCharsets.UTF_8).contains("only export PDF"));
     }
 
     // ---------------------------------------
@@ -257,7 +258,7 @@ class ReportHandlerTest {
         }
 
         verify(exchange).sendResponseHeaders(eq(400), anyLong());
-        assertTrue(responseBody.toString().contains("Missing required query parameter"));
+        assertTrue(responseBody.toString(StandardCharsets.UTF_8).contains("Missing required query parameter"));
     }
 
     @Test
@@ -278,7 +279,7 @@ class ReportHandlerTest {
         }
 
         verify(exchange).sendResponseHeaders(eq(400), anyLong());
-        assertTrue(responseBody.toString().contains("Invalid numeric value"));
+        assertTrue(responseBody.toString(StandardCharsets.UTF_8).contains("Invalid numeric value"));
     }
 
     @Test
@@ -424,7 +425,7 @@ class ReportHandlerTest {
         }
 
         verify(exchange).sendResponseHeaders(eq(400), anyLong());
-        assertTrue(responseBody.toString().contains("Unsupported format"));
+        assertTrue(responseBody.toString(StandardCharsets.UTF_8).contains("Unsupported format"));
     }
 
     // ---------------------------------------
@@ -443,7 +444,7 @@ class ReportHandlerTest {
         }
 
         verify(exchange).sendResponseHeaders(eq(401), anyLong());
-        assertTrue(responseBody.toString().contains("Invalid token"));
+        assertTrue(responseBody.toString(StandardCharsets.UTF_8).contains("Invalid token"));
     }
 
     // ---------------------------------------
@@ -487,7 +488,7 @@ class ReportHandlerTest {
         }
 
         verify(exchange).sendResponseHeaders(eq(500), anyLong());
-        assertTrue(responseBody.toString().contains("Server error"));
+        assertTrue(responseBody.toString(StandardCharsets.UTF_8).contains("Server error"));
     }
 
     @Test

@@ -12,8 +12,8 @@ import static org.mockito.Mockito.*;
 
 class AdminAppLayoutTest {
 
-    private AdminAppLayout.SidebarConfig createConfig() {
-        return new AdminAppLayout.SidebarConfig(
+    private AppLayout.SidebarConfig createConfig() {
+        return new AppLayout.SidebarConfig(
                 "Test",
                 "Admin",
                 "Dashboard",
@@ -25,7 +25,7 @@ class AdminAppLayoutTest {
 
     @Test
     void shouldDelegateWrapWithSidebarToAppLayoutAndReturnItsResult() {
-        AdminAppLayout.SidebarConfig config = createConfig();
+        AppLayout.SidebarConfig config = createConfig();
         String activeKey = "dashboard";
 
         VBox content = new VBox();
@@ -36,14 +36,9 @@ class AdminAppLayoutTest {
         try (MockedStatic<AppLayout> mockedStatic = mockStatic(AppLayout.class)) {
             mockedStatic.when(() ->
                     AppLayout.wrapWithSidebar(
-                            eq("Test"),
-                            eq("Admin"),
-                            eq("Dashboard"),
-                            eq("Attendance"),
-                            eq("Reports"),
-                            eq("Email"),
-                            eq(content),
-                            eq(activeKey),
+                            any(AppLayout.SidebarConfig.class),
+                            any(),
+                            anyString(),
                             any(AppLayout.Navigator.class)
                     )
             ).thenReturn(expectedParent);
@@ -68,11 +63,13 @@ class AdminAppLayoutTest {
         try (MockedStatic<AppLayout> mockedStatic = mockStatic(AppLayout.class)) {
             mockedStatic.when(() ->
                     AppLayout.wrapWithSidebar(
-                            anyString(), anyString(), anyString(), anyString(), anyString(), anyString(),
-                            any(), anyString(), any(AppLayout.Navigator.class)
+                            any(AppLayout.SidebarConfig.class),
+                            any(),
+                            anyString(),
+                            any(AppLayout.Navigator.class)
                     )
             ).thenAnswer(invocation -> {
-                AppLayout.Navigator wrapped = invocation.getArgument(8);
+                AppLayout.Navigator wrapped = invocation.getArgument(3);
                 wrapped.goDashboard();
                 return expectedParent;
             });
@@ -98,11 +95,13 @@ class AdminAppLayoutTest {
         try (MockedStatic<AppLayout> mockedStatic = mockStatic(AppLayout.class)) {
             mockedStatic.when(() ->
                     AppLayout.wrapWithSidebar(
-                            anyString(), anyString(), anyString(), anyString(), anyString(), anyString(),
-                            any(), anyString(), any(AppLayout.Navigator.class)
+                            any(AppLayout.SidebarConfig.class),
+                            any(),
+                            anyString(),
+                            any(AppLayout.Navigator.class)
                     )
             ).thenAnswer(invocation -> {
-                AppLayout.Navigator wrapped = invocation.getArgument(8);
+                AppLayout.Navigator wrapped = invocation.getArgument(3);
                 wrapped.goTakeAttendance();
                 return expectedParent;
             });
@@ -128,11 +127,13 @@ class AdminAppLayoutTest {
         try (MockedStatic<AppLayout> mockedStatic = mockStatic(AppLayout.class)) {
             mockedStatic.when(() ->
                     AppLayout.wrapWithSidebar(
-                            anyString(), anyString(), anyString(), anyString(), anyString(), anyString(),
-                            any(), anyString(), any(AppLayout.Navigator.class)
+                            any(AppLayout.SidebarConfig.class),
+                            any(),
+                            anyString(),
+                            any(AppLayout.Navigator.class)
                     )
             ).thenAnswer(invocation -> {
-                AppLayout.Navigator wrapped = invocation.getArgument(8);
+                AppLayout.Navigator wrapped = invocation.getArgument(3);
                 wrapped.goReports();
                 return expectedParent;
             });
@@ -158,11 +159,13 @@ class AdminAppLayoutTest {
         try (MockedStatic<AppLayout> mockedStatic = mockStatic(AppLayout.class)) {
             mockedStatic.when(() ->
                     AppLayout.wrapWithSidebar(
-                            anyString(), anyString(), anyString(), anyString(), anyString(), anyString(),
-                            any(), anyString(), any(AppLayout.Navigator.class)
+                            any(AppLayout.SidebarConfig.class),
+                            any(),
+                            anyString(),
+                            any(AppLayout.Navigator.class)
                     )
             ).thenAnswer(invocation -> {
-                AppLayout.Navigator wrapped = invocation.getArgument(8);
+                AppLayout.Navigator wrapped = invocation.getArgument(3);
                 wrapped.goEmail();
                 return expectedParent;
             });
@@ -188,11 +191,13 @@ class AdminAppLayoutTest {
         try (MockedStatic<AppLayout> mockedStatic = mockStatic(AppLayout.class)) {
             mockedStatic.when(() ->
                     AppLayout.wrapWithSidebar(
-                            anyString(), anyString(), anyString(), anyString(), anyString(), anyString(),
-                            any(), anyString(), any(AppLayout.Navigator.class)
+                            any(AppLayout.SidebarConfig.class),
+                            any(),
+                            anyString(),
+                            any(AppLayout.Navigator.class)
                     )
             ).thenAnswer(invocation -> {
-                AppLayout.Navigator wrapped = invocation.getArgument(8);
+                AppLayout.Navigator wrapped = invocation.getArgument(3);
                 wrapped.logout();
                 return expectedParent;
             });

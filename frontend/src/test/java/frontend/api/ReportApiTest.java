@@ -14,6 +14,7 @@ import java.io.InputStream;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Optional;
@@ -65,7 +66,7 @@ class ReportApiTest {
     @Test
     void exportStudentPdf_shouldUseStoredTokenAndWriteFile() throws IOException, InterruptedException {
         ReportApi api = new ReportApi("http://localhost:8081/", client);
-        byte[] expectedBytes = "student-report".getBytes();
+        byte[] expectedBytes = "student-report".getBytes(StandardCharsets.UTF_8);
 
         when(jwtStore.load()).thenReturn(Optional.of(authState));
         when(authState.token()).thenReturn("store-token");
@@ -96,7 +97,7 @@ class ReportApiTest {
     @Test
     void exportTeacherReport_shouldFallbackToStateTokenAndEncodeFormat() throws IOException, InterruptedException {
         ReportApi api = new ReportApi("http://localhost:8081", client);
-        byte[] expectedBytes = "teacher-report".getBytes();
+        byte[] expectedBytes = "teacher-report".getBytes(StandardCharsets.UTF_8);
 
         when(jwtStore.load()).thenReturn(Optional.empty());
         when(authState.token()).thenReturn("state-token");
@@ -150,7 +151,7 @@ class ReportApiTest {
         when(jwtStore.load()).thenReturn(Optional.of(authState));
         when(authState.token()).thenReturn("admin-token");
 
-        HttpResponse<InputStream> response = mockInputStreamResponse(500, "{\"error\":\"failed\"}".getBytes());
+        HttpResponse<InputStream> response = mockInputStreamResponse(500, "{\"error\":\"failed\"}".getBytes(StandardCharsets.UTF_8));
         when(client.send(any(HttpRequest.class), anyInputStreamBodyHandler()))
                 .thenReturn(response);
 

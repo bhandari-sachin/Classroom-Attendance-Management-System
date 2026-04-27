@@ -30,6 +30,8 @@ class DatabaseInitializerTest {
             // verify SQL commands executed (2 from test file)
             verify(mockStatement, atLeastOnce()).execute(anyString());
             verify(mockConnection).createStatement();
+            verify(mockStatement).close();
+            verify(mockConnection).close();
         }
     }
 
@@ -56,20 +58,21 @@ class DatabaseInitializerTest {
 
     @Test
     void init_shouldHandleMissingFileGracefully() {
-        // simulate missing resource by using different classloader behavior
         ClassLoader original = Thread.currentThread().getContextClassLoader();
 
-        try {
-            Thread.currentThread().setContextClassLoader(new ClassLoader() {
-                @Override
-                public java.io.InputStream getResourceAsStream(String name) {
-                    return null; // simulate missing file
-                }
-            });
+        ClassLoader fakeLoader = new ClassLoader(original) {
+            @Override
+            public java.io.InputStream getResourceAsStream(String name) {
+                return null; // simulate missing file
+            }
+        };
 
-            // should not throw (handled inside method)
+        try {
+            Thread.currentThread().setContextClassLoader(fakeLoader);
+
             DatabaseInitializer.init();
-            assertNotNull(original); // just to use the variable and avoid unused warning
+
+            assertNotNull(original);
 
         } finally {
             Thread.currentThread().setContextClassLoader(original);

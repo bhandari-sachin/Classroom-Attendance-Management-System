@@ -10,6 +10,7 @@ import security.JwtService;
 
 import java.io.*;
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 
@@ -51,7 +52,7 @@ class AdminClassesHandlerTest {
 
         if (body != null) {
             when(exchange.getRequestBody())
-                    .thenReturn(new ByteArrayInputStream(body.getBytes()));
+                    .thenReturn(new ByteArrayInputStream(body.getBytes(StandardCharsets.UTF_8)));
         }
     }
 
@@ -60,7 +61,7 @@ class AdminClassesHandlerTest {
     }
 
     private String rawResponse() {
-        return responseBody.toString();
+        return responseBody.toString(StandardCharsets.UTF_8);
     }
 
     private void assertError(String message) throws Exception {

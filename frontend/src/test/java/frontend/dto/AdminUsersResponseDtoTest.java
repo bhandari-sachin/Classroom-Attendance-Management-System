@@ -16,7 +16,8 @@ class AdminUsersResponseDtoTest {
         assertEquals(0, dto.getStudents());
         assertEquals(0, dto.getTeachers());
         assertEquals(0, dto.getAdmins());
-        assertNull(dto.getUsers());
+        assertNotNull(dto.getUsers());
+        assertTrue(dto.getUsers().isEmpty());
     }
 
     @Test
@@ -45,12 +46,13 @@ class AdminUsersResponseDtoTest {
     }
 
     @Test
-    void setters_shouldAllowNullUsersList() {
+    void setters_shouldHandleNullUsersList() {
         AdminUsersResponseDto dto = new AdminUsersResponseDto();
 
         dto.setUsers(null);
 
-        assertNull(dto.getUsers());
+        assertNotNull(dto.getUsers());
+        assertTrue(dto.getUsers().isEmpty());
     }
 
     @Test

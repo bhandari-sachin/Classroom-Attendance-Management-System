@@ -15,6 +15,7 @@ import security.JwtService;
 
 import java.io.ByteArrayOutputStream;
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -99,7 +100,7 @@ class TeacherSessionsListHandlerTest {
             handler.handle(exchange);
         }
 
-        String body = responseBody.toString();
+        String body = responseBody.toString(StandardCharsets.UTF_8);
 
         assertTrue(body.contains("data"));
         assertTrue(body.contains("ABC123"));

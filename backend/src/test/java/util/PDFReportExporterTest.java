@@ -61,7 +61,7 @@ class PDFReportExporterTest {
         assertTrue(pdf.exists());
         assertTrue(pdf.length() > 100);
 
-        pdf.delete();
+        assertTrue(pdf.delete());
     }
 
     // Teacher Report Tests
@@ -96,7 +96,7 @@ class PDFReportExporterTest {
         assertTrue(pdf.exists());
         assertTrue(pdf.length() > 100);
 
-        pdf.delete();
+        assertTrue(pdf.delete());
     }
 
     // Admin Report Tests
@@ -127,6 +127,6 @@ class PDFReportExporterTest {
         assertTrue(pdf.exists());
         assertTrue(pdf.length() > 100);
 
-        pdf.delete();
+        assertTrue(pdf.delete());
     }
 }

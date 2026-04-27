@@ -78,13 +78,17 @@ public final class TeacherPageSupport {
             JwtStore jwtStore,
             Runnable takeAttendanceAction
     ) {
-        return AppLayout.wrapWithSidebar(
+        AppLayout.SidebarConfig config = new AppLayout.SidebarConfig(
                 teacherName,
                 helper.getMessage("teacher.sidebar.title"),
                 helper.getMessage("teacher.sidebar.menu.dashboard"),
                 helper.getMessage("teacher.sidebar.menu.take_attendance"),
                 helper.getMessage("teacher.sidebar.menu.reports"),
-                helper.getMessage("teacher.sidebar.menu.email"),
+                helper.getMessage("teacher.sidebar.menu.email")
+        );
+
+        return AppLayout.wrapWithSidebar(
+                config,
                 content,
                 activeKey,
                 new TeacherNavigator(router, jwtStore, takeAttendanceAction)

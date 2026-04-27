@@ -14,6 +14,7 @@ import service.AttendanceService;
 import java.io.ByteArrayOutputStream;
 import java.io.ByteArrayInputStream;
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.*;
@@ -46,7 +47,7 @@ class TeacherMarkAttendanceHandlerTest {
         when(exchange.getRequestURI()).thenReturn(new URI("/api/attendance"));
 
         when(exchange.getRequestBody())
-                .thenReturn(new ByteArrayInputStream(jsonBody.getBytes()));
+                .thenReturn(new ByteArrayInputStream(jsonBody.getBytes(StandardCharsets.UTF_8)));
     }
 
     private DecodedJWT mockJwt(Long id) {
@@ -175,7 +176,7 @@ class TeacherMarkAttendanceHandlerTest {
             handler.handle(exchange);
 
             verify(exchange).sendResponseHeaders(eq(400), anyLong());
-            assertTrue(responseBody.toString().contains("Invalid status"));
+            assertTrue(responseBody.toString(StandardCharsets.UTF_8).contains("Invalid status"));
         }
     }
 
@@ -204,7 +205,7 @@ class TeacherMarkAttendanceHandlerTest {
             handler.handle(exchange);
 
             verify(exchange).sendResponseHeaders(eq(400), anyLong());
-            assertTrue(responseBody.toString().contains("required"));
+            assertTrue(responseBody.toString(StandardCharsets.UTF_8).contains("required"));
         }
     }
 
@@ -228,7 +229,7 @@ class TeacherMarkAttendanceHandlerTest {
             handler.handle(exchange);
 
             verify(exchange).sendResponseHeaders(eq(400), anyLong());
-            assertTrue(responseBody.toString().contains("Invalid JSON"));
+            assertTrue(responseBody.toString(StandardCharsets.UTF_8).contains("Invalid JSON"));
         }
     }
 
@@ -254,7 +255,7 @@ class TeacherMarkAttendanceHandlerTest {
             handler.handle(exchange);
 
             verify(exchange).sendResponseHeaders(eq(403), anyLong());
-            assertTrue(responseBody.toString().contains("Forbidden"));
+            assertTrue(responseBody.toString(StandardCharsets.UTF_8).contains("Forbidden"));
         }
     }
 }

@@ -11,6 +11,7 @@ import service.AttendanceService;
 
 import java.io.ByteArrayOutputStream;
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -47,7 +48,7 @@ class AdminStatsHandlerTest {
     }
 
     private String rawResponse() {
-        return responseBody.toString();
+        return responseBody.toString(StandardCharsets.UTF_8);
     }
 
     // -----------------------------------

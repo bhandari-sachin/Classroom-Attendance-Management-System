@@ -12,6 +12,7 @@ import security.JwtService;
 
 import java.io.ByteArrayOutputStream;
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 
@@ -91,7 +92,7 @@ class TeacherStudentsHandlerTest {
             handler.handle(exchange);
         }
 
-        String body = responseBody.toString();
+        String body = responseBody.toString(StandardCharsets.UTF_8);
 
         assertTrue(body.contains("data"));
         assertTrue(body.contains("Alice"));
@@ -116,7 +117,7 @@ class TeacherStudentsHandlerTest {
             handler.handle(exchange);
         }
 
-        String body = responseBody.toString();
+        String body = responseBody.toString(StandardCharsets.UTF_8);
         assertTrue(body.contains("classId is required"));
     }
 
@@ -141,7 +142,7 @@ class TeacherStudentsHandlerTest {
             handler.handle(exchange);
         }
 
-        String body = responseBody.toString();
+        String body = responseBody.toString(StandardCharsets.UTF_8);
         assertTrue(body.contains("Forbidden"));
     }
 }

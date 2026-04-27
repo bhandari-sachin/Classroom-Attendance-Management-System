@@ -18,10 +18,12 @@ class ReportExportExceptionTest {
     }
 
     @Test
-    void shouldBeRuntimeException() {
-        ReportExportException ex =
-                new ReportExportException("Error", new RuntimeException());
+    void shouldBeThrown() {
+        ReportExportException ex = assertThrows(
+                ReportExportException.class,
+                () -> { throw new ReportExportException("Export failed", new RuntimeException()); }
+        );
 
-        assertTrue(ex instanceof RuntimeException);
+        assertEquals("Export failed", ex.getMessage());
     }
 }

@@ -25,6 +25,7 @@ class DatabaseConnectionTest {
 
             assertNotNull(result);
             assertEquals(mockConnection, result);
+            result.close();
         }
     }
 
@@ -37,6 +38,7 @@ class DatabaseConnectionTest {
                     .thenThrow(exception);
 
             assertThrows(SQLException.class, DatabaseConnection::getConnection);
+            mocked.verify(() -> DriverManager.getConnection(anyString(), anyString(), anyString()));
         }
     }
 

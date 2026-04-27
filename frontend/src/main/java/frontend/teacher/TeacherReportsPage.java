@@ -47,6 +47,7 @@ public class TeacherReportsPage {
     private static final String STATS_RATE_KEY = "teacher.reports.stats.rate";
     private static final String COUNT_PLACEHOLDER = "{count}";
     private static final String RATE_PLACEHOLDER = "{rate}";
+    private static final double EPSILON = 1e-9;
 
     static class ClassItem {
         final long id;
@@ -617,7 +618,7 @@ public class TeacherReportsPage {
         double rounded = Math.round(value * 10.0) / 10.0;
         long wholePart = (long) rounded;
 
-        if (rounded == wholePart) {
+        if (Math.abs(rounded - wholePart) < EPSILON) {
             return wholePart + ".0";
         }
 

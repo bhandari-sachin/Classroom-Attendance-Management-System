@@ -14,6 +14,7 @@ import service.AttendanceService;
 
 import java.io.ByteArrayOutputStream;
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -141,7 +142,7 @@ class StudentAttendanceRecordsHandlerTest {
             handler.handle(exchange);
 
             verify(exchange).sendResponseHeaders(eq(403), anyLong());
-            assertTrue(responseBody.toString().contains("Invalid token"));
+            assertTrue(responseBody.toString(StandardCharsets.UTF_8).contains("Invalid token"));
         }
     }
 }

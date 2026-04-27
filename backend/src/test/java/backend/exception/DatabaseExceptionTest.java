@@ -29,10 +29,12 @@ class DatabaseExceptionTest {
     }
 
     @Test
-    void shouldBeRuntimeException() {
-        DatabaseException ex =
-                new DatabaseException(new RuntimeException("x"));
+    void shouldBeThrownAsRuntimeException() {
+        DatabaseException ex = assertThrows(
+                DatabaseException.class,
+                () -> { throw new DatabaseException(new RuntimeException("fail")); }
+        );
 
-        assertTrue(ex instanceof RuntimeException);
+        assertNotNull(ex.getCause());
     }
 }

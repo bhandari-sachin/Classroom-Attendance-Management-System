@@ -26,10 +26,12 @@ class ConfigurationExceptionTest {
     }
 
     @Test
-    void shouldBeRuntimeException() {
-        ConfigurationException ex =
-                new ConfigurationException("Error");
+    void shouldBeThrown() {
+        ConfigurationException ex = assertThrows(
+                ConfigurationException.class,
+                () -> { throw new ConfigurationException("Error"); }
+        );
 
-        assertTrue(ex instanceof RuntimeException);
+        assertEquals("Error", ex.getMessage());
     }
 }

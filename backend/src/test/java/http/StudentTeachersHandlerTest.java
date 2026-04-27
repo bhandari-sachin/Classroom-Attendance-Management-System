@@ -13,6 +13,7 @@ import security.JwtService;
 
 import java.io.ByteArrayOutputStream;
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 
@@ -105,7 +106,7 @@ class StudentTeachersHandlerTest {
             handler.handle(exchange);
 
             verify(exchange).sendResponseHeaders(eq(403), anyLong());
-            assertTrue(responseBody.toString().contains("Invalid token"));
+            assertTrue(responseBody.toString(StandardCharsets.UTF_8).contains("Invalid token"));
         }
     }
 
@@ -127,7 +128,7 @@ class StudentTeachersHandlerTest {
             handler.handle(exchange);
 
             verify(exchange).sendResponseHeaders(eq(405), anyLong());
-            assertTrue(responseBody.toString().contains("Method Not Allowed"));
+            assertTrue(responseBody.toString(StandardCharsets.UTF_8).contains("Method Not Allowed"));
         }
     }
 }

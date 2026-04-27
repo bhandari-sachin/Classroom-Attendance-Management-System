@@ -42,6 +42,49 @@ class AdminManageClassesPageTest {
     }
 
     @Test
+    void safeErrorMessageShouldReturnUnknownWhenMessageIsNull() throws Exception {
+        Exception ex = new Exception((String) null);
+
+        String result = invokePrivate(
+                page,
+                "safeErrorMessage",
+                String.class,
+                Exception.class,
+                ex
+        );
+
+        assertEquals("Unknown error", result);
+    }
+
+    @Test
+    void safeErrorMessageShouldReturnUnknownWhenExceptionIsNull() throws Exception {
+        String result = invokePrivate(
+                page,
+                "safeErrorMessage",
+                String.class,
+                Exception.class,
+                null
+        );
+
+        assertEquals("Unknown error", result);
+    }
+
+    @Test
+    void safeErrorMessageShouldReturnActualMessage() throws Exception {
+        Exception ex = new Exception("Boom");
+
+        String result = invokePrivate(
+                page,
+                "safeErrorMessage",
+                String.class,
+                Exception.class,
+                ex
+        );
+
+        assertEquals("Boom", result);
+    }
+
+    @Test
     void shouldFilterAllRowsWhenSearchQueryIsBlank() {
         ClassRow row1 = new ClassRow("Mathematics", "MTH101", "teacher1@example.com", "Spring 2025", "20");
         ClassRow row2 = new ClassRow("Physics", "PHY202", "teacher2@example.com", "Autumn 2025", "15");
@@ -259,6 +302,53 @@ class AdminManageClassesPageTest {
     }
 
     @Test
+    void shouldMapClassRowWithPartialNulls() {
+        AdminClassDto dto = new AdminClassDto();
+        dto.setName("Math");
+        dto.setClassCode(null);
+        dto.setTeacherEmail("teacher@example.com");
+        dto.setSemester("Spring");
+        dto.setAcademicYear(null);
+        dto.setStudents(5);
+
+        ClassRow result = page.mapClassRow(dto);
+
+        assertEquals("Math", result.getClassName());
+        assertEquals("", result.getCode());
+        assertEquals("teacher@example.com", result.getTeacher());
+        assertEquals("Spring", result.getSchedule());
+    }
+
+    @Test
+    void shouldHandleNullSearchQuery() {
+        ClassRow row = new ClassRow("Math", "M1", "t", "Spring", "10");
+
+        FilteredList<ClassRow> filtered = new FilteredList<>(
+                FXCollections.observableArrayList(row),
+                r -> true
+        );
+
+        page.applySearchFilter(filtered, null);
+
+        assertEquals(1, filtered.size());
+    }
+
+    @Test
+    void shouldHandleNullStudentSearchQuery() {
+        AdminStudentDto student = new AdminStudentDto();
+        student.setFirstName("John");
+
+        FilteredList<AdminStudentDto> filtered = new FilteredList<>(
+                FXCollections.observableArrayList(student),
+                s -> true
+        );
+
+        page.applyStudentFilter(filtered, null);
+
+        assertEquals(1, filtered.size());
+    }
+
+    @Test
     void shouldParseIntegerCorrectly() {
         assertEquals(123, page.parseInteger("123"));
     }
@@ -282,6 +372,18 @@ class AdminManageClassesPageTest {
     }
 
     @Test
+    void shouldHandleNullSceneWithoutCrash() {
+        assertDoesNotThrow(() -> {
+            invokePrivateVoid(
+                    page,
+                    "logIfSceneMissing",
+                    new Class<?>[]{javafx.scene.Scene.class},
+                    (Object) null
+            );
+        });
+    }
+
+    @Test
     void nullToEmptyShouldReturnEmptyWhenNullOtherwiseOriginalValue() {
         assertEquals("", AdminManageClassesPage.nullToEmpty(null));
         assertEquals("text", AdminManageClassesPage.nullToEmpty("text"));
@@ -294,6 +396,14 @@ class AdminManageClassesPageTest {
         assertEquals("2025/2026", AdminManageClassesPage.joinNonEmpty("", "2025/2026"));
         assertEquals("", AdminManageClassesPage.joinNonEmpty("", ""));
         assertEquals("", AdminManageClassesPage.joinNonEmpty(null, null));
+    }
+
+    @Test
+    void joinNonEmptyShouldHandleMixedNullAndBlank() {
+        assertEquals("", AdminManageClassesPage.joinNonEmpty(null, ""));
+        assertEquals("", AdminManageClassesPage.joinNonEmpty("", null));
+        assertEquals("Spring", AdminManageClassesPage.joinNonEmpty("Spring", null));
+        assertEquals("2025", AdminManageClassesPage.joinNonEmpty(null, "2025"));
     }
 
     @Test
@@ -543,5 +653,34 @@ class AdminManageClassesPageTest {
 
         assertFalse(label.isVisible());
         assertFalse(label.isManaged());
+    }
+
+    @Test
+    void handleInterruptedExceptionShouldInterruptThread() throws Exception {
+        Thread.currentThread().interrupt(); // clear first
+        Thread.interrupted();
+
+        invokePrivateVoid(
+                page,
+                "handleInterruptedException",
+                new Class<?>[]{Exception.class},
+                new InterruptedException()
+        );
+
+        assertTrue(Thread.currentThread().isInterrupted());
+    }
+
+    @Test
+    void handleInterruptedExceptionShouldIgnoreOtherExceptions() throws Exception {
+        Thread.interrupted(); // clear
+
+        invokePrivateVoid(
+                page,
+                "handleInterruptedException",
+                new Class<?>[]{Exception.class},
+                new RuntimeException()
+        );
+
+        assertFalse(Thread.currentThread().isInterrupted());
     }
 }

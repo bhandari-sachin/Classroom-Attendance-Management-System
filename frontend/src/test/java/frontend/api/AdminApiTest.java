@@ -71,7 +71,12 @@ class AdminApiTest {
         );
 
         assertNotNull(testApi);
-        assertEquals(BASE_URL, testApi.baseUrl());
+
+        String expectedBaseUrl = BASE_URL.endsWith("/")
+                ? BASE_URL.substring(0, BASE_URL.length() - 1)
+                : BASE_URL;
+
+        assertEquals(expectedBaseUrl, testApi.getBaseUrl());
     }
 
     @ParameterizedTest

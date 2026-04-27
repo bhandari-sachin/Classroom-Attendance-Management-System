@@ -35,6 +35,8 @@ import java.util.logging.Logger;
 
 public class AdminAttendanceReportsPage {
 
+    private static final double EPSILON = 1e-9;
+
     private static final Logger LOGGER =
             Logger.getLogger(AdminAttendanceReportsPage.class.getName());
 
@@ -579,7 +581,7 @@ public class AdminAttendanceReportsPage {
         double rounded = Math.round(value * 10.0) / 10.0;
         long wholePart = (long) rounded;
 
-        if (rounded == wholePart) {
+        if (Math.abs(rounded - wholePart) < EPSILON) {
             return wholePart + ".0";
         }
 

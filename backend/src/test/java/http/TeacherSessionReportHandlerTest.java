@@ -16,6 +16,7 @@ import security.JwtService;
 
 import java.io.ByteArrayOutputStream;
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.util.Map;
 
@@ -104,7 +105,7 @@ class TeacherSessionReportHandlerTest {
         }
 
         verify(exchange).sendResponseHeaders(eq(400), anyLong());
-        assertTrue(responseBody.toString().contains("sessionId is required"));
+        assertTrue(responseBody.toString(StandardCharsets.UTF_8).contains("sessionId is required"));
     }
 
     @Test
@@ -127,7 +128,7 @@ class TeacherSessionReportHandlerTest {
         }
 
         verify(exchange).sendResponseHeaders(eq(404), anyLong());
-        assertTrue(responseBody.toString().contains("Session not found"));
+        assertTrue(responseBody.toString(StandardCharsets.UTF_8).contains("Session not found"));
     }
 
     @Test
@@ -153,7 +154,7 @@ class TeacherSessionReportHandlerTest {
         }
 
         verify(exchange).sendResponseHeaders(eq(403), anyLong());
-        assertTrue(responseBody.toString().contains("Forbidden"));
+        assertTrue(responseBody.toString(StandardCharsets.UTF_8).contains("Forbidden"));
     }
 
     @Test
@@ -181,7 +182,7 @@ class TeacherSessionReportHandlerTest {
         }
 
         verify(exchange).sendResponseHeaders(eq(200), anyLong());
-        assertTrue(responseBody.toString().contains("sessionId"));
+        assertTrue(responseBody.toString(StandardCharsets.UTF_8).contains("sessionId"));
     }
 
     @Test

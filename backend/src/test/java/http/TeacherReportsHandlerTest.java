@@ -14,6 +14,7 @@ import security.JwtService;
 
 import java.io.ByteArrayOutputStream;
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 
@@ -88,7 +89,7 @@ class TeacherReportsHandlerTest {
         }
 
         verify(exchange).sendResponseHeaders(eq(400), anyLong());
-        assertTrue(responseBody.toString().contains("classId query param is required"));
+        assertTrue(responseBody.toString(StandardCharsets.UTF_8).contains("classId query param is required"));
     }
 
     @Test
@@ -112,7 +113,7 @@ class TeacherReportsHandlerTest {
         }
 
         verify(exchange).sendResponseHeaders(eq(403), anyLong());
-        assertTrue(responseBody.toString().contains("not your class"));
+        assertTrue(responseBody.toString(StandardCharsets.UTF_8).contains("not your class"));
     }
 
     @Test
@@ -139,7 +140,7 @@ class TeacherReportsHandlerTest {
         }
 
         verify(exchange).sendResponseHeaders(eq(200), anyLong());
-        assertTrue(responseBody.toString().contains("classId"));
+        assertTrue(responseBody.toString(StandardCharsets.UTF_8).contains("classId"));
     }
 
     @Test

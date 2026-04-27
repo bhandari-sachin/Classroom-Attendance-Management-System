@@ -98,12 +98,14 @@ class AppLayoutTest {
 
         Parent parent = runOnFxThread(() ->
                 AppLayout.wrapWithSidebar(
-                        "Oscar",
-                        "Teacher",
-                        "Dashboard",
-                        "Attendance",
-                        "Reports",
-                        "Email",
+                        new AppLayout.SidebarConfig(
+                                "Oscar",
+                                "Teacher",
+                                "Dashboard",
+                                "Attendance",
+                                "Reports",
+                                "Email"
+                        ),
                         new VBox(),
                         "dashboard",
                         nav
@@ -125,12 +127,14 @@ class AppLayoutTest {
 
         Parent parent = runOnFxThread(() ->
                 AppLayout.wrapWithSidebar(
-                        "Oscar",
-                        "Teacher",
-                        "Dashboard",
-                        "Attendance",
-                        "Reports",
-                        "Email",
+                        new AppLayout.SidebarConfig(
+                                "Oscar",
+                                "Teacher",
+                                "Dashboard",
+                                "Attendance",
+                                "Reports",
+                                "Email"
+                        ),
                         new VBox(),
                         "dashboard",
                         nav
@@ -152,12 +156,14 @@ class AppLayoutTest {
 
         Parent parent = runOnFxThread(() ->
                 AppLayout.wrapWithSidebar(
-                        "Oscar",
-                        "Teacher",
-                        "Dashboard",
-                        "Attendance",
-                        "Reports",
-                        "Email",
+                        new AppLayout.SidebarConfig(
+                                "Oscar",
+                                "Teacher",
+                                "Dashboard",
+                                "Attendance",
+                                "Reports",
+                                "Email"
+                        ),
                         new VBox(),
                         "third",
                         nav
@@ -181,12 +187,14 @@ class AppLayoutTest {
 
         Parent parent = runOnFxThread(() ->
                 AppLayout.wrapWithSidebar(
-                        "Oscar",
-                        "Teacher",
-                        "Dashboard",
-                        "Attendance",
-                        "Reports",
-                        "Email",
+                        new AppLayout.SidebarConfig(
+                                "Oscar",
+                                "Teacher",
+                                "Dashboard",
+                                "Attendance",
+                                "Reports",
+                                "Email"
+                        ),
                         new VBox(),
                         "dashboard",
                         nav
@@ -213,12 +221,14 @@ class AppLayoutTest {
 
         Parent parent = runOnFxThread(() ->
                 AppLayout.wrapWithSidebar(
-                        "Oscar",
-                        "Teacher",
-                        "Dashboard",
-                        "Attendance",
-                        "Reports",
-                        "Email",
+                        new AppLayout.SidebarConfig(
+                                "Oscar",
+                                "Teacher",
+                                "Dashboard",
+                                "Attendance",
+                                "Reports",
+                                "Email"
+                        ),
                         new VBox(),
                         "dashboard",
                         nav
@@ -245,12 +255,14 @@ class AppLayoutTest {
 
         Parent parent = runOnFxThread(() ->
                 AppLayout.wrapWithSidebar(
-                        "Oscar",
-                        "Teacher",
-                        "Dashboard",
-                        "Attendance",
-                        "Reports",
-                        "Email",
+                        new AppLayout.SidebarConfig(
+                                "Oscar",
+                                "Teacher",
+                                "Dashboard",
+                                "Attendance",
+                                "Reports",
+                                "Email"
+                        ),
                         new VBox(),
                         "dashboard",
                         nav
@@ -277,12 +289,14 @@ class AppLayoutTest {
 
         Parent parent = runOnFxThread(() ->
                 AppLayout.wrapWithSidebar(
-                        "Oscar",
-                        "Teacher",
-                        "Dashboard",
-                        "Attendance",
-                        "Reports",
-                        "Email",
+                        new AppLayout.SidebarConfig(
+                                "Oscar",
+                                "Teacher",
+                                "Dashboard",
+                                "Attendance",
+                                "Reports",
+                                "Email"
+                        ),
                         new VBox(),
                         "dashboard",
                         nav
@@ -310,12 +324,14 @@ class AppLayoutTest {
 
         Parent parent = runOnFxThread(() ->
                 AppLayout.wrapWithSidebar(
-                        "Oscar",
-                        "Teacher",
-                        "Dashboard",
-                        "Attendance",
-                        "Reports",
-                        "Email",
+                        new AppLayout.SidebarConfig(
+                                "Oscar",
+                                "Teacher",
+                                "Dashboard",
+                                "Attendance",
+                                "Reports",
+                                "Email"
+                        ),
                         content,
                         "dashboard",
                         nav

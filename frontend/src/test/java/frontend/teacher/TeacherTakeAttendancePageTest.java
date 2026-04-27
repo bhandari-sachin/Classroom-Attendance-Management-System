@@ -355,13 +355,6 @@ class TeacherTakeAttendancePageTest {
     }
 
     @SuppressWarnings("unchecked")
-    private static <T> T invokePrivate(String methodName) throws Exception {
-        Method method = TeacherTakeAttendancePage.class.getDeclaredMethod(methodName);
-        method.setAccessible(true);
-        return (T) method.invoke(page);
-    }
-
-    @SuppressWarnings("unchecked")
     private static <T> T invokePrivate(String methodName, Class<?>[] parameterTypes, Object... args)
             throws Exception {
         Method method = TeacherTakeAttendancePage.class.getDeclaredMethod(methodName, parameterTypes);

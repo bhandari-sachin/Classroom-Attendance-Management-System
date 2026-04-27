@@ -9,6 +9,7 @@ import service.TranslationService;
 
 import java.io.ByteArrayOutputStream;
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 
@@ -40,7 +41,7 @@ class I18nHandlerTest {
 
             verify(exchange).sendResponseHeaders(eq(200), anyLong());
 
-            String body = response.toString();
+            String body = response.toString(StandardCharsets.UTF_8);
             assertTrue(body.contains("\"hello\":\"Hello\""));
         }
     }
@@ -71,7 +72,7 @@ class I18nHandlerTest {
 
             verify(exchange).sendResponseHeaders(eq(200), anyLong());
 
-            String body = response.toString();
+            String body = response.toString(StandardCharsets.UTF_8);
             assertTrue(body.contains("\"code\":\"en\""));
         }
     }
@@ -92,7 +93,7 @@ class I18nHandlerTest {
 
         verify(exchange).sendResponseHeaders(eq(405), anyLong());
 
-        assertTrue(response.toString().contains("Method not allowed"));
+        assertTrue(response.toString(StandardCharsets.UTF_8).contains("Method not allowed"));
     }
 
     // 404 Not Found

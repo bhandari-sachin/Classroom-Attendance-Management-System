@@ -12,6 +12,7 @@ import service.SessionService;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -54,7 +55,7 @@ class StartSessionHandlerTest {
 
         if (body != null) {
             when(exchange.getRequestBody())
-                    .thenReturn(new ByteArrayInputStream(body.getBytes()));
+                    .thenReturn(new ByteArrayInputStream(body.getBytes(StandardCharsets.UTF_8)));
         }
     }
 
@@ -63,7 +64,7 @@ class StartSessionHandlerTest {
     }
 
     private String rawResponse() {
-        return responseBody.toString();
+        return responseBody.toString(StandardCharsets.UTF_8);
     }
 
     // -----------------------------------

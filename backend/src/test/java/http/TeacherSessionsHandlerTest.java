@@ -14,6 +14,7 @@ import security.JwtService;
 
 import java.io.ByteArrayOutputStream;
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 
@@ -84,7 +85,7 @@ class TeacherSessionsHandlerTest {
         }
 
         verify(exchange).sendResponseHeaders(eq(400), anyLong());
-        assertTrue(responseBody.toString().contains("classId is required"));
+        assertTrue(responseBody.toString(StandardCharsets.UTF_8).contains("classId is required"));
     }
 
     @Test
@@ -133,7 +134,7 @@ class TeacherSessionsHandlerTest {
         request("POST", "/api/sessions");
 
         when(exchange.getRequestBody())
-                .thenReturn(new java.io.ByteArrayInputStream("{}".getBytes()));
+                .thenReturn(new java.io.ByteArrayInputStream("{}".getBytes(StandardCharsets.UTF_8)));
 
         try (MockedStatic<Auth> auth = mockStatic(Auth.class)) {
 
@@ -146,7 +147,7 @@ class TeacherSessionsHandlerTest {
         }
 
         verify(exchange).sendResponseHeaders(eq(400), anyLong());
-        assertTrue(responseBody.toString().contains("classId is required"));
+        assertTrue(responseBody.toString(StandardCharsets.UTF_8).contains("classId is required"));
     }
 
     @Test
@@ -156,7 +157,7 @@ class TeacherSessionsHandlerTest {
         String json = "{\"classId\":10}";
 
         when(exchange.getRequestBody())
-                .thenReturn(new java.io.ByteArrayInputStream(json.getBytes()));
+                .thenReturn(new java.io.ByteArrayInputStream(json.getBytes(StandardCharsets.UTF_8)));
 
         try (MockedStatic<Auth> auth = mockStatic(Auth.class)) {
 
@@ -173,7 +174,7 @@ class TeacherSessionsHandlerTest {
         }
 
         verify(exchange).sendResponseHeaders(eq(201), anyLong());
-        assertTrue(responseBody.toString().contains("sessionId"));
+        assertTrue(responseBody.toString(StandardCharsets.UTF_8).contains("sessionId"));
     }
 
     @Test
@@ -228,7 +229,7 @@ class TeacherSessionsHandlerTest {
         String json = "{\"classId\":10}"; // no startTime/endTime
 
         when(exchange.getRequestBody())
-                .thenReturn(new java.io.ByteArrayInputStream(json.getBytes()));
+                .thenReturn(new java.io.ByteArrayInputStream(json.getBytes(StandardCharsets.UTF_8)));
 
         try (MockedStatic<Auth> auth = mockStatic(Auth.class)) {
 

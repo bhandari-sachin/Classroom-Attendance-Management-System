@@ -42,12 +42,7 @@ public final class AppLayout {
     }
 
     public static Parent wrapWithSidebar(
-            String name,
-            String roleLabel,
-            String dashboardLabel,
-            String secondLabel,
-            String thirdLabel,
-            String fourthLabel,
+            SidebarConfig config,
             Node content,
             String activeKey,
             Navigator nav
@@ -59,18 +54,15 @@ public final class AppLayout {
         root.getStyleClass().add("app-root");
 
         HBox topBar = buildTopBar(helper, rtl, root, activeKey, nav);
+
         BorderPane sidebar = buildSidebar(
                 helper,
                 rtl,
-                name,
-                roleLabel,
-                dashboardLabel,
-                secondLabel,
-                thirdLabel,
-                fourthLabel,
+                config,
                 activeKey,
                 nav
         );
+
         VBox center = buildCenter(content, topBar, rtl);
 
         if (rtl) {
@@ -160,12 +152,7 @@ public final class AppLayout {
     private static BorderPane buildSidebar(
             HelperClass helper,
             boolean rtl,
-            String name,
-            String roleLabel,
-            String dashboardLabel,
-            String secondLabel,
-            String thirdLabel,
-            String fourthLabel,
+            SidebarConfig config,
             String activeKey,
             Navigator nav
     ) {
@@ -173,17 +160,17 @@ public final class AppLayout {
         topSection.setPadding(SIDEBAR_SECTION_PADDING);
         topSection.setNodeOrientation(toOrientation(rtl));
 
-        Label nameLabel = sidebarText(name, "sidebar-name", rtl);
-        Label role = sidebarText(roleLabel, "sidebar-role", rtl);
+        Label nameLabel = sidebarText(config.name(), "sidebar-name", rtl);
+        Label role = sidebarText(config.roleLabel(), "sidebar-role", rtl);
 
         VBox navBox = new VBox(10);
         navBox.getStyleClass().add("sidebar-nav");
         navBox.setNodeOrientation(toOrientation(rtl));
         navBox.getChildren().addAll(
-                navLabel(dashboardLabel, KEY_DASHBOARD, activeKey, nav::goDashboard, rtl),
-                navLabel(secondLabel, KEY_SECOND, activeKey, nav::goTakeAttendance, rtl),
-                navLabel(thirdLabel, KEY_THIRD, activeKey, nav::goReports, rtl),
-                navLabel(fourthLabel, KEY_FOURTH, activeKey, nav::goEmail, rtl)
+                navLabel(config.dashboardLabel(), KEY_DASHBOARD, activeKey, nav::goDashboard, rtl),
+                navLabel(config.secondLabel(), KEY_SECOND, activeKey, nav::goTakeAttendance, rtl),
+                navLabel(config.thirdLabel(), KEY_THIRD, activeKey, nav::goReports, rtl),
+                navLabel(config.fourthLabel(), KEY_FOURTH, activeKey, nav::goEmail, rtl)
         );
 
         topSection.getChildren().addAll(
@@ -272,4 +259,13 @@ public final class AppLayout {
         HBox.setHgrow(spacer, Priority.ALWAYS);
         return spacer;
     }
+
+    public record SidebarConfig(
+            String name,
+            String roleLabel,
+            String dashboardLabel,
+            String secondLabel,
+            String thirdLabel,
+            String fourthLabel
+    ) {}
 }
