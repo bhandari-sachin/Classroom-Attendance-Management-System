@@ -1,4 +1,37 @@
 -- SEED DATA: ICT School - Classroom Attendance
+-- Prerequisites:
+--   - Docker must be running
+--   - attendance-db container must be running
+--   - schema must already be applied (schema.sql or app startup)
+--
+-- How to run:
+--   docker exec -i attendance-db mysql -u db_user -pdb_password classroom_attendance < backend/src/main/resources/data.sql
+--
+-- To reset and re-run:
+--   docker exec -it attendance-db mysql -u db_user -pdb_password classroom_attendance -e "
+--     SET FOREIGN_KEY_CHECKS = 0;
+--     TRUNCATE TABLE attendance;
+--     TRUNCATE TABLE sessions;
+--     TRUNCATE TABLE enrollments;
+--     TRUNCATE TABLE classes;
+--     TRUNCATE TABLE users;
+--     SET FOREIGN_KEY_CHECKS = 1;"
+--
+-- Test Accounts (all passwords are: password123!)
+--   ADMIN   : admin@ict.edu
+--   TEACHER : john.smith@ict.edu
+--   TEACHER : sarah.jones@ict.edu
+--   TEACHER : michael.tan@ict.edu
+--   STUDENT : alice.wong@student.ict.edu  (STU-2024-001)
+--   STUDENT : bob.lim@student.ict.edu     (STU-2024-002)
+-- ================================================================
+
+
+-- ----------------------------------------------------------------
+-- 1. USERS
+-- ID assignment (auto-increment order):
+--   1 = admin, 2 = john.smith, 3 = sarah.jones,
+--   4 = michael.tan, 5 = alice.wong, 6 = bob.lim
 
 
 -- 1. USERS

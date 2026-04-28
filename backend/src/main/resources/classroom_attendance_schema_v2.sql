@@ -1,5 +1,12 @@
 -- SCHEMA.SQL
 -- Attendance Management System
+-- Prerequisites:
+--   - Docker must be running
+--   - attendance-db container must be running
+--
+-- How to run:
+--   docker exec -i attendance-db mysql -u db_user -pdb_password classroom_attendance < backend/src/main/resources/classroom_attendance_schema_v2.sql
+--
 
 -- 1. USERS
 CREATE TABLE IF NOT EXISTS users

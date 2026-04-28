@@ -1,4 +1,11 @@
 -- classroom_attendance_sys.seed.sql
+-- Prerequisites:
+--   - Docker must be running
+--   - attendance-db container must be running
+--
+-- How to run:
+--   docker exec -i attendance-db mysql -u db_user -pdb_password classroom_attendance < backend/src/main/resources/classroom_attendance_sys.seed.sql
+--
 
 
 
