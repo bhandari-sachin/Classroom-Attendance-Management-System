@@ -2,20 +2,22 @@
 
 ## Sprint Goal
 
-Finalize the Classroom Attendance Management System for release by completing all remaining features, improving code quality using SonarQube, finalizing reporting functionality, and ensuring full test coverage.
+Ensure that the Classroom Attendance Management System is fully functional, usable, and aligned with the Product Owner’s requirements by focusing on functional and non-functional testing, bug fixing, and overall system quality validation.
 
 ---
 
 ## Completed User Stories / Tasks
 
-* Finalized attendance reporting system (PDF & CSV export)
-* Implemented role-based report generation (Student, Teacher, Admin)
-* Integrated localization support for attendance statuses (multi-language support)
-* Refactored code to reduce duplication and improve maintainability
-* Integrated SonarQube for static code analysis
-* Fixed code smells, bugs, and security vulnerabilities identified by SonarQube
-* Improved unit test coverage and resolved failing tests
-* Completed full system integration and end-to-end validation
+* Conducted full system testing (functional & non-functional)
+* Planned and documented the testing process
+* Performed QA Bug Tracking and resolved identified issues
+* Completed heuristic evaluation using Nielsen’s usability principles
+* Achieved ≥ 80% test coverage
+* Implemented and ran Jenkins CI pipeline
+* Performed User Acceptance Testing (UAT)
+* Reviewed and refined the product backlog
+* Finalized project documentation
+* Verified system deployment and stability
 
 ---
 
@@ -23,69 +25,84 @@ Finalize the Classroom Attendance Management System for release by completing al
 
 ### During the final demo, we showed:
 
-#### Complete System Workflow
-- User authentication (Login/Signup)
-- Role-based dashboards (Student, Teacher, Admin)
-- Attendance marking (Manual)
-- Viewing attendance records
-- Generating reports (PDF & CSV)
+#### System Testing & Validation
+- End-to-end system testing across all roles:
+  - Admin (manage classes, users)
+  - Teacher (attendance, reports)
+  - Student (view attendance)
+- Verified that all major features work correctly
 
-#### Reporting Features
-- Student yearly attendance report
-- Teacher class report
-- Admin overall attendance summary
-- Export functionality with downloadable files
+#### Bug Tracking & Fixes
+- Demonstrated resolved bugs from QA tracking
+- Showed improvements in system stability
 
-#### Code Quality & Testing
-- SonarQube dashboard showing:
-    - Code smells reduction
-    - Zero critical bugs
-    - Improved maintainability rating
+#### Code Quality & Coverage
+- Displayed test coverage results (≥ 80%)
+- Showed successful test execution
+- Demonstrated clean and stable builds
+
+### CI/CD Pipeline
+- Jenkins pipeline running:
+  - Build
+  - Tests
+  - Quality checks
+- Verified successful automation
+
+### Usability (Heuristic Evaluation)
+- Presented usability findings:
+  - Improved feedback messages
+  - Better consistency across UI
+  - Reduced user confusion in navigation
 
 ---
 
 ## Code Quality
 
-### SonarQube Integration
-* Identified and fixed:
-    - Code duplication
-    - Unused variables
-    - Poor exception handling
+### SonarQube & Quality Improvements
+* Fixed:
+  - Minor bugs
+  - Maintainability issues
 * Improved:
-    - Maintainability
-    - Readability
-    - Code structure
-* Ensured no critical vulnerabilities before release
+  - Code readability
+  - Structure
+  - Consistency
+
+### Testing & Coverage
+* Achieved at least 80% code coverage
+* Added and improved unit tests for:
+  - Backend logic
+  - Frontend components
+* Ensured all tests pass successfully
 
 ---
 
 ## What Went Well
 
-* Successful completion of all planned features
-* Strong architecture with clean separation of concerns
-* Effective use of SonarQube to improve code quality
-* Stable test execution
-* Reporting functionality works reliably across roles
+* Strong testing process covering both functional and non-functional requirements
+* Successful bug tracking and resolution
+* Achieved required test coverage (≥ 80%)
+* Jenkins pipeline worked correctly and automated key tasks
+* System is stable and ready for delivery
+* Good collaboration between testing and development
 
 ---
 
 ## What Could Be Improved
 
-* Earlier integration of SonarQube could have reduced refactoring effort
-* Some SQL queries could be further optimized
-* More edge case testing
-* UI/UX polish could be further enhanced
+* Testing could have been started earlier in previous sprints
+* More edge case and stress testing could be added
+* UI/UX improvements could be further refined
+* Automation tests could be expanded
 
 ---
 
 ## Postponed / Future Improvements
 
-* Deployment to cloud platform (e.g., AWS, Azure)
-* Advanced QR validation with expiration and security tokens
-* Real-time attendance tracking (WebSockets)
 * Performance and load testing
-* Role-based analytics dashboards with charts
-* Enhanced audit logging and monitoring
+* Cloud deployment (AWS / Azure)
+* Advanced monitoring and logging
+* Automated end-to-end UI testing
+* Further UI/UX improvements based on user feedback
 
 ---
 
@@ -93,21 +110,22 @@ Finalize the Classroom Attendance Management System for release by completing al
 
 The Classroom Attendance Management System is now:
 
-* Fully functional across all user roles (Student, Teacher, Admin)
-* Integrated end-to-end (Frontend + Backend + Database)
-* Tested and validated with automated tools
-* Quality-checked using SonarQube
+* Fully functional and aligned with requirements
+* Tested (functional + non-functional)
+* Stable and reliable
+* Quality-checked with good coverage
+* Ready for delivery to the Product Owner
 
 ---
 
 ## Time Spent During Sprint
 
-| Team Member      | Role     | Tasks Worked On                                               | Estimated Time | In-class Tasks |
-|------------------|----------|---------------------------------------------------------------|----------------|----------------|
-| Sachin Bhandari  | Backend  | Database schema localization, backend refactoring             | 13 hours       | submitted      |
-| Olga Chitembo    | Backend  | Reporting system (PDF/CSV), localization, backend refactoring | 18 hours       | submitted      |
-| Ahmad Sarfaraz   | Frontend | UI/UX improvements, frontend refactoring                      | 19 hours       | submitted      |
-| Farah El Bajta   | Frontend | Localization, frontend refactoring                            | 20 hours       | submitted      |
-| Melkamu Yehualla | Testing  | Database schema localization, test coverage                   | 20 hours       | submitted      |
+| Team Member      | Role     | Tasks Worked On                         | Estimated Time | In-class Tasks |
+|------------------|----------|-----------------------------------------|--------------|----------------|
+| Sachin Bhandari  | Backend  | Jenkins, Bug tracking                   |  hours       | submitted      |
+| Olga Chitembo    | Backend  | Backend tests, bug fixing, user stories |  hours     | submitted      |
+| Ahmad Sarfaraz   | Frontend | Documentation, Heuristic evaluation     |  hours     | submitted      |
+| Farah El Bajta   | Frontend | Scrum master, frontend tests, UAT       |  hours     | submitted      |
+| Melkamu Yehualla | Testing  | Test Planning, backend tests            |  hours     | submitted      |
 
 ---
