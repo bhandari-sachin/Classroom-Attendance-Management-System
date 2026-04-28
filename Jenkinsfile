@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     tools {
-        maven 'maven3'
+        maven 'Maven3'
         jdk 'JDK21'
     }
 
@@ -59,16 +59,13 @@ pipeline {
         stage('SonarQube Analysis') {
             steps {
                 withSonarQubeEnv('SonarQubeServer') {
-                    withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
-                        bat """
-                            mvn sonar:sonar ^
-                            -Dsonar.projectKey=%SONAR_PROJECT_KEY% ^
-                            -Dsonar.projectName="%SONAR_PROJECT_NAME%" ^
-                            -Dsonar.coverage.jacoco.xmlReportPaths=backend/target/site/jacoco/jacoco.xml ^
-                            -Dsonar.sourceEncoding=UTF-8 ^
-                            -Dsonar.token=%SONAR_TOKEN%
-                        """
-                    }
+                    bat """
+                         mvn sonar:sonar ^
+                        -Dsonar.projectKey=${SONAR_PROJECT_KEY} ^
+                        -Dsonar.projectName="${SONAR_PROJECT_NAME}" ^
+                        -Dsonar.coverage.jacoco.xmlReportPaths=backend/target/site/jacoco/jacoco.xml ^
+                        -Dsonar.sourceEncoding=UTF-8
+                    """
                 }
             }
         }
@@ -76,7 +73,7 @@ pipeline {
         /*
         stage('Quality Gate') {
             steps {
-                timeout(time: 15, unit: 'MINUTES') {
+                timeout(time: 5, unit: 'MINUTES') {
                     waitForQualityGate abortPipeline: true
                 }
             }
@@ -148,7 +145,7 @@ pipeline {
         }
 
         always {
-            deleteDir()
+            cleanWs()
         }
     }
 }
