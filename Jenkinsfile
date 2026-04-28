@@ -79,6 +79,20 @@ pipeline {
         }
         */
 
+        stage('Docker Login') {
+            steps {
+                withCredentials([usernamePassword(
+                    credentialsId: "${DOCKERHUB_CREDENTIALS_ID}",
+                    usernameVariable: 'DOCKER_USER',
+                    passwordVariable: 'DOCKER_PASS'
+                )]) {
+                    bat """
+                        echo %DOCKER_PASS% | docker login -u %DOCKER_USER% --password-stdin
+                    """
+                }
+            }
+        }
+
         stage('Build Backend Docker Image') {
             steps {
                 withCredentials([usernamePassword(
@@ -121,8 +135,6 @@ pipeline {
                     passwordVariable: 'DOCKER_PASS'
                 )]) {
                     bat """
-                        docker login -u %DOCKER_USER% -p %DOCKER_PASS%
-
                         docker push %DOCKER_USER%/%BACKEND_IMAGE_REPO%:%DOCKER_IMAGE_TAG%
                         docker push %DOCKER_USER%/%BACKEND_IMAGE_REPO%:%DOCKER_IMAGE_TAG_LATEST%
 
