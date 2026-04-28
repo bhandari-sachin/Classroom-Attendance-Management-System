@@ -7,9 +7,6 @@ pipeline {
     }
 
     environment {
-        /*
-        DOCKER_USERNAME          = ''
-        */
         DOCKERHUB_CREDENTIALS_ID = 'Docker_Hub'
         BACKEND_IMAGE_REPO       = 'classroom-attendance-backend'
         FRONTEND_IMAGE_REPO      = 'classroom-attendance-frontend'
@@ -21,7 +18,6 @@ pipeline {
     }
 
     stages {
-
         stage('Checkout') {
             steps {
                 checkout scm
@@ -85,23 +81,35 @@ pipeline {
 
         stage('Build Backend Docker Image') {
             steps {
-                bat """
-                    docker build ^
-                        -f backend\\backend.dockerfile ^
-                        -t %DOCKER_USERNAME%/%BACKEND_IMAGE_REPO%:%DOCKER_IMAGE_TAG% ^
-                        -t %DOCKER_USERNAME%/%BACKEND_IMAGE_REPO%:%DOCKER_IMAGE_TAG_LATEST% .
-                """
+                withCredentials([usernamePassword(
+                    credentialsId: "${DOCKERHUB_CREDENTIALS_ID}",
+                    usernameVariable: 'DOCKER_USER',
+                    passwordVariable: 'DOCKER_PASS'
+                )]) {
+                    bat """
+                        docker build ^
+                            -f backend\\backend.dockerfile ^
+                            -t %DOCKER_USER%/%BACKEND_IMAGE_REPO%:%DOCKER_IMAGE_TAG% ^
+                            -t %DOCKER_USER%/%BACKEND_IMAGE_REPO%:%DOCKER_IMAGE_TAG_LATEST% .
+                    """
+                }
             }
         }
 
         stage('Build Frontend Docker Image') {
             steps {
-                bat """
-                    docker build ^
-                        -f frontend\\frontend.dockerfile ^
-                        -t %DOCKER_USERNAME%/%FRONTEND_IMAGE_REPO%:%DOCKER_IMAGE_TAG% ^
-                        -t %DOCKER_USERNAME%/%FRONTEND_IMAGE_REPO%:%DOCKER_IMAGE_TAG_LATEST% .
-                """
+                withCredentials([usernamePassword(
+                    credentialsId: "${DOCKERHUB_CREDENTIALS_ID}",
+                    usernameVariable: 'DOCKER_USER',
+                    passwordVariable: 'DOCKER_PASS'
+                )]) {
+                    bat """
+                        docker build ^
+                            -f frontend\\frontend.dockerfile ^
+                            -t %DOCKER_USER%/%FRONTEND_IMAGE_REPO%:%DOCKER_IMAGE_TAG% ^
+                            -t %DOCKER_USER%/%FRONTEND_IMAGE_REPO%:%DOCKER_IMAGE_TAG_LATEST% .
+                    """
+                }
             }
         }
 
@@ -115,11 +123,11 @@ pipeline {
                     bat """
                         docker login -u %DOCKER_USER% -p %DOCKER_PASS%
 
-                        docker push %DOCKER_USERNAME%/%BACKEND_IMAGE_REPO%:%DOCKER_IMAGE_TAG%
-                        docker push %DOCKER_USERNAME%/%BACKEND_IMAGE_REPO%:%DOCKER_IMAGE_TAG_LATEST%
+                        docker push %DOCKER_USER%/%BACKEND_IMAGE_REPO%:%DOCKER_IMAGE_TAG%
+                        docker push %DOCKER_USER%/%BACKEND_IMAGE_REPO%:%DOCKER_IMAGE_TAG_LATEST%
 
-                        docker push %DOCKER_USERNAME%/%FRONTEND_IMAGE_REPO%:%DOCKER_IMAGE_TAG%
-                        docker push %DOCKER_USERNAME%/%FRONTEND_IMAGE_REPO%:%DOCKER_IMAGE_TAG_LATEST%
+                        docker push %DOCKER_USER%/%FRONTEND_IMAGE_REPO%:%DOCKER_IMAGE_TAG%
+                        docker push %DOCKER_USER%/%FRONTEND_IMAGE_REPO%:%DOCKER_IMAGE_TAG_LATEST%
 
                         docker logout
                     """
@@ -139,8 +147,7 @@ pipeline {
     post {
         success {
             echo "Pipeline succeeded!"
-            echo "Backend:  ${DOCKER_USERNAME}/${BACKEND_IMAGE_REPO}:${DOCKER_IMAGE_TAG}"
-            echo "Frontend: ${DOCKER_USERNAME}/${FRONTEND_IMAGE_REPO}:${DOCKER_IMAGE_TAG}"
+            echo "Docker images were built and pushed successfully."
         }
 
         failure {
