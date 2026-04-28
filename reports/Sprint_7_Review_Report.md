@@ -122,7 +122,7 @@ The Classroom Attendance Management System is now:
 
 | Team Member      | Role     | Tasks Worked On                         | Estimated Time | In-class Tasks |
 |------------------|----------|-----------------------------------------|----------------|----------------|
-| Sachin Bhandari  | Backend  | Jenkins, Bug tracking                   | hours          | submitted      |
+| Sachin Bhandari  | Backend  | Jenkins, Bug tracking                   | 9 hours        | submitted      |
 | Olga Chitembo    | Backend  | Backend tests, bug fixing, user stories | 18 hours       | submitted      |
 | Ahmad Sarfaraz   | Frontend | Documentation, Heuristic evaluation     | 14 hours       | submitted      |
 | Farah El Bajta   | Frontend | Scrum master, frontend tests, UAT       | 17 hours       | submitted      |
