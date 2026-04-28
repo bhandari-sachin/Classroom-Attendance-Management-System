@@ -65,6 +65,10 @@ public final class UiPreferences {
         if (scene == null || scene.getRoot() == null) return;
         var root = scene.getRoot();
 
+        if (!root.getStyleClass().contains("app-root")) {
+            root.getStyleClass().add("app-root");
+        }
+
         // Remove old theme classes
         root.getStyleClass().removeAll("theme-light", "theme-dark");
 
