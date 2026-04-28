@@ -1,6 +1,6 @@
 package frontend.admin;
 
-import frontend.AppLayout;
+import frontend.app.AppLayout;
 import javafx.scene.Node;
 import javafx.scene.Parent;
 
@@ -19,50 +19,21 @@ public final class AdminAppLayout {
     }
 
     public static Parent wrapWithSidebar(
-            String name,
-            String roleLabel,
-            String dashboardLabel,
-            String secondLabel,
-            String thirdLabel,
-            String fourthLabel,
+            AppLayout.SidebarConfig config,
             Node content,
             String activeKey,
             Navigator nav
     ) {
         return AppLayout.wrapWithSidebar(
-                name,
-                roleLabel,
-                dashboardLabel,
-                secondLabel,
-                thirdLabel,
-                fourthLabel,
+                config,
                 content,
                 activeKey,
                 new AppLayout.Navigator() {
-                    @Override
-                    public void goDashboard() {
-                        nav.goDashboard();
-                    }
-
-                    @Override
-                    public void goTakeAttendance() {
-                        nav.goTakeAttendance();
-                    }
-
-                    @Override
-                    public void goReports() {
-                        nav.goReports();
-                    }
-
-                    @Override
-                    public void goEmail() {
-                        nav.goEmail();
-                    }
-
-                    @Override
-                    public void logout() {
-                        nav.logout();
-                    }
+                    @Override public void goDashboard() { nav.goDashboard(); }
+                    @Override public void goTakeAttendance() { nav.goTakeAttendance(); }
+                    @Override public void goReports() { nav.goReports(); }
+                    @Override public void goEmail() { nav.goEmail(); }
+                    @Override public void logout() { nav.logout(); }
                 }
         );
     }

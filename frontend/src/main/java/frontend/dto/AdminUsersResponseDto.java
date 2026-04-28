@@ -1,5 +1,7 @@
 package frontend.dto;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -41,10 +43,14 @@ public class AdminUsersResponseDto {
     }
 
     public List<AdminUserDto> getUsers() {
-        return users;
+        return users == null
+                ? Collections.emptyList()
+                : Collections.unmodifiableList(users);
     }
 
     public void setUsers(List<AdminUserDto> users) {
-        this.users = users;
+        this.users = (users == null)
+                ? new ArrayList<>()
+                : new ArrayList<>(users);
     }
 }

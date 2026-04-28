@@ -27,8 +27,8 @@ public final class RouteGuard {
 
         Objects.requireNonNull(allowed, "Allowed roles must not be null");
 
-        if (!allowed.contains(state.getRole())) {
-            throw new SecurityException("Access denied for role: " + state.getRole());
+        if (!allowed.contains(state.role())) {
+            throw new SecurityException("Access denied for role: " + state.role());
         }
     }
 

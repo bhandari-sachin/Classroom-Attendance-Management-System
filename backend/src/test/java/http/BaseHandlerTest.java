@@ -1,60 +1,50 @@
 package http;
 
-import com.auth0.jwt.interfaces.Claim;
+import backend.exception.ApiException;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import com.sun.net.httpserver.*;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import security.JwtService;
-
 import java.io.*;
-import java.net.InetSocketAddress;
 import java.net.URI;
-import java.nio.charset.StandardCharsets;
-
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 class BaseHandlerTest {
 
+    private JwtService jwtService;
+    private HttpExchange exchange;
+    private ByteArrayOutputStream responseBody;
+    private TestHandler handler;
+
+    @BeforeEach
+    void setup() {
+        jwtService = mock(JwtService.class);
+
+        exchange = mock(HttpExchange.class);
+        responseBody = new ByteArrayOutputStream();
+
+        when(exchange.getResponseBody()).thenReturn(responseBody);
+        when(exchange.getResponseHeaders()).thenReturn(new Headers());
+
+        handler = new TestHandler(jwtService);
+    }
+
     // -------------------------------------------------------------
     // Concrete implementation (since BaseHandler is abstract)
     // -------------------------------------------------------------
     static class TestHandler extends BaseHandler {
+        boolean called = false;
+
         public TestHandler(JwtService jwtService) {
-            super(jwtService, "GET");
+            super(jwtService, "GET","POST");
         }
 
         @Override
         protected void handleRequest(HttpExchange ex, RequestContext ctx) {
-            try {
-                requireAdmin(ex, ctx);
-                HttpUtil.json(ex, 200, "OK");
-            } catch (Exception e) {
-                throw new RuntimeException(e);
-            }
+            called = true;
         }
-    }
-
-    // -------------------------------------------------------------
-    // TEST: method allowed + admin access
-    // -------------------------------------------------------------
-    @Test
-    void handle_validRequest_callsRequireAdmin() throws Exception {
-
-        JwtService jwtService = mock(JwtService.class);
-        TestHandler handler = new TestHandler(jwtService);
-
-        TestHandler spy = spy(handler);
-
-        doReturn(null).when(spy).requireAdmin(any(), any());
-
-        FakeExchange ex = new FakeExchange("GET", "/test", null);
-
-        BaseHandler.RequestContext ctx = mock(BaseHandler.RequestContext.class);
-
-        spy.handleRequest(ex, ctx);
-
-        verify(spy).requireAdmin(ex, ctx);
     }
 
     // -------------------------------------------------------------
@@ -62,85 +52,175 @@ class BaseHandlerTest {
     // -------------------------------------------------------------
     @Test
     void requestContext_readsQueryParams() throws Exception {
-
-        JwtService jwtService = mock(JwtService.class);
-        TestHandler handler = new TestHandler(jwtService);
-
-        FakeExchange ex = new FakeExchange(
-                "GET",
-                "/test?classId=10&period=WEEK",
-                null
+        when(exchange.getRequestURI()).thenReturn(
+                new URI("/test?classId=10&period=WEEK")
         );
 
-        BaseHandler.RequestContext ctx = new BaseHandler.RequestContext(ex);
+        BaseHandler.RequestContext ctx = new BaseHandler.RequestContext(exchange);
 
         assertEquals(10L, ctx.getClassId());
         assertEquals("WEEK", ctx.getPeriod());
+    }
+
+    @Test
+    void requestContext_missingParams_returnsNull() {
+        when(exchange.getRequestURI()).thenReturn(URI.create("/test"));
+
+        BaseHandler.RequestContext ctx =
+                new BaseHandler.RequestContext(exchange);
+
+        assertNull(ctx.getClassId());
+        assertNull(ctx.getPeriod());
+    }
+
+    @Test
+    void requestContext_getQuery_returnsDefault() {
+        when(exchange.getRequestURI()).thenReturn(URI.create("/test"));
+
+        BaseHandler.RequestContext ctx =
+                new BaseHandler.RequestContext(exchange);
+
+        assertEquals("DEFAULT", ctx.getQuery("missing", "DEFAULT"));
     }
 
     // -------------------------------------------------------------
     // TEST: authentication state in RequestContext
     // -------------------------------------------------------------
     @Test
-    void requestContext_authenticationFlag() throws Exception {
-
-        JwtService jwtService = mock(JwtService.class);
-        TestHandler handler = new TestHandler(jwtService);
-
-        FakeExchange ex = new FakeExchange("GET", "/test", null);
-
-        BaseHandler.RequestContext ctx = new BaseHandler.RequestContext(ex);
+    void requestContext_authenticationFlag() {
+        BaseHandler.RequestContext ctx = new BaseHandler.RequestContext(exchange);
 
         assertFalse(ctx.isAuthenticated());
     }
 
     // -------------------------------------------------------------
-    // Fake HttpExchange
+    // TEST: methods
     // -------------------------------------------------------------
-    static class FakeExchange extends HttpExchange {
+    @Test
+    void testMethodNotAllowed_returns405() throws Exception {
+        when(exchange.getRequestMethod()).thenReturn("DELETE");
 
-        private final Headers reqHeaders = new Headers();
-        private final Headers respHeaders = new Headers();
-        private final String method;
-        private final URI uri;
-        private final InputStream requestBody;
-        private final ByteArrayOutputStream responseBody = new ByteArrayOutputStream();
+        handler.handle(exchange);
 
-        int statusCode = -1;
+        verify(exchange).sendResponseHeaders(eq(405), anyLong());
+    }
 
-        FakeExchange(String method, String path, String body) {
-            this.method = method;
-            this.uri = URI.create("http://localhost" + path);
-            this.requestBody = body == null
-                    ? InputStream.nullInputStream()
-                    : new ByteArrayInputStream(body.getBytes(StandardCharsets.UTF_8));
+    @Test
+    void testMethodNotAllowed_doesNotCallHandleRequest() throws Exception {
+        when(exchange.getRequestMethod()).thenReturn("DELETE");
+
+        handler.handle(exchange);
+
+        assertFalse(handler.called);
+        verify(exchange).sendResponseHeaders(eq(405), anyLong());
+    }
+
+    @Test
+    void testAllowedMethod_callsHandleRequest() throws Exception {
+        when(exchange.getRequestMethod()).thenReturn("GET");
+        when(exchange.getRequestURI()).thenReturn(new URI("/test"));
+
+        handler.handle(exchange);
+
+        assertTrue(handler.called);
+    }
+
+    @Test
+    void testApiException_returns400() throws Exception {
+        handler = new TestHandler(jwtService) {
+            @Override
+            protected void handleRequest(HttpExchange ex, RequestContext ctx) {
+                throw new ApiException(400, "Bad request");
+            }
+        };
+
+        when(exchange.getRequestMethod()).thenReturn("GET");
+
+        handler.handle(exchange);
+
+        verify(exchange).sendResponseHeaders(eq(400), anyLong());
+    }
+
+    @Test
+    void testSecurityException_returns403() throws Exception {
+        handler = new TestHandler(jwtService) {
+            @Override
+            protected void handleRequest(HttpExchange ex, RequestContext ctx) {
+                throw new SecurityException("Forbidden");
+            }
+        };
+
+        when(exchange.getRequestMethod()).thenReturn("GET");
+
+        handler.handle(exchange);
+
+        verify(exchange).sendResponseHeaders(eq(403), anyLong());
+    }
+
+    @Test
+    void testUnhandledException_returns500() throws Exception {
+        handler = new TestHandler(jwtService) {
+            @Override
+            protected void handleRequest(HttpExchange ex, RequestContext ctx) {
+                throw new RuntimeException("Crash");
+            }
+        };
+
+        when(exchange.getRequestMethod()).thenReturn("GET");
+
+        handler.handle(exchange);
+
+        verify(exchange).sendResponseHeaders(eq(500), anyLong());
+    }
+
+    @Test
+    void requireRole_delegatesToAuth() {
+        HttpExchange ex = mock(HttpExchange.class);
+        BaseHandler.RequestContext ctx = new BaseHandler.RequestContext(ex);
+
+        DecodedJWT jwt = mock(DecodedJWT.class);
+
+        try (var mocked = mockStatic(security.Auth.class)) {
+
+            mocked.when(() -> security.Auth.requireJwt(ex, jwtService))
+                    .thenReturn(jwt);
+
+            mocked.when(() -> security.Auth.requireRole(any(), any()))
+                    .thenAnswer(inv -> null);
+
+            handler.requireRole(ex, ctx, "ADMIN");
+
+            mocked.verify(() -> security.Auth.requireJwt(ex, jwtService));
+            mocked.verify(() -> security.Auth.requireRole(jwt, new String[]{"ADMIN"}));
         }
+    }
 
-        String responseBodyString() {
-            return responseBody.toString(StandardCharsets.UTF_8);
+    @Test
+    void requireRole_setsJwtInContext() {
+        HttpExchange ex = mock(HttpExchange.class);
+        BaseHandler.RequestContext ctx = new BaseHandler.RequestContext(ex);
+
+        DecodedJWT jwt = mock(DecodedJWT.class);
+
+        try (var mocked = mockStatic(security.Auth.class)) {
+
+            mocked.when(() -> security.Auth.requireJwt(ex, jwtService))
+                    .thenReturn(jwt);
+
+            mocked.when(() -> security.Auth.requireRole(any(), any()))
+                    .thenAnswer(inv -> null);
+
+            handler.requireRole(ex, ctx, "ADMIN");
+
+            assertTrue(ctx.isAuthenticated());
         }
+    }
 
-        @Override public Headers getRequestHeaders() { return reqHeaders; }
-        @Override public Headers getResponseHeaders() { return respHeaders; }
-        @Override public URI getRequestURI() { return uri; }
-        @Override public String getRequestMethod() { return method; }
-        @Override public HttpContext getHttpContext() { return null; }
-        @Override public void close() { }
-        @Override public InputStream getRequestBody() { return requestBody; }
-        @Override public OutputStream getResponseBody() { return responseBody; }
+    @Test
+    void getUserId_withoutJwt_throws() {
+        BaseHandler.RequestContext ctx =
+                new BaseHandler.RequestContext(mock(HttpExchange.class));
 
-        @Override
-        public void sendResponseHeaders(int rCode, long responseLength) {
-            this.statusCode = rCode;
-        }
-
-        @Override public InetSocketAddress getRemoteAddress() { return new InetSocketAddress(0); }
-        @Override public int getResponseCode() { return statusCode; }
-        @Override public InetSocketAddress getLocalAddress() { return new InetSocketAddress(0); }
-        @Override public String getProtocol() { return "HTTP/1.1"; }
-        @Override public Object getAttribute(String name) { return null; }
-        @Override public void setAttribute(String name, Object value) { }
-        @Override public void setStreams(InputStream i, OutputStream o) { }
-        @Override public HttpPrincipal getPrincipal() { return null; }
+        assertThrows(IllegalStateException.class, ctx::getUserId);
     }
 }

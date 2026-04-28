@@ -2,6 +2,7 @@ package config;
 
 import backend.exception.ConfigurationException;
 
+import java.io.IOException;
 import java.util.Properties;
 import java.io.InputStream;
 
@@ -18,7 +19,7 @@ public class ConfigLoader {
 
             props.load(input);
 
-        } catch (Exception e) {
+        } catch (IOException e) {
             throw new ConfigurationException("application.properties not found in resources");
         }
     }

@@ -99,8 +99,8 @@ public class ReportApi {
      */
     private String resolveToken(JwtStore store, AuthState state) {
         String token = store.load()
-                .map(AuthState::getToken)
-                .orElse(state != null ? state.getToken() : null);
+                .map(AuthState::token)
+                .orElse(state != null ? state.token() : null);
 
         if (token == null || token.isBlank()) {
             throw new IllegalStateException("JWT token is missing. Please log in again.");

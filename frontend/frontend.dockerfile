@@ -29,6 +29,11 @@ RUN apt-get update && apt-get install -y \
     mesa-utils \
     wget \
     unzip \
+   fontconfig \
+    fonts-dejavu \
+    fonts-noto \
+    fonts-noto-color-emoji \
+    && fc-cache -f -v \
     && rm -rf /var/lib/apt/lists/*
 
 # Download JavaFX SDK

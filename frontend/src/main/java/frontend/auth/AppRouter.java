@@ -1,5 +1,6 @@
 package frontend.auth;
 
+import frontend.ui.UiPreferences;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 
@@ -68,6 +69,7 @@ public class AppRouter {
         }
 
         scene.setRoot(root);
+        UiPreferences.applyTheme(scene);
     }
 
 }

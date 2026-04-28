@@ -67,7 +67,7 @@ public abstract class BaseAuthPage extends StackPane {
      */
     protected void validateAutoLogin(AppRouter router, JwtStore jwtStore) {
         Optional<AuthState> existingState = jwtStore.load();
-        existingState.ifPresent(state -> router.go(RoleRedirect.routeFor(state.getRole())));
+        existingState.ifPresent(state -> router.go(RoleRedirect.routeFor(state.role())));
     }
 
     /**

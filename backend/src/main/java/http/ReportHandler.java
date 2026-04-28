@@ -226,7 +226,7 @@ public class ReportHandler implements HttpHandler {
         return URLDecoder.decode(value, StandardCharsets.UTF_8);
     }
 
-    private void sendFile(HttpExchange ex, String file, String contentType, String downloadName) throws IOException {
+    protected void sendFile(HttpExchange ex, String file, String contentType, String downloadName) throws IOException {
         File outFile = new File(file);
 
         ex.getResponseHeaders().set(CONTENT_TYPE, contentType);

@@ -1,15 +1,17 @@
 package http;
 
 import com.sun.net.httpserver.*;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import repository.UserRepository;
 import org.junit.jupiter.api.Test;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 
 import java.io.*;
 import java.net.InetSocketAddress;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
-import java.util.Map;
+import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -92,51 +94,47 @@ class SignupHandlerTest {
     // -------------------------------------------------------------
     // INVALID ROLE
     // -------------------------------------------------------------
-    @Test
-    void signup_invalidRole_returns400() throws Exception {
+    @ParameterizedTest
+    @MethodSource("invalidSignupCases")
+    void signup_invalidInputs_returnExpectedStatus(String requestBody, int expectedStatus) throws Exception {
 
         UserRepository repo = mock(UserRepository.class);
         SignupHandler handler = new SignupHandler(repo);
 
-        FakeExchange ex = new FakeExchange("POST", "/signup",
-                """
-                {
-                  "email": "a@test.com",
-                  "password": "1234",
-                  "firstName": "A",
-                  "lastName": "B",
-                  "role": "INVALID"
-                }
-                """);
+        FakeExchange ex = new FakeExchange("POST", "/signup", requestBody);
 
         handler.handle(ex);
 
-        assertEquals(400, ex.statusCode);
+        assertEquals(expectedStatus, ex.statusCode);
     }
 
-    // -------------------------------------------------------------
-    // ADMIN CANNOT REGISTER
-    // -------------------------------------------------------------
-    @Test
-    void signup_adminForbidden_returns403() throws Exception {
-
-        UserRepository repo = mock(UserRepository.class);
-        SignupHandler handler = new SignupHandler(repo);
-
-        FakeExchange ex = new FakeExchange("POST", "/signup",
-                """
-                {
-                  "email": "admin@test.com",
-                  "password": "1234",
-                  "firstName": "A",
-                  "lastName": "B",
-                  "role": "ADMIN"
-                }
-                """);
-
-        handler.handle(ex);
-
-        assertEquals(403, ex.statusCode);
+    private static Stream<Arguments> invalidSignupCases() {
+        return Stream.of(
+                Arguments.of(
+                        """
+                        {
+                          "email": "a@test.com",
+                          "password": "1234",
+                          "firstName": "A",
+                          "lastName": "B",
+                          "role": "INVALID"
+                        }
+                        """,
+                        400
+                ),
+                Arguments.of(
+                        """
+                        {
+                          "email": "admin@test.com",
+                          "password": "1234",
+                          "firstName": "A",
+                          "lastName": "B",
+                          "role": "ADMIN"
+                        }
+                        """,
+                        403
+                )
+        );
     }
 
     // -------------------------------------------------------------
@@ -239,7 +237,8 @@ class SignupHandlerTest {
         @Override public URI getRequestURI() { return uri; }
         @Override public String getRequestMethod() { return method; }
         @Override public HttpContext getHttpContext() { return null; }
-        @Override public void close() { }
+        @Override public void close() {     // No-op: not needed for unit testing
+        }
         @Override public InputStream getRequestBody() { return requestBody; }
         @Override public OutputStream getResponseBody() { return responseBody; }
 
@@ -253,8 +252,10 @@ class SignupHandlerTest {
         @Override public InetSocketAddress getLocalAddress() { return new InetSocketAddress(0); }
         @Override public String getProtocol() { return "HTTP/1.1"; }
         @Override public Object getAttribute(String name) { return null; }
-        @Override public void setAttribute(String name, Object value) { }
-        @Override public void setStreams(InputStream i, OutputStream o) { }
+        @Override public void setAttribute(String name, Object value) {     // No-op: attributes not needed for testing
+        }
+        @Override public void setStreams(InputStream i, OutputStream o) {     // Not used in this fake exchange
+        }
         @Override public HttpPrincipal getPrincipal() { return null; }
     }
 }

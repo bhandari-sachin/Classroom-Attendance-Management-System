@@ -115,7 +115,7 @@ public class LoginPage extends BaseAuthPage {
 
                 Platform.runLater(() -> {
                     jwtStore.save(state);
-                    router.go(RoleRedirect.routeFor(state.getRole()));
+                    router.go(RoleRedirect.routeFor(state.role()));
                 });
 
             } catch (InterruptedException ex) {

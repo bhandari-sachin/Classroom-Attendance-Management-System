@@ -21,13 +21,7 @@ import java.util.Map;
 /**
  * API client for admin-related frontend requests.
  */
-public record AdminApi(
-        String baseUrl,
-        JwtStore store,
-        HttpClient client,
-        ObjectMapper objectMapper,
-        AdminApi.Paths paths
-) {
+public final class AdminApi {
 
     private static final String AUTHORIZATION = "Authorization";
     private static final String BEARER_PREFIX = "Bearer ";
@@ -42,12 +36,25 @@ public record AdminApi(
     private static final String AVAILABLE_STUDENTS_SUFFIX = "available-students";
     private static final String ENROLL_SUFFIX = "enroll";
 
+    private final String baseUrl;
+    private final JwtStore store;
+    private final HttpClient client;
+    private final ObjectMapper objectMapper;
+    private final Paths paths;
+
     public AdminApi(String baseUrl, JwtStore store) {
         this(baseUrl, store, HttpClient.newHttpClient(), new ObjectMapper(), Paths.defaults());
     }
 
-    public AdminApi {
-        baseUrl = stripTrailingSlash(baseUrl);
+    public AdminApi(
+            String baseUrl,
+            JwtStore store,
+            HttpClient client,
+            ObjectMapper objectMapper,
+            Paths paths
+    ) {
+        this.baseUrl = stripTrailingSlash(baseUrl);
+
         if (store == null) {
             throw new IllegalArgumentException("JwtStore must not be null.");
         }
@@ -60,6 +67,15 @@ public record AdminApi(
         if (paths == null) {
             throw new IllegalArgumentException("Paths must not be null.");
         }
+
+        this.store = store;
+        this.client = client;
+        this.objectMapper = objectMapper;
+        this.paths = paths;
+    }
+
+    public String getBaseUrl() {
+        return baseUrl;
     }
 
     /**
@@ -101,7 +117,7 @@ public record AdminApi(
         AuthState authState = store.load()
                 .orElseThrow(() -> new IllegalStateException("No authentication state found. Please log in first."));
 
-        String token = authState.getToken();
+        String token = authState.token();
         if (token == null || token.isBlank()) {
             throw new IllegalStateException("JWT token is missing or empty. Please log in again.");
         }
@@ -178,7 +194,9 @@ public record AdminApi(
         if (url == null || url.isBlank()) {
             throw new IllegalArgumentException("Base URL must not be null or blank.");
         }
-        return url.endsWith(PATH_SEPARATOR) ? url.substring(0, url.length() - 1) : url;
+        return url.endsWith(PATH_SEPARATOR)
+                ? url.substring(0, url.length() - 1)
+                : url;
     }
 
     /**
@@ -234,12 +252,14 @@ public record AdminApi(
     /**
      * Creates a new class.
      */
-    public void createClass(String classCode,
-                            String name,
-                            String teacherEmail,
-                            String semester,
-                            String academicYear,
-                            Integer maxCapacity) throws IOException, InterruptedException {
+    public void createClass(
+            String classCode,
+            String name,
+            String teacherEmail,
+            String semester,
+            String academicYear,
+            Integer maxCapacity
+    ) throws IOException, InterruptedException {
 
         Map<String, Object> requestBody = Map.of(
                 "classCode", classCode,
@@ -247,7 +267,7 @@ public record AdminApi(
                 "teacherEmail", teacherEmail,
                 "semester", semester == null ? "" : semester,
                 "academicYear", academicYear == null ? "" : academicYear,
-                "maxCapacity", maxCapacity == null ? 0 : maxCapacity
+                "maxCapacity", maxCapacity != null ? maxCapacity : 0
         );
 
         postJson(paths.classesPath(), requestBody);
@@ -296,7 +316,8 @@ public record AdminApi(
 
         return objectMapper.readValue(
                 get(path),
-                objectMapper.getTypeFactory().constructCollectionType(List.class, AdminStudentDto.class)
+                objectMapper.getTypeFactory()
+                        .constructCollectionType(List.class, AdminStudentDto.class)
         );
     }
 

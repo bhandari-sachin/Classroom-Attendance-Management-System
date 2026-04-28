@@ -1,6 +1,5 @@
 package frontend.admin;
 
-import frontend.UserRow;
 import frontend.api.AdminApi;
 import frontend.auth.AppRouter;
 import frontend.auth.AuthState;
@@ -8,6 +7,7 @@ import frontend.auth.JwtStore;
 import frontend.dto.AdminUserDto;
 import frontend.dto.AdminUsersResponseDto;
 import frontend.ui.HelperClass;
+import frontend.ui.UserRow;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -32,9 +32,15 @@ public class AdminManageUsersPage {
     private static final Logger LOGGER =
             Logger.getLogger(AdminManageUsersPage.class.getName());
 
+    private static final String FILTER_STUDENT_KEY = "admin.users.filter.student";
+    private static final String FILTER_TEACHER_KEY = "admin.users.filter.teacher";
+    private static final String FILTER_ADMIN_KEY = "admin.users.filter.admin";
+
     private final HelperClass helper = new HelperClass();
 
     public Parent build(Scene scene, AppRouter router, JwtStore jwtStore, AuthState state) {
+        logIfSceneMissing(scene);
+
         String adminName = AdminPageSupport.resolveAdminName(state, helper);
 
         VBox content = AdminPageSupport.buildContentContainer();
@@ -56,9 +62,9 @@ public class AdminManageUsersPage {
         FilteredList<UserRow> filteredRows = new FilteredList<>(rows, row -> true);
         table.setItems(filteredRows);
 
-        String studentLabel = helper.getMessage("admin.users.filter.student");
-        String teacherLabel = helper.getMessage("admin.users.filter.teacher");
-        String adminLabel = helper.getMessage("admin.users.filter.admin");
+        String studentLabel = roleLabel(FILTER_STUDENT_KEY);
+        String teacherLabel = roleLabel(FILTER_TEACHER_KEY);
+        String adminLabel = roleLabel(FILTER_ADMIN_KEY);
 
         Runnable applyFilter = () -> applyFilter(
                 filteredRows,
@@ -107,6 +113,16 @@ public class AdminManageUsersPage {
         );
     }
 
+    private void logIfSceneMissing(Scene scene) {
+        if (scene == null) {
+            LOGGER.fine("AdminManageUsersPage.build called with a null scene.");
+        }
+    }
+
+    private String roleLabel(String key) {
+        return helper.getMessage(key);
+    }
+
     private Label buildTitle() {
         Label title = new Label(helper.getMessage("admin.users.title"));
         title.getStyleClass().add("title");
@@ -135,16 +151,13 @@ public class AdminManageUsersPage {
 
     private ComboBox<String> buildTypeFilter() {
         String allTypesLabel = helper.getMessage("admin.users.filter.allTypes");
-        String studentLabel = helper.getMessage("admin.users.filter.student");
-        String teacherLabel = helper.getMessage("admin.users.filter.teacher");
-        String adminLabel = helper.getMessage("admin.users.filter.admin");
 
         ComboBox<String> type = new ComboBox<>();
         type.getItems().addAll(
                 allTypesLabel,
-                studentLabel,
-                teacherLabel,
-                adminLabel
+                roleLabel(FILTER_STUDENT_KEY),
+                roleLabel(FILTER_TEACHER_KEY),
+                roleLabel(FILTER_ADMIN_KEY)
         );
         type.setValue(allTypesLabel);
         type.getStyleClass().add("filter-combo");
@@ -181,9 +194,7 @@ public class AdminManageUsersPage {
         String selectedType = typeFilter.getValue();
 
         filteredRows.setPredicate(row -> {
-            if (row == null) {
-                return false;
-            }
+            if (row == null) return false;
 
             boolean matchesText = query.isBlank()
                     || safe(row.getUser()).contains(query)
@@ -222,8 +233,19 @@ public class AdminManageUsersPage {
                     rows.setAll(mapUserRows(data));
                     applyFilter.run();
                 });
+
+            } catch (InterruptedException ex) {
+                Thread.currentThread().interrupt(); // ✅ FIX
+                LOGGER.log(Level.WARNING, "Loading users interrupted", ex);
+
+                Platform.runLater(() -> showLabel(
+                        loadError,
+                        helper.getMessage("admin.users.loadError") + " Interrupted"
+                ));
+
             } catch (Exception ex) {
                 LOGGER.log(Level.SEVERE, "Failed to load admin users.", ex);
+
                 Platform.runLater(() -> showLabel(
                         loadError,
                         helper.getMessage("admin.users.loadError") + " "
@@ -259,9 +281,7 @@ public class AdminManageUsersPage {
     ObservableList<UserRow> mapUserRows(AdminUsersResponseDto data) {
         ObservableList<UserRow> mappedRows = FXCollections.observableArrayList();
 
-        if (data.getUsers() == null) {
-            return mappedRows;
-        }
+        if (data.getUsers() == null) return mappedRows;
 
         for (AdminUserDto user : data.getUsers()) {
             String userCell = nullToEmpty(user.getName()) + "\n" + nullToEmpty(user.getEmail());
@@ -275,14 +295,12 @@ public class AdminManageUsersPage {
     }
 
     String localizeRole(String role) {
-        if (role == null) {
-            return "";
-        }
+        if (role == null) return "";
 
         return switch (role.trim().toUpperCase()) {
-            case "STUDENT" -> helper.getMessage("admin.users.filter.student");
-            case "TEACHER" -> helper.getMessage("admin.users.filter.teacher");
-            case "ADMIN" -> helper.getMessage("admin.users.filter.admin");
+            case "STUDENT" -> roleLabel(FILTER_STUDENT_KEY);
+            case "TEACHER" -> roleLabel(FILTER_TEACHER_KEY);
+            case "ADMIN" -> roleLabel(FILTER_ADMIN_KEY);
             default -> role;
         };
     }
