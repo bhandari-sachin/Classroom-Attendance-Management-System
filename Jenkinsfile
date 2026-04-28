@@ -149,7 +149,9 @@ pipeline {
 
         stage('Deploy with Docker Compose') {
             steps {
-                bat 'docker compose down'
+                bat 'docker compose down -v --remove-orphans || exit 0'
+                bat 'docker rm -f attendance-db attendance-backend attendance-frontend || exit 0'
+                bat 'docker network prune -f || exit 0'
                 bat 'docker compose pull'
                 bat 'docker compose up -d'
             }
@@ -167,7 +169,7 @@ pipeline {
         }
 
         always {
-            deleteDir()
+            echo "Workspace kept after build."
         }
     }
 }
