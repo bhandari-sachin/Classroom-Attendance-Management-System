@@ -63,7 +63,8 @@
 
 .app-root {
     -fx-background-color: -app-bg;
-    -fx-font-family: "Noto Sans", "Segoe UI", "Arial Unicode MS", "DejaVu Sans", Arial, sans-serif;
+    -fx-font-family: "Noto Sans Ethiopic", "Noto Sans Devanagari", "Noto Sans", "Segoe UI", "Arial Unicode MS", "DejaVu Sans", Arial, sans-serif;
+
 }
 
 .content-wrap {

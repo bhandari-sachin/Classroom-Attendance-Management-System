@@ -36,6 +36,18 @@ public class MainApp extends Application {
 
     @Override
     public void start(Stage stage) {
+        javafx.scene.text.Font.loadFont(
+                getClass().getResourceAsStream("/fonts/NotoSans-Regular.ttf"), 12
+        );
+        javafx.scene.text.Font.loadFont(
+                getClass().getResourceAsStream("/fonts/NotoSansEthiopic-Regular.ttf"), 12
+        );
+        javafx.scene.text.Font.loadFont(
+                getClass().getResourceAsStream("/fonts/NotoNaskhArabic-Regular.ttf"), 12
+        );
+        javafx.scene.text.Font.loadFont(
+                getClass().getResourceAsStream("/fonts/NotoSansDevanagari-VariableFont_wdth,wght.ttf"), 12
+        );
         HelperClass helper = new HelperClass();
 
         Scene scene = new Scene(new StackPane(), 1100, 700);
