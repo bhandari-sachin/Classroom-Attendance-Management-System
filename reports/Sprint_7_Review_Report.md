@@ -1,4 +1,4 @@
-# Sprint 6 Review (Final Sprint / Release)
+# Sprint 7 Review (Final Sprint / Release)
 
 ## Sprint Goal
 
