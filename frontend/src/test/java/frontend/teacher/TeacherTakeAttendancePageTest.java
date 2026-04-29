@@ -19,7 +19,6 @@ import org.junit.jupiter.api.Test;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
@@ -214,10 +213,15 @@ class TeacherTakeAttendancePageTest {
         javafx.collections.ObservableList<StudentRow> rows =
                 (javafx.collections.ObservableList<StudentRow>) getPrivateRows();
 
-        waitUntil(() ->
-                new ArrayList<>(rows).stream()
-                        .anyMatch(r -> r.getStudentId() == 7L)
-        );
+        waitUntil(() -> {
+            try {
+                return runOnFxThreadAndWait(() ->
+                        rows.stream().anyMatch(r -> r.getStudentId() == 7L)
+                );
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        });
 
         assertEquals(-1L, getSessionId(sessionState));
         assertEquals("—", manualCode.getText());
