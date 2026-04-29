@@ -23,7 +23,7 @@ import javafx.scene.layout.VBox;
  */
 public class LoginPage extends BaseAuthPage {
 
-    private static final String ROUTE = "login";
+    private static final String ROUTE = "Login";
 
     public LoginPage(AppRouter router, AuthService authService, JwtStore jwtStore) {
         validateAutoLogin(router, jwtStore);
