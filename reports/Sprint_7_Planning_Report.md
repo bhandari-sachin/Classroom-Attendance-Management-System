@@ -1,4 +1,4 @@
-# Sprint 2 Planning Report
+# Sprint 7 Planning Report
 
 ## Sprint Number & Dates
 - **Sprint:** Sprint 7
