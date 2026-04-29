@@ -30,11 +30,13 @@ class DatabaseExceptionTest {
 
     @Test
     void shouldBeThrownAsRuntimeException() {
+        RuntimeException cause = new RuntimeException("fail");
+
         DatabaseException ex = assertThrows(
                 DatabaseException.class,
-                () -> { throw new DatabaseException(new RuntimeException("fail")); }
+                () -> { throw new DatabaseException(cause); }
         );
 
-        assertNotNull(ex.getCause());
+        assertSame(cause, ex.getCause());
     }
 }

@@ -23,10 +23,12 @@ import javafx.scene.layout.VBox;
  */
 public class LoginPage extends BaseAuthPage {
 
+    private static final String ROUTE = "login";
+
     public LoginPage(AppRouter router, AuthService authService, JwtStore jwtStore) {
         validateAutoLogin(router, jwtStore);
 
-        Label titleLabel = createTitleLabel("auth.login.title", "Login");
+        Label titleLabel = createTitleLabel("auth.login.title", ROUTE);
         Label subtitleLabel = createSubtitleLabel("auth.login.subtitle", "Sign in to your account");
 
         TextField emailField = createEmailField();
@@ -68,7 +70,7 @@ public class LoginPage extends BaseAuthPage {
                                      PasswordField passwordField,
                                      Label errorLabel) {
 
-        Button loginButton = createPrimaryButton("login.button.submit", "Login");
+        Button loginButton = createPrimaryButton("login.button.submit", ROUTE);
 
         loginButton.setOnAction(event -> attemptLogin(
                 router,
