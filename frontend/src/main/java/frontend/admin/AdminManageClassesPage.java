@@ -90,7 +90,8 @@ public class AdminManageClassesPage {
                 applySearchFilter(filteredRows, newValue)
         );
 
-        AdminApi adminApi = new AdminApi("http://localhost:8081", jwtStore);
+        String baseUrl = System.getenv().getOrDefault("BACKEND_URL", "http://localhost:8081");
+        AdminApi adminApi = new AdminApi(baseUrl, jwtStore);
 
         Runnable reload = () -> loadClasses(adminApi, rows, loadError);
 

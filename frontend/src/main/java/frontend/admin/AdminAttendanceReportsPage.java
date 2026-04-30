@@ -112,7 +112,8 @@ public class AdminAttendanceReportsPage {
         TableView<ReportRow> table = buildReportTable(helper);
         MenuButton exportButton = buildExportButton(helper);
 
-        AdminApi adminApi = new AdminApi("http://localhost:8081", jwtStore);
+        String baseUrl = System.getenv().getOrDefault("BACKEND_URL", "http://localhost:8081");
+        AdminApi adminApi = new AdminApi(baseUrl, jwtStore);
         ReportApi reportApi = new ReportApi(System.getenv().getOrDefault("BACKEND_URL", "http://localhost:8081"));
 
         addExportActions(exportButton, scene, helper, reportApi, jwtStore, state);

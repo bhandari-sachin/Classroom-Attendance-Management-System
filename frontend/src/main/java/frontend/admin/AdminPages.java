@@ -95,7 +95,8 @@ public final class AdminPages {
         scroll.setFitToWidth(true);
         scroll.getStyleClass().add("scroll");
 
-        AdminApi api = new AdminApi("http://localhost:8081", jwtStore);
+        String baseUrl = System.getenv().getOrDefault("BACKEND_URL", "http://localhost:8081");
+        AdminApi api = new AdminApi(baseUrl, jwtStore);
 
         loadDashboardData(
                 api,

@@ -78,7 +78,8 @@ public class AdminManageUsersPage {
         searchField.textProperty().addListener((obs, oldValue, newValue) -> applyFilter.run());
         typeFilter.setOnAction(event -> applyFilter.run());
 
-        AdminApi adminApi = new AdminApi("http://localhost:8081", jwtStore);
+        String baseUrl = System.getenv().getOrDefault("BACKEND_URL", "http://localhost:8081");
+        AdminApi adminApi = new AdminApi(baseUrl, jwtStore);
 
         Runnable reload = () -> loadUsers(
                 adminApi,
