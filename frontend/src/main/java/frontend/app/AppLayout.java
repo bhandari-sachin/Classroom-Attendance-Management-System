@@ -5,6 +5,7 @@ import frontend.ui.UiPreferences;
 import javafx.geometry.Insets;
 import javafx.geometry.NodeOrientation;
 import javafx.geometry.Pos;
+import javafx.scene.Group;
 import javafx.scene.Node;
 import javafx.scene.Parent;
 import javafx.scene.control.Label;
@@ -16,6 +17,8 @@ import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
+import javafx.scene.paint.Color;
+import javafx.scene.shape.SVGPath;
 
 public final class AppLayout {
 
@@ -105,7 +108,26 @@ public final class AppLayout {
     }
 
     private static MenuButton buildLanguageMenu(HelperClass helper, String activeKey, Navigator nav) {
-        MenuButton menu = new MenuButton("🌐");
+        MenuButton menu = new MenuButton();
+
+        SVGPath p1 = new SVGPath();
+        p1.setContent("M12 22.3201C17.5228 22.3201 22 17.8429 22 12.3201C22 6.79722 17.5228 2.32007 12 2.32007C6.47715 2.32007 2 6.79722 2 12.3201C2 17.8429 6.47715 22.3201 12 22.3201Z");
+        SVGPath p2 = new SVGPath();
+        p2.setContent("M2 12.3201H22");
+        SVGPath p3 = new SVGPath();
+        p3.setContent("M12 22.3201C13.933 22.3201 15.5 17.8429 15.5 12.3201C15.5 6.79722 13.933 2.32007 12 2.32007C10.067 2.32007 8.5 6.79722 8.5 12.3201C8.5 17.8429 10.067 22.3201 12 22.3201Z");
+
+        for (SVGPath p : new SVGPath[]{p1, p2, p3}) {
+            p.setFill(null);
+            p.setStroke(Color.BLACK);
+            p.setStrokeWidth(1.5);
+        }
+
+        Group globeIcon = new Group(p1, p2, p3);
+        globeIcon.setManaged(true);
+        menu.setText(null);
+        menu.setGraphic(globeIcon);
+
         menu.getStyleClass().add("utility-menu");
 
         menu.getItems().addAll(
