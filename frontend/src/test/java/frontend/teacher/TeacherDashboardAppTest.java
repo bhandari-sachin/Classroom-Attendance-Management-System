@@ -3,6 +3,7 @@ package frontend.teacher;
 import frontend.auth.AppRouter;
 import frontend.auth.AuthState;
 import frontend.auth.JwtStore;
+import frontend.ui.IconFactory;
 import javafx.application.Platform;
 import javafx.embed.swing.JFXPanel;
 import javafx.geometry.Pos;
@@ -73,11 +74,14 @@ class TeacherDashboardAppTest {
         String presentLabel = message("teacher.dashboard.stats.present");
         String absentLabel = message("teacher.dashboard.stats.absent");
 
-        assertEquals("📚", app.resolveIcon(classesLabel));
-        assertEquals("👥", app.resolveIcon(studentsLabel));
-        assertEquals("✅", app.resolveIcon(presentLabel));
-        assertEquals("❌", app.resolveIcon(absentLabel));
-        assertEquals("📊", app.resolveIcon("unknown-label"));
+        assertEquals(
+                IconFactory.classes().getChildrenUnmodifiable().size(),
+                app.resolveIcon(classesLabel).getChildrenUnmodifiable().size()
+        );
+        assertEquals(IconFactory.users().getChildrenUnmodifiable().size(), app.resolveIcon(studentsLabel).getChildrenUnmodifiable().size());
+        assertEquals(IconFactory.present().getChildrenUnmodifiable().size(), app.resolveIcon(presentLabel).getChildrenUnmodifiable().size());
+        assertEquals(IconFactory.absent().getChildrenUnmodifiable().size(), app.resolveIcon(absentLabel).getChildrenUnmodifiable().size());
+        assertEquals(IconFactory.rate().getChildrenUnmodifiable().size(), app.resolveIcon("unknown-label").getChildrenUnmodifiable().size());
     }
 
     @Test

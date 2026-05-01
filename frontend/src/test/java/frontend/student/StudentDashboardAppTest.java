@@ -4,7 +4,9 @@ import frontend.auth.AppRouter;
 import frontend.auth.AuthState;
 import frontend.auth.JwtStore;
 import frontend.auth.Role;
+import frontend.ui.IconFactory;
 import javafx.application.Platform;
+import javafx.scene.Group;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
@@ -170,12 +172,12 @@ class StudentDashboardAppTest {
         VBox card = runOnFxThread(() -> (VBox) invokePrivate(
                 app,
                 "statCardWithBadge",
-                new Class[]{String.class, Label.class, String.class, String.class, String.class},
+                new Class[]{String.class, Label.class, String.class, String.class, Group.class},
                 "Present",
                 valueLabel,
                 "hint",
                 "#3BAA66",
-                "✓"
+                IconFactory.present()
         ));
 
         assertNotNull(card);

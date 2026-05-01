@@ -6,6 +6,7 @@ import frontend.auth.AppRouter;
 import frontend.auth.AuthState;
 import frontend.auth.JwtStore;
 import frontend.ui.HelperClass;
+import frontend.ui.IconFactory;
 import frontend.ui.ReportRow;
 import javafx.application.Platform;
 import javafx.scene.Parent;
@@ -496,7 +497,7 @@ public class AdminAttendanceReportsPage {
                 AdminUI.makeStatCard(
                         helper.getMessage("admin.reports.stats.rate"),
                         formatOneDecimal(summary.rate()) + "%",
-                        "📈",
+                        IconFactory.rate(),
                         "accent-green"
                 ),
                 0,
@@ -507,7 +508,7 @@ public class AdminAttendanceReportsPage {
                 AdminUI.makeStatCard(
                         helper.getMessage("admin.reports.stats.present"),
                         String.valueOf(summary.present()),
-                        "🟢",
+                        IconFactory.present(),
                         "accent-green"
                 ),
                 1,
@@ -518,7 +519,7 @@ public class AdminAttendanceReportsPage {
                 AdminUI.makeStatCard(
                         helper.getMessage("admin.reports.stats.absent"),
                         String.valueOf(summary.absent()),
-                        "🔴",
+                        IconFactory.absent(),
                         "accent-orange"
                 ),
                 0,
@@ -529,7 +530,7 @@ public class AdminAttendanceReportsPage {
                 AdminUI.makeStatCard(
                         helper.getMessage("admin.reports.stats.excused"),
                         String.valueOf(summary.excused()),
-                        "🟠",
+                        IconFactory.excused(),
                         "accent-purple"
                 ),
                 1,
@@ -540,7 +541,7 @@ public class AdminAttendanceReportsPage {
                 AdminUI.makeStatCard(
                         helper.getMessage("admin.reports.stats.total"),
                         String.valueOf(summary.total()),
-                        "📄",
+                        IconFactory.date(),
                         "accent-purple"
                 ),
                 0,

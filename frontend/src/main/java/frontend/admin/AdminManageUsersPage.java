@@ -7,6 +7,7 @@ import frontend.auth.JwtStore;
 import frontend.dto.AdminUserDto;
 import frontend.dto.AdminUsersResponseDto;
 import frontend.ui.HelperClass;
+import frontend.ui.IconFactory;
 import frontend.ui.UserRow;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
@@ -261,19 +262,19 @@ public class AdminManageUsersPage {
                 AdminUI.smallSummaryCard(
                         helper.getMessage("admin.users.summary.students"),
                         String.valueOf(data.getStudents()),
-                        "🎓",
+                        IconFactory.students(),
                         "accent-green"
                 ),
                 AdminUI.smallSummaryCard(
                         helper.getMessage("admin.users.summary.teachers"),
                         String.valueOf(data.getTeachers()),
-                        "👥",
+                        IconFactory.users(),
                         "accent-purple"
                 ),
                 AdminUI.smallSummaryCard(
                         helper.getMessage("admin.users.summary.admins"),
                         String.valueOf(data.getAdmins()),
-                        "🛡",
+                        IconFactory.users(),
                         "accent-orange"
                 )
         );

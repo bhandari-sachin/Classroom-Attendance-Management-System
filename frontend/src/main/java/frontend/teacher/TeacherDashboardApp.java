@@ -5,9 +5,11 @@ import frontend.auth.AppRouter;
 import frontend.auth.AuthState;
 import frontend.auth.JwtStore;
 import frontend.ui.HelperClass;
+import frontend.ui.IconFactory;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
+import javafx.scene.Group;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.Alert;
@@ -303,7 +305,11 @@ public class TeacherDashboardApp {
     private void showEmptyClasses(VBox classesContainer) {
         classesContainer.setAlignment(Pos.CENTER);
 
-        Label icon = new Label("📅");
+        Label icon = new Label();
+        Group calendarIcon = IconFactory.date();
+        calendarIcon.getStyleClass().add("icon-invert");
+        calendarIcon.setManaged(true);
+        icon.setGraphic(calendarIcon);
         icon.getStyleClass().add("empty-icon");
 
         Label title = new Label(helper.getMessage("teacher.dashboard.classes.empty.title"));
@@ -358,7 +364,11 @@ public class TeacherDashboardApp {
         HBox top = new HBox(8);
         top.setAlignment(Pos.CENTER_LEFT);
 
-        Label icon = new Label(resolveIcon(label));
+        Label icon = new Label();
+        Group statIcon = resolveIcon(label);
+        statIcon.getStyleClass().add("icon-invert");
+        statIcon.setManaged(true);
+        icon.setGraphic(statIcon);
         icon.setStyle("-fx-font-size: 18px;");
 
         Label labelNode = new Label(label);
@@ -399,20 +409,20 @@ public class TeacherDashboardApp {
         return box;
     }
 
-    String resolveIcon(String label) {
+    Group resolveIcon(String label) {
         if (label.equals(helper.getMessage("teacher.dashboard.stats.classes"))) {
-            return "📚";
+            return IconFactory.classes();
         }
         if (label.equals(helper.getMessage("teacher.dashboard.stats.students"))) {
-            return "👥";
+            return IconFactory.users();
         }
         if (label.equals(helper.getMessage("teacher.dashboard.stats.present"))) {
-            return "✅";
+            return IconFactory.present();
         }
         if (label.equals(helper.getMessage("teacher.dashboard.stats.absent"))) {
-            return "❌";
+            return IconFactory.absent();
         }
-        return "📊";
+        return IconFactory.rate();
     }
 
     static int toInt(Object value) {

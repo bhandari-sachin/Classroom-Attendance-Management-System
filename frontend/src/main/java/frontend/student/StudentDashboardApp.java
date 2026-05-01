@@ -5,7 +5,9 @@ import frontend.auth.AppRouter;
 import frontend.auth.AuthState;
 import frontend.auth.JwtStore;
 import frontend.ui.HelperClass;
+import frontend.ui.IconFactory;
 import javafx.application.Platform;
+import javafx.scene.Group;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.Label;
@@ -134,7 +136,12 @@ public class StudentDashboardApp {
         HBox content = new HBox(12);
         content.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
 
-        StackPane icon = new StackPane(new Label("✓"));
+        Label iconLabel = new Label();
+        Group qrIcon = IconFactory.qr();
+        qrIcon.getStyleClass().add("qr-icon");
+        qrIcon.setManaged(true);
+        iconLabel.setGraphic(qrIcon);
+        StackPane icon = new StackPane(iconLabel);
         icon.getStyleClass().add("attendance-icon");
 
         VBox texts = new VBox(4);
@@ -188,7 +195,7 @@ public class StudentDashboardApp {
                         presentValue,
                         statsHint(),
                         "#3BAA66",
-                        "✓"
+                        IconFactory.present()
                 ),
                 0,
                 0
@@ -200,7 +207,7 @@ public class StudentDashboardApp {
                         absentValue,
                         statsHint(),
                         "#E05A5A",
-                        "✕"
+                        IconFactory.absent()
                 ),
                 1,
                 0
@@ -212,7 +219,7 @@ public class StudentDashboardApp {
                         excusedValue,
                         statsHint(),
                         "#E09A3B",
-                        "⏱"
+                        IconFactory.excused()
                 ),
                 0,
                 1
@@ -224,7 +231,7 @@ public class StudentDashboardApp {
                         rateValue,
                         statsHint(),
                         "#5AA6E0",
-                        "%"
+                        IconFactory.rate()
                 ),
                 1,
                 1
@@ -257,7 +264,11 @@ public class StudentDashboardApp {
         card.setAlignment(javafx.geometry.Pos.CENTER);
         card.setMinHeight(160);
 
-        Label icon = new Label("📅");
+        Label icon = new Label();
+        Group emptyIcon = IconFactory.date();
+        emptyIcon.getStyleClass().add("icon-invert");
+        emptyIcon.setManaged(true);
+        icon.setGraphic(emptyIcon);
         icon.getStyleClass().add("empty-icon");
 
         Label title = new Label(helper.getMessage("student.dashboard.classes.empty"));
@@ -275,7 +286,7 @@ public class StudentDashboardApp {
             Label valueLabel,
             String hint,
             String colorHex,
-            String iconChar
+            Group iconChar
     ) {
         VBox card = new VBox(6);
         card.getStyleClass().add("stat-card");
@@ -296,7 +307,10 @@ public class StudentDashboardApp {
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
-        StackPane badge = new StackPane(new Label(iconChar));
+        Label badgeLabel = new Label();
+        iconChar.setManaged(true);
+        badgeLabel.setGraphic(iconChar);
+        StackPane badge = new StackPane(badgeLabel);
         badge.getStyleClass().add("stat-badge");
         badge.setStyle("-fx-background-color: " + colorHex + ";");
 

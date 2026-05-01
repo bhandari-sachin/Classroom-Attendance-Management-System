@@ -5,6 +5,7 @@ import frontend.auth.AppRouter;
 import frontend.auth.AuthState;
 import frontend.auth.JwtStore;
 import frontend.ui.HelperClass;
+import frontend.ui.IconFactory;
 import javafx.application.Platform;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
@@ -48,28 +49,28 @@ public final class AdminPages {
         Pane totalClassesCard = AdminUI.makeStatCard(
                 helper.getMessage("admin.dashboard.stats.totalClasses"),
                 helper.getMessage(STATUS_LOADING_KEY),
-                "📘",
+                IconFactory.classes(),
                 "accent-purple"
         );
 
         Pane studentsCard = AdminUI.makeStatCard(
                 helper.getMessage("admin.dashboard.stats.students"),
                 helper.getMessage(STATUS_LOADING_KEY),
-                "🎓",
+                IconFactory.students(),
                 "accent-green"
         );
 
         Pane teachersCard = AdminUI.makeStatCard(
                 helper.getMessage("admin.dashboard.stats.teachers"),
                 helper.getMessage(STATUS_LOADING_KEY),
-                "👥",
+                IconFactory.users(),
                 "accent-orange"
         );
 
         Pane rateCard = AdminUI.makeStatCard(
                 helper.getMessage("admin.dashboard.stats.monthlyRate"),
                 helper.getMessage(STATUS_LOADING_KEY),
-                "📈",
+                IconFactory.rate(),
                 "accent-green"
         );
 
@@ -174,7 +175,7 @@ public final class AdminPages {
         Pane manageClasses = AdminUI.makeActionCard(
                 helper.getMessage("admin.dashboard.quickActions.manageClasses"),
                 helper.getMessage("admin.dashboard.quickActions.manageClasses.desc"),
-                "📚",
+                IconFactory.classes(),
                 "qa-green"
         );
         manageClasses.setOnMouseClicked(e -> router.go("admin-classes"));
@@ -182,7 +183,7 @@ public final class AdminPages {
         Pane manageUsers = AdminUI.makeActionCard(
                 helper.getMessage("admin.dashboard.quickActions.manageUsers"),
                 helper.getMessage("admin.dashboard.quickActions.manageUsers.desc"),
-                "👤",
+                IconFactory.users(),
                 "qa-purple"
         );
         manageUsers.setOnMouseClicked(e -> router.go("admin-users"));
@@ -190,7 +191,7 @@ public final class AdminPages {
         Pane reports = AdminUI.makeActionCard(
                 helper.getMessage("admin.dashboard.quickActions.reports"),
                 helper.getMessage("admin.dashboard.quickActions.reports.desc"),
-                "🧾",
+                IconFactory.reports(),
                 "qa-green"
         );
         reports.setOnMouseClicked(e -> router.go("admin-reports"));

@@ -2,8 +2,10 @@ package frontend.admin;
 
 import frontend.ui.ClassRow;
 import frontend.ui.HelperClass;
+import frontend.ui.IconFactory;
 import frontend.ui.UserRow;
 import javafx.geometry.Pos;
+import javafx.scene.Group;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.TableCell;
@@ -24,7 +26,7 @@ public final class AdminUI {
         // Utility class
     }
 
-    public static Pane makeStatCard(String label, String value, String icon, String accentClass) {
+    public static Pane makeStatCard(String label, String value, Group icon, String accentClass) {
         VBox card = createCard("card", "stat-card");
         card.setMinHeight(86);
         card.setMaxWidth(Double.MAX_VALUE);
@@ -47,13 +49,16 @@ public final class AdminUI {
         return card;
     }
 
-    public static Pane makeActionCard(String title, String desc, String icon, String styleClass) {
+    public static Pane makeActionCard(String title, String desc, Group icon, String styleClass) {
         VBox card = createCard("action-card", styleClass);
         card.setMinHeight(74);
         card.setMaxWidth(Double.MAX_VALUE);
         HBox.setHgrow(card, Priority.ALWAYS);
 
-        StackPane iconBox = new StackPane(new Label(icon));
+        Label label = new Label();
+        label.setGraphic(icon);
+
+        StackPane iconBox = new StackPane(label);
         iconBox.getStyleClass().add("action-icon");
 
         VBox textBox = new VBox(2);
@@ -81,14 +86,18 @@ public final class AdminUI {
         Label teacherText = styledLabel(teacherEmail, "class-meta");
         Label scheduleText = styledLabel(schedule, "class-meta");
 
-        HBox teacherRow = createInfoRow("👤", teacherText);
-        HBox timeRow = createInfoRow("🗓", scheduleText);
+        Group teacherIcon = IconFactory.users();
+        Group scheduleIcon = IconFactory.date();
+        teacherIcon.getStyleClass().add("icon-invert");
+        scheduleIcon.getStyleClass().add("icon-invert");
+        HBox teacherRow = createInfoRow(teacherIcon, teacherText);
+        HBox timeRow = createInfoRow(scheduleIcon, scheduleText);
 
         card.getChildren().addAll(nameLabel, codeLabel, teacherRow, timeRow);
         return card;
     }
 
-    public static Pane smallSummaryCard(String label, String value, String icon, String accentClass) {
+    public static Pane smallSummaryCard(String label, String value, Group icon, String accentClass) {
         VBox card = createCard("card", "summary-card");
         card.setMaxWidth(Double.MAX_VALUE);
         HBox.setHgrow(card, Priority.ALWAYS);
@@ -180,14 +189,19 @@ public final class AdminUI {
         return label;
     }
 
-    private static StackPane createBadge(String icon, String accentClass) {
-        StackPane badge = new StackPane(new Label(icon));
+    private static StackPane createBadge(Group icon, String accentClass) {
+        Label label = new Label();
+        label.setGraphic(icon);
+
+        StackPane badge = new StackPane(label);
         badge.getStyleClass().addAll("icon-badge", accentClass);
         return badge;
     }
 
-    private static HBox createInfoRow(String icon, Label textLabel) {
-        HBox row = new HBox(8, new Label(icon), textLabel);
+    private static HBox createInfoRow(Group icon, Label textLabel) {
+        Label label = new Label();
+        label.setGraphic(icon);
+        HBox row = new HBox(8, label, textLabel);
         row.getStyleClass().add("info-row");
         row.setAlignment(Pos.CENTER_LEFT);
         return row;

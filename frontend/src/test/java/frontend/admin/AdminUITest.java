@@ -1,8 +1,10 @@
 package frontend.admin;
 
 import frontend.ui.ClassRow;
+import frontend.ui.IconFactory;
 import frontend.ui.UserRow;
 import javafx.embed.swing.JFXPanel;
+import javafx.scene.Group;
 import javafx.scene.Node;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
@@ -19,6 +21,9 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class AdminUITest {
 
+    private static final Group studentsIcon = IconFactory.students();
+    private static final Group usersIcon = IconFactory.users();
+
     @BeforeAll
     static void initJavaFx() {
         new JFXPanel();
@@ -26,7 +31,7 @@ class AdminUITest {
 
     @Test
     void shouldCreateStatCardCorrectly() {
-        Pane pane = AdminUI.makeStatCard("Students", "120", "🎓", "accent-green");
+        Pane pane = AdminUI.makeStatCard("Students", "120", studentsIcon, "accent-green");
 
         assertInstanceOf(VBox.class, pane);
 
@@ -41,7 +46,7 @@ class AdminUITest {
 
     @Test
     void shouldCreateActionCardCorrectly() {
-        Pane pane = AdminUI.makeActionCard("Manage Users", "Open users page", "👤", "qa-purple");
+        Pane pane = AdminUI.makeActionCard("Manage Users", "Open users page", usersIcon, "qa-purple");
 
         assertInstanceOf(VBox.class, pane);
 
@@ -81,7 +86,7 @@ class AdminUITest {
 
     @Test
     void shouldCreateSmallSummaryCardCorrectly() {
-        Pane pane = AdminUI.smallSummaryCard("Teachers", "12", "👥", "accent-purple");
+        Pane pane = AdminUI.smallSummaryCard("Teachers", "12", usersIcon, "accent-purple");
 
         assertInstanceOf(VBox.class, pane);
 
@@ -136,7 +141,7 @@ class AdminUITest {
 
     @Test
     void actionCardShouldContainArrowAndIconStructure() {
-        Pane pane = AdminUI.makeActionCard("Manage Users", "Open users page", "👤", "qa-purple");
+        Pane pane = AdminUI.makeActionCard("Manage Users", "Open users page", usersIcon, "qa-purple");
 
         VBox card = (VBox) pane;
         HBox row = (HBox) card.getChildren().getFirst();

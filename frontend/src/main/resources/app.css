@@ -272,6 +272,13 @@
     -fx-alignment: center;
 }
 
+.stat-badge {
+    -fx-min-width: 42px;
+    -fx-min-height: 42px;
+    -fx-alignment: center;
+    -fx-background-radius: 14;
+}
+
 .accent-purple { -fx-background-color: -purple; }
 .accent-green  { -fx-background-color: -green; }
 .accent-orange { -fx-background-color: -orange; }
@@ -944,4 +951,14 @@
 
 .context-menu .menu-item {
     -fx-background-color: transparent;
+}
+.qr-icon .icon-shape {
+    -fx-stroke: white;
+}
+.icon-shape {
+    -fx-stroke: black;
+}
+
+.theme-dark .icon-invert .icon-shape {
+    -fx-stroke: white;
 }

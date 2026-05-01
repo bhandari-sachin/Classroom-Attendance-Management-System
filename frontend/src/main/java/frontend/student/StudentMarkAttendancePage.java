@@ -119,6 +119,7 @@ public class StudentMarkAttendancePage {
 
     private TextField buildCodeField() {
         TextField codeField = new TextField();
+        codeField.setId("codeField");
         codeField.setPromptText(helper.getMessage("student.mark.code.placeholder"));
         codeField.getStyleClass().add("code-field");
         return codeField;
@@ -126,6 +127,7 @@ public class StudentMarkAttendancePage {
 
     private Button buildSubmitButton(TextField codeField, JwtStore jwtStore, AuthState state) {
         Button submit = new Button(helper.getMessage("student.mark.submit"));
+        submit.setId("submitButton");
         submit.getStyleClass().add("submit-button");
         submit.setMaxWidth(Double.MAX_VALUE);
         submit.setOnAction(e -> handleSubmit(codeField, jwtStore, state));
