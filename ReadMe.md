@@ -92,8 +92,8 @@ To deliver a reliable, scalable, and user-friendly attendance management system 
 - Report generation
 
 ### Diagrams
-- ![Use Case](diagrams/UseCase02.png)  
-- ![ER Diagram](diagrams/ERdiagramV2.png)  
+![Use Case](diagrams/UseCase02.png)  
+![ER Diagram](diagrams/ERdiagramV2.png)  
 
 ### Database
 - MySQL relational schema
