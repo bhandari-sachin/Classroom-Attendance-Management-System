@@ -284,7 +284,11 @@ Semester: Spring 2026
 ---
 
 ## Main Links
-- Documentation:  
+- Documentation:
 https://github.com/bhandari-sachin/Classroom-Attendance-Management-System/tree/main/reports
-- Diagrams:  
+- Diagrams:
 https://github.com/bhandari-sachin/Classroom-Attendance-Management-System/tree/main/diagrams
+- Source Code:
+https://github.com/bhandari-sachin/Classroom-Attendance-Management-System/tree/main
+- Trello Board:
+https://trello.com/w/group7project
