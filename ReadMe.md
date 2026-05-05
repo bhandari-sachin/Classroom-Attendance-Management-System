@@ -216,6 +216,7 @@ docker-compose up --build
 **Links:**
 - [Sprint 8 Planning](reports/Sprint_8_Planning_Report.md)  
 - [Sprint 8 Review](reports/Sprint_8_Review_Report.md)  
+- [User Guide](reports/UserGuide.pdf)
 
 ---
 
@@ -292,5 +293,3 @@ https://github.com/bhandari-sachin/Classroom-Attendance-Management-System/tree/m
 https://github.com/bhandari-sachin/Classroom-Attendance-Management-System/tree/main
 - Trello Board:
 https://trello.com/w/group7project
-- User Guide:
-  https://docs.google.com/document/d/1K2vAW55JbhaoZU98wP1Y9dERnYNKdjmfwkAOGHhD8S4/edit?tab=t.0
