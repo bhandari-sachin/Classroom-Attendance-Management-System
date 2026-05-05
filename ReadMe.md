@@ -79,8 +79,8 @@ To deliver a reliable, scalable, and user-friendly attendance management system 
 - Vision validated
 
 **Links:**
-- [Sprint 1 Planning](reports/Sprint_1_Planning_Report.md)  
-- [Sprint 1 Review](reports/Sprint_1_Review_Report.md)  
+- [Sprint 1 Planning](documents/Sprint_1_Planning_Report.md)  
+- [Sprint 1 Review](documents/Sprint_1_Review_Report.md)  
 
 ---
 
@@ -104,8 +104,8 @@ To deliver a reliable, scalable, and user-friendly attendance management system 
 - JUnit + JaCoCo
 
 **Links:**
-- [Sprint 2 Planning](reports/Sprint_2_Planning_Report.md)  
-- [Sprint 2 Review](reports/Sprint_2_Review_Report.md)  
+- [Sprint 2 Planning](documents/Sprint_2_Planning_Report.md)  
+- [Sprint 2 Review](documents/Sprint_2_Review_Report.md)  
 
 ---
 
@@ -121,8 +121,8 @@ To deliver a reliable, scalable, and user-friendly attendance management system 
 - Coverage: JaCoCo
 
 **Links:**
-- [Sprint 3 Planning](reports/Sprint_3_Planning_Report.md)  
-- [Sprint 3 Review](reports/Sprint_3_Review_Report.md)  
+- [Sprint 3 Planning](documents/Sprint_3_Planning_Report.md)  
+- [Sprint 3 Review](documents/Sprint_3_Review_Report.md)  
 
 ---
 
@@ -149,8 +149,8 @@ docker-compose up --build
 - Used for testing and development environments
 
 **Links:**
-- [Sprint 4 Planning](reports/Sprint_4_Planning_Report.md)  
-- [Sprint 4 Review](reports/Sprint_4_Review_Report.md)  
+- [Sprint 4 Planning](documents/Sprint_4_Planning_Report.md)  
+- [Sprint 4 Review](documents/Sprint_4_Review_Report.md)  
 
 ---
 
@@ -169,8 +169,8 @@ docker-compose up --build
 - Arabic
 
 **Links:**
-- [Sprint 5 Planning](reports/Sprint_5_Planning_Report.md)  
-- [Sprint 5 Review](reports/Sprint_5_Review_Report.md)  
+- [Sprint 5 Planning](documents/Sprint_5_Planning_Report.md)  
+- [Sprint 5 Review](documents/Sprint_5_Review_Report.md)  
 
 ---
 
@@ -181,8 +181,8 @@ docker-compose up --build
 - Data validation improvements
 
 **Links:**
-- [Sprint 6 Planning](reports/Sprint_6_Planning_Report.md)  
-- [Sprint 6 Review](reports/Sprint_6_Review_Report.md)  
+- [Sprint 6 Planning](documents/Sprint_6_Planning_Report.md)  
+- [Sprint 6 Review](documents/Sprint_6_Review_Report.md)  
 - [Database Schema](diagrams/ERdiagramExtension.png)  
 
 ---
@@ -202,8 +202,8 @@ docker-compose up --build
 - Improved code quality and maintainability
 
 **Links:**
-- [Sprint 7 Planning](reports/Sprint_7_Planning_Report.md)  
-- [Sprint 7 Review](reports/Sprint_7_Review_Report.md)  
+- [Sprint 7 Planning](documents/Sprint_7_Planning_Report.md)  
+- [Sprint 7 Review](documents/Sprint_7_Review_Report.md)  
 
 ---
 
@@ -216,10 +216,10 @@ docker-compose up --build
 - Final architecture
 
 **Links:**
-- [Sprint 8 Planning](reports/Sprint_8_Planning_Report.md)  
-- [Sprint 8 Review](reports/Sprint_8_Review_Report.md)  
-- [User Guide](reports/UserGuide.pdf)
-- [Api Documentation](reports/API.md)
+- [Sprint 8 Planning](documents/Sprint_8_Planning_Report.md)  
+- [Sprint 8 Review](documents/Sprint_8_Review_Report.md)  
+- [User Guide](documents/UserGuide.pdf)
+- [Api Documentation](documents/API.md)
 
 ---
 
@@ -289,7 +289,7 @@ Semester: Spring 2026
 
 ## Main Links
 - Documentation:
-https://github.com/bhandari-sachin/Classroom-Attendance-Management-System/tree/main/reports
+https://github.com/bhandari-sachin/Classroom-Attendance-Management-System/tree/main/documents
 - Diagrams:
 https://github.com/bhandari-sachin/Classroom-Attendance-Management-System/tree/main/diagrams
 - Source Code:
