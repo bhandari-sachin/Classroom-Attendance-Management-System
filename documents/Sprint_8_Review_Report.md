@@ -113,8 +113,8 @@ By the end of Sprint 8, the project has:
 
 | Team Member      | Role     | Tasks Worked On                                        | Estimated Time |
 |------------------|----------|--------------------------------------------------------|----------------|
-| Sachin Bhandari  | Backend  | Static code analysis, UML diagrams                     | 10 hours       | 
-| Olga Chitembo    | Backend  | UAT documentation, sprint review report, user stories  | 16 hours       | 
-| Ahmad Sarfaraz   | Frontend | Presentation preparation, ERD diagrams                 | 14 hours       |
-| Farah El Bajta   | Frontend | Scrum master, heuristic evaluation, README update      | 15 hours       | 
-| Melkamu Yehualla | Testing  | Code review, UAT results, documentation                | 13 hours       | 
+| Sachin Bhandari  | Backend  | sprint review report, Presentation template                    | 10 hours       | 
+| Olga Chitembo    | Backend  | README update, user stories, API Docs  | 16 hours       | 
+| Ahmad Sarfaraz   | Frontend | Presentation preparation , UAT Report              | 14 hours       |
+| Farah El Bajta   | Frontend | User Guide      | 15 hours       | 
+| Melkamu Yehualla | Testing  | UML Package Diagram               | 13 hours       | 
