@@ -13,7 +13,7 @@
 | Sprint 5 | 16 Mar – 31 Mar | Enhance usability via UI localisation and system stability | UI localisation across all dashboards, language switching, frontend–backend integration improvements, bug fixes | ✅ Completed — localisation integrated without breaking existing functionality; some dynamic backend localisation deferred |
 | Sprint 6 | 01 Apr – 14 Apr | Finalise and release — quality, reporting, and localisation | PDF/CSV export, SonarQube integration, multilingual support, UI/UX polish | ✅ Completed — system quality-checked and release-ready |
 | Sprint 7 | 15 Apr – 29 Apr | Full system testing, QA, and delivery preparation | Functional & non-functional testing, heuristic evaluation, UAT, Jenkins CI, ≥80% coverage | ✅ Completed — system validated and ready for delivery |
-| Sprint 8 | 05 May – 18 May | Present, document, and quality-check the final system | 25-min presentation, heuristic & UAT documentation, code review, static analysis, UML/ERD/README | 🔄 In Progress |
+| Sprint 8 | 05 May – 18 May | Present, document, and quality-check the final system | 25-min presentation, heuristic & UAT documentation, code review, static analysis, UML/ERD/README | ✅ Completed |
 
 ---
 
