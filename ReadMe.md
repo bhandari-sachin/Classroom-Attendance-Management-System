@@ -232,8 +232,8 @@ docker-compose up --build
 
 ### Setup
 ```
-git clone <your-repo-url>
-cd Classroom-Attendance-System
+git clone https://github.com/bhandari-sachin/Classroom-Attendance-Management-System.git
+cd Classroom-Attendance-Management-System
 ```
 
 ### Run with Docker
