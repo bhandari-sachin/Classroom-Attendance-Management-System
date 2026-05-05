@@ -209,14 +209,17 @@ docker-compose up --build
 
 ## 11. Sprint 8 – Documentation & Finalization
 
+### Documentation
 - Technical documentation
 - User guides
+- API documentation
 - Final architecture
 
 **Links:**
 - [Sprint 8 Planning](reports/Sprint_8_Planning_Report.md)  
 - [Sprint 8 Review](reports/Sprint_8_Review_Report.md)  
 - [User Guide](reports/UserGuide.pdf)
+- [Api Documentation](reports/API.md)
 
 ---
 
