@@ -29,7 +29,10 @@ pipeline {
 
         stage('Build & Test') {
             steps {
-                bat 'mvn clean verify'
+                // Excludes any test class whose name contains "Page"
+                // e.g. TeacherReportsPageTest, StudentPageTest, AdminPageTest
+                // These tests make real HTTP calls and require a running backend
+                bat 'mvn clean verify -Dtest="!*Page*" -DfailIfNoTests=false'
             }
             post {
                 always {
@@ -69,15 +72,14 @@ pipeline {
             }
         }
 
-        /* stage('Quality Gate') {
+        stage('Quality Gate') {
             steps {
                 timeout(time: 5, unit: 'MINUTES') {
                     waitForQualityGate abortPipeline: true
                 }
             }
-        } */
+        }
 
-        // Only backend - JavaFX frontend is NOT containerized
         stage('Build Backend Docker Image') {
             steps {
                 bat """
@@ -108,7 +110,6 @@ pipeline {
             }
         }
 
-        //  Apply base resources only on first run — idempotent, safe to re-run
         stage('Apply K8s Base Resources') {
             steps {
                 bat """
@@ -123,7 +124,6 @@ pipeline {
             }
         }
 
-        //  Wait for MySQL to be healthy before deploying backend
         stage('Wait for MySQL') {
             steps {
                 bat """
@@ -134,7 +134,6 @@ pipeline {
             }
         }
 
-        //  Rolling update — zero downtime, replaces Docker Compose deploy
         stage('Deploy Backend to Kubernetes') {
             steps {
                 bat """
@@ -151,7 +150,6 @@ pipeline {
             }
         }
 
-        //  Verify pods are actually running after deployment
         stage('Verify Deployment') {
             steps {
                 bat """
@@ -168,12 +166,10 @@ pipeline {
             echo "Pipeline succeeded!"
             echo "Backend image: %DOCKER_USERNAME%/%BACKEND_IMAGE_REPO%:%DOCKER_IMAGE_TAG%"
             echo "Access via: http://attendance.local/api/"
-            echo "Or run: minikube service backend-service -n attendance-app"
         }
 
         failure {
-            // Auto rollback on failure
-            echo "Pipeline failed — rolling back backend..."
+            echo "Pipeline failed -- rolling back backend..."
             bat """
                 kubectl rollout undo deployment/backend ^
                     --namespace=%K8S_NAMESPACE%
