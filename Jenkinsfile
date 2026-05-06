@@ -102,10 +102,8 @@ pipeline {
                 )]) {
                     bat """
                         docker login -u %DOCKER_USER% -p %DOCKER_PASS%
-
                         docker push %DOCKER_USERNAME%/%BACKEND_IMAGE_REPO%:%DOCKER_IMAGE_TAG%
                         docker push %DOCKER_USERNAME%/%BACKEND_IMAGE_REPO%:%DOCKER_IMAGE_TAG_LATEST%
-
                         docker logout
                     """
                 }
@@ -146,25 +144,25 @@ pipeline {
             }
         }
 
-       stage('Deploy Backend to Kubernetes') {
-           steps {
-               withCredentials([file(
-                   credentialsId: "${KUBECONFIG_CREDENTIALS_ID}",
-                   variable: 'KUBECONFIG'
-               )]) {
-                   bat """
-                       kubectl apply -f k8s/backend-deployment.yaml
+        stage('Deploy Backend to Kubernetes') {
+            steps {
+                withCredentials([file(
+                    credentialsId: "${KUBECONFIG_CREDENTIALS_ID}",
+                    variable: 'KUBECONFIG'
+                )]) {
+                    bat """
+                        kubectl apply -f k8s/backend-deployment.yaml
 
-                       kubectl rollout restart deployment/backend ^
-                           --namespace=%K8S_NAMESPACE%
+                        kubectl rollout restart deployment/backend ^
+                            --namespace=%K8S_NAMESPACE%
 
-                       kubectl rollout status deployment/backend ^
-                           --namespace=%K8S_NAMESPACE% ^
-                           --timeout=180s
-                   """
-               }
-           }
-       }
+                        kubectl rollout status deployment/backend ^
+                            --namespace=%K8S_NAMESPACE% ^
+                            --timeout=180s
+                    """
+                }
+            }
+        }
 
         stage('Verify Deployment') {
             steps {
@@ -185,7 +183,7 @@ pipeline {
     post {
         success {
             echo "Pipeline succeeded!"
-            echo "Backend image: ${env.DOCKER_USERNAME}/${env.BACKEND_IMAGE_REPO}:${env.DOCKER_IMAGE_TAG}"
+            echo "Backend image: ${env.DOCKER_USERNAME}/${env.BACKEND_IMAGE_REPO}:${env.DOCKER_IMAGE_TAG_LATEST}"
             echo "Access via: http://attendance.local/api/"
         }
 
