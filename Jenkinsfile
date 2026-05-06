@@ -129,21 +129,21 @@ pipeline {
             }
         }
 
-        stage('Patch Ingress Nginx to LoadBalancer') {
-            steps {
-                withCredentials([file(
-                    credentialsId: "${KUBECONFIG_CREDENTIALS_ID}",
-                    variable: 'KUBECONFIG'
-                )]) {
-                    bat """
-                        kubectl patch svc ingress-nginx-controller ^
-                            --namespace=ingress-nginx ^
-                            --type=merge ^
-                            -p "{\"spec\":{\"type\":\"LoadBalancer\"}}"
-                    """
-                }
-            }
-        }
+       stage('Patch Ingress Nginx to LoadBalancer') {
+           steps {
+               withCredentials([file(
+                   credentialsId: "${KUBECONFIG_CREDENTIALS_ID}",
+                   variable: 'KUBECONFIG'
+               )]) {
+                   bat """
+                       kubectl patch svc ingress-nginx-controller ^
+                           --namespace=ingress-nginx ^
+                           --type=merge ^
+                           --patch-file k8s/ingress-nginx-patch.yaml
+                   """
+               }
+           }
+       }
 
         stage('Start Minikube Tunnel') {
             steps {
