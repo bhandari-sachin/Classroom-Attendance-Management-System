@@ -145,14 +145,14 @@ pipeline {
            }
        }
 
-        stage('Start Minikube Tunnel') {
-            steps {
-                bat """
-                    start /B minikube tunnel
-                    timeout /t 15 /nobreak
-                """
-            }
-        }
+      stage('Start Minikube Tunnel') {
+          steps {
+              bat """
+                  start /B minikube tunnel --profile minikube
+                  ping -n 16 127.0.0.1 > nul
+              """
+          }
+      }
 
         stage('Wait for MySQL') {
             steps {
