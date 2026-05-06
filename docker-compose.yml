@@ -1,3 +1,5 @@
+version: "3.9"
+
 services:
   db:
     image: mysql:8.4
@@ -50,3 +52,5 @@ services:
 
 volumes:
   mysql_data:
+    external: true
+    name: classroom-attendance-sys_mysql_data
