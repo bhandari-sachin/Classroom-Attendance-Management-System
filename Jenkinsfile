@@ -146,26 +146,25 @@ pipeline {
             }
         }
 
-        stage('Deploy Backend to Kubernetes') {
-            steps {
-                withCredentials([file(
-                    credentialsId: "${KUBECONFIG_CREDENTIALS_ID}",
-                    variable: 'KUBECONFIG'
-                )]) {
-                    bat """
-                        kubectl apply -f k8s/backend-deployment.yaml
+       stage('Deploy Backend to Kubernetes') {
+           steps {
+               withCredentials([file(
+                   credentialsId: "${KUBECONFIG_CREDENTIALS_ID}",
+                   variable: 'KUBECONFIG'
+               )]) {
+                   bat """
+                       kubectl apply -f k8s/backend-deployment.yaml
 
-                        kubectl set image deployment/backend ^
-                            backend=%DOCKER_USERNAME%/%BACKEND_IMAGE_REPO%:%DOCKER_IMAGE_TAG% ^
-                            --namespace=%K8S_NAMESPACE%
+                       kubectl rollout restart deployment/backend ^
+                           --namespace=%K8S_NAMESPACE%
 
-                        kubectl rollout status deployment/backend ^
-                            --namespace=%K8S_NAMESPACE% ^
-                            --timeout=120s
-                    """
-                }
-            }
-        }
+                       kubectl rollout status deployment/backend ^
+                           --namespace=%K8S_NAMESPACE% ^
+                           --timeout=180s
+                   """
+               }
+           }
+       }
 
         stage('Verify Deployment') {
             steps {
