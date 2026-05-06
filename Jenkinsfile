@@ -17,6 +17,7 @@ pipeline {
         SONAR_PROJECT_NAME        = 'Classroom Attendance Management'
 
         K8S_NAMESPACE             = 'attendance-app'
+        KUBECONFIG_CREDENTIALS_ID = 'KUBECONFIG_MINIKUBE'
     }
 
     stages {
@@ -113,51 +114,71 @@ pipeline {
 
         stage('Apply K8s Base Resources') {
             steps {
-                bat """
-                    kubectl apply -f k8s/namespace.yaml
-                    kubectl apply -f k8s/secret.yaml
-                    kubectl apply -f k8s/mysql-pvc.yaml
-                    kubectl apply -f k8s/mysql-deployment.yaml
-                    kubectl apply -f k8s/mysql-service.yaml
-                    kubectl apply -f k8s/backend-service.yaml
-                    kubectl apply -f k8s/ingress.yaml
-                """
+                withCredentials([file(
+                    credentialsId: "${KUBECONFIG_CREDENTIALS_ID}",
+                    variable: 'KUBECONFIG'
+                )]) {
+                    bat """
+                        kubectl apply -f k8s/namespace.yaml
+                        kubectl apply -f k8s/secret.yaml
+                        kubectl apply -f k8s/mysql-pvc.yaml
+                        kubectl apply -f k8s/mysql-deployment.yaml
+                        kubectl apply -f k8s/mysql-service.yaml
+                        kubectl apply -f k8s/backend-service.yaml
+                        kubectl apply -f k8s/ingress.yaml
+                    """
+                }
             }
         }
 
         stage('Wait for MySQL') {
             steps {
-                bat """
-                    kubectl rollout status deployment/mysql ^
-                        --namespace=%K8S_NAMESPACE% ^
-                        --timeout=120s
-                """
+                withCredentials([file(
+                    credentialsId: "${KUBECONFIG_CREDENTIALS_ID}",
+                    variable: 'KUBECONFIG'
+                )]) {
+                    bat """
+                        kubectl rollout status deployment/mysql ^
+                            --namespace=%K8S_NAMESPACE% ^
+                            --timeout=120s
+                    """
+                }
             }
         }
 
         stage('Deploy Backend to Kubernetes') {
             steps {
-                bat """
-                    kubectl apply -f k8s/backend-deployment.yaml
+                withCredentials([file(
+                    credentialsId: "${KUBECONFIG_CREDENTIALS_ID}",
+                    variable: 'KUBECONFIG'
+                )]) {
+                    bat """
+                        kubectl apply -f k8s/backend-deployment.yaml
 
-                    kubectl set image deployment/backend ^
-                        backend=%DOCKER_USERNAME%/%BACKEND_IMAGE_REPO%:%DOCKER_IMAGE_TAG% ^
-                        --namespace=%K8S_NAMESPACE%
+                        kubectl set image deployment/backend ^
+                            backend=%DOCKER_USERNAME%/%BACKEND_IMAGE_REPO%:%DOCKER_IMAGE_TAG% ^
+                            --namespace=%K8S_NAMESPACE%
 
-                    kubectl rollout status deployment/backend ^
-                        --namespace=%K8S_NAMESPACE% ^
-                        --timeout=120s
-                """
+                        kubectl rollout status deployment/backend ^
+                            --namespace=%K8S_NAMESPACE% ^
+                            --timeout=120s
+                    """
+                }
             }
         }
 
         stage('Verify Deployment') {
             steps {
-                bat """
-                    kubectl get pods --namespace=%K8S_NAMESPACE%
-                    kubectl get services --namespace=%K8S_NAMESPACE%
-                    kubectl get ingress --namespace=%K8S_NAMESPACE%
-                """
+                withCredentials([file(
+                    credentialsId: "${KUBECONFIG_CREDENTIALS_ID}",
+                    variable: 'KUBECONFIG'
+                )]) {
+                    bat """
+                        kubectl get pods --namespace=%K8S_NAMESPACE%
+                        kubectl get services --namespace=%K8S_NAMESPACE%
+                        kubectl get ingress --namespace=%K8S_NAMESPACE%
+                    """
+                }
             }
         }
     }
@@ -165,16 +186,21 @@ pipeline {
     post {
         success {
             echo "Pipeline succeeded!"
-            echo "Backend image: %DOCKER_USERNAME%/%BACKEND_IMAGE_REPO%:%DOCKER_IMAGE_TAG%"
+            echo "Backend image: ${env.DOCKER_USERNAME}/${env.BACKEND_IMAGE_REPO}:${env.DOCKER_IMAGE_TAG}"
             echo "Access via: http://attendance.local/api/"
         }
 
         failure {
             echo "Pipeline failed -- rolling back backend..."
-            bat """
-                kubectl rollout undo deployment/backend ^
-                    --namespace=%K8S_NAMESPACE%
-            """
+            withCredentials([file(
+                credentialsId: 'KUBECONFIG_MINIKUBE',
+                variable: 'KUBECONFIG'
+            )]) {
+                bat """
+                    kubectl rollout undo deployment/backend ^
+                        --namespace=%K8S_NAMESPACE%
+                """
+            }
         }
 
         always {
