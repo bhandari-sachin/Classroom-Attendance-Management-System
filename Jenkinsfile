@@ -18,6 +18,7 @@ pipeline {
 
         K8S_NAMESPACE             = 'attendance-app'
         KUBECONFIG_CREDENTIALS_ID = 'KUBECONFIG_MINIKUBE'
+        MINIKUBE_HOME             = 'C:\\Users\\S4ch1\\.minikube'
     }
 
     stages {
@@ -129,30 +130,30 @@ pipeline {
             }
         }
 
-       stage('Patch Ingress Nginx to LoadBalancer') {
-           steps {
-               withCredentials([file(
-                   credentialsId: "${KUBECONFIG_CREDENTIALS_ID}",
-                   variable: 'KUBECONFIG'
-               )]) {
-                   bat """
-                       kubectl patch svc ingress-nginx-controller ^
-                           --namespace=ingress-nginx ^
-                           --type=merge ^
-                           --patch-file k8s/ingress-nginx-patch.yaml
-                   """
-               }
-           }
-       }
+        stage('Patch Ingress Nginx to LoadBalancer') {
+            steps {
+                withCredentials([file(
+                    credentialsId: "${KUBECONFIG_CREDENTIALS_ID}",
+                    variable: 'KUBECONFIG'
+                )]) {
+                    bat """
+                        kubectl patch svc ingress-nginx-controller ^
+                            --namespace=ingress-nginx ^
+                            --type=merge ^
+                            --patch-file k8s/ingress-nginx-patch.yaml
+                    """
+                }
+            }
+        }
 
-      stage('Start Minikube Tunnel') {
-          steps {
-              bat """
-                  start /B minikube tunnel --profile minikube
-                  ping -n 16 127.0.0.1 > nul
-              """
-          }
-      }
+        stage('Start Minikube Tunnel') {
+            steps {
+                bat """
+                    start /B minikube tunnel --profile minikube
+                    ping -n 16 127.0.0.1 > nul
+                """
+            }
+        }
 
         stage('Wait for MySQL') {
             steps {
@@ -163,7 +164,7 @@ pipeline {
                     bat """
                         kubectl rollout status deployment/mysql ^
                             --namespace=%K8S_NAMESPACE% ^
-                            --timeout=120s
+                            --timeout=120s || echo MySQL already running
                     """
                 }
             }
