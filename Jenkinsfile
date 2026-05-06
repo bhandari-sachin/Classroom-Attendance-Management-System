@@ -129,6 +129,31 @@ pipeline {
             }
         }
 
+        stage('Patch Ingress Nginx to LoadBalancer') {
+            steps {
+                withCredentials([file(
+                    credentialsId: "${KUBECONFIG_CREDENTIALS_ID}",
+                    variable: 'KUBECONFIG'
+                )]) {
+                    bat """
+                        kubectl patch svc ingress-nginx-controller ^
+                            --namespace=ingress-nginx ^
+                            --type=merge ^
+                            -p "{\"spec\":{\"type\":\"LoadBalancer\"}}"
+                    """
+                }
+            }
+        }
+
+        stage('Start Minikube Tunnel') {
+            steps {
+                bat """
+                    start /B minikube tunnel
+                    timeout /t 15 /nobreak
+                """
+            }
+        }
+
         stage('Wait for MySQL') {
             steps {
                 withCredentials([file(
@@ -158,7 +183,7 @@ pipeline {
 
                         kubectl rollout status deployment/backend ^
                             --namespace=%K8S_NAMESPACE% ^
-                            --timeout=180s
+                            --timeout=300s
                     """
                 }
             }

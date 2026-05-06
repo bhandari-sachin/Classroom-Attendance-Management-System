@@ -20,8 +20,8 @@ spec:
     spec:
       initContainers:
         - name: wait-for-mysql
-          image: busybox
-          command: ['sh', '-c', 'until nc -z mysql 3306; do echo waiting for mysql; sleep 3; done']
+          image: busybox:1.28
+          command: ['sh', '-c', 'until nc -z mysql-service 3306; do echo waiting for mysql; sleep 3; done']
       containers:
         - name: backend
           image: sachinbhandari/classroom-attendance-backend:latest

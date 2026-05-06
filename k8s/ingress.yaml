@@ -4,10 +4,10 @@ metadata:
   name: attendance-ingress
   namespace: attendance-app
   annotations:
-    nginx.ingress.kubernetes.io/rewrite-target: /
+    nginx.ingress.kubernetes.io/use-regex: "true"
 spec:
   rules:
-    - host: attendance.local     # add this to your Windows hosts file
+    - host: attendance.local
       http:
         paths:
           - path: /api
