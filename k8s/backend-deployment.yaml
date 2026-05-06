@@ -4,20 +4,24 @@ metadata:
   name: backend
   namespace: attendance-app
 spec:
-  replicas: 2                 # 2 replicas — load balanced automatically
+  replicas: 1
   selector:
     matchLabels:
       app: backend
   strategy:
-    type: RollingUpdate       # zero downtime updates
+    type: RollingUpdate
     rollingUpdate:
-      maxSurge: 1             # spin up 1 extra during update
-      maxUnavailable: 0       # never kill old pod until new one is ready
+      maxSurge: 1
+      maxUnavailable: 0
   template:
     metadata:
       labels:
         app: backend
     spec:
+      initContainers:
+        - name: wait-for-mysql
+          image: busybox
+          command: ['sh', '-c', 'until nc -z mysql 3306; do echo waiting for mysql; sleep 3; done']
       containers:
         - name: backend
           image: sachinbhandari/classroom-attendance-backend:latest
@@ -41,15 +45,13 @@ spec:
                   name: mysql-secret
                   key: MYSQL_PASSWORD
           readinessProbe:
-            httpGet:
-              path: /health    # change to your actual health endpoint
+            tcpSocket:
               port: 8081
             initialDelaySeconds: 30
             periodSeconds: 10
             failureThreshold: 5
           livenessProbe:
-            httpGet:
-              path: /health
+            tcpSocket:
               port: 8081
             initialDelaySeconds: 60
             periodSeconds: 20
